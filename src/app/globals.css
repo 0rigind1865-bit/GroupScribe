@@ -61,8 +61,39 @@ html {
     -webkit-backdrop-filter: blur(16px) saturate(1.6);
     backdrop-filter: blur(16px) saturate(1.6);
     box-shadow: 0 6px 24px rgb(0 0 0 / 0.12), 0 2px 6px rgb(0 0 0 / 0.06);
+    transform-origin: 50% 100%;
+    transition:
+      transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+      opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* 捲動中：縮小＋半透明，讓位但仍看得見自己在哪一頁；停下即回正常 */
+  .floating-nav.nav-mini {
+    transform: translateX(-50%) scale(0.8);
+    opacity: 0.5;
+  }
+  /* 滑到最底：整條收出畫面外，把最後一列內容完整讓出來 */
+  .floating-nav.nav-hidden {
+    transform: translateX(-50%) translateY(calc(100% + 1.5rem + env(safe-area-inset-bottom)));
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* 可滑動的選中指示器（hydration 後才出現，位置由 JS 量出來） */
+  .nav-ind {
+    position: absolute;
+    top: 4px;
+    bottom: 4px;
+    left: 0;
+    z-index: 0;
+    border-radius: 999px;
+    background: rgb(209 250 229);
+    pointer-events: none;
+    transition:
+      transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+      width 0.32s cubic-bezier(0.22, 1, 0.36, 1);
   }
   .floating-nav a {
+    position: relative;
+    z-index: 1;
     display: flex;
     flex: 1;
     flex-direction: column;
@@ -72,10 +103,19 @@ html {
     border-radius: 999px;
     font-size: 11px;
     line-height: 1.2;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    /* 直向捲動照常，橫向留給拖曳切換 */
+    touch-action: pan-y;
   }
-  /* 選中態改用實心藥丸：膠囊裡只靠文字變色太弱（原本滿版列有整格寬度可讀） */
+  /* 選中態實心藥丸：膠囊裡只靠文字變色太弱（原本滿版列有整格寬度可讀）。
+     SSR 時由 aria-current 畫，指示器一就位就交棒，免得兩顆疊著。 */
   .floating-nav a[aria-current="page"] {
     background: rgb(209 250 229);
+  }
+  .floating-nav.has-ind a[aria-current="page"] {
+    background: transparent;
   }
   .floating-nav a:active {
     transform: scale(0.95);
@@ -146,6 +186,8 @@ body:has(.batch-box:checked) #batch {
     box-shadow: 0 6px 24px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.3);
   }
   .floating-nav a[aria-current="page"] { background: #1d3b30; }
+  .floating-nav.has-ind a[aria-current="page"] { background: transparent; }
+  .nav-ind { background: #1d3b30; }
   .btn:hover { background: #232b27; }
   .btn-danger { background: #1a211e; border-color: #542626; }
   .btn-danger:hover { background: #2b1d1d; }

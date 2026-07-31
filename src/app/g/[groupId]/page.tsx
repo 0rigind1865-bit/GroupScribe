@@ -8,6 +8,7 @@ import { monthGrid } from '../../(admin)/calendar/grid';
 import { ItemPhotos } from '../../item-photos';
 import { LiffInit } from '../liff-init';
 import { SubscribeToggle } from '../subscribe-toggle';
+import { FloatingNav } from '../../floating-nav';
 
 export const dynamic = 'force-dynamic';
 
@@ -696,22 +697,15 @@ export default async function MemberView({
         </p>
       </div>
 
-      {/* 成員底部 Tab（server 渲染，零 client JS） */}
-      <nav className="floating-nav">
-        {TABS.map(([t, label]) => (
-          <a
-            key={t}
-            href={`${base}?tab=${t}`}
-            aria-current={t === tab ? 'page' : undefined}
-            className={t === tab ? 'font-bold text-emerald-800' : 'text-gray-500'}
-          >
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
-              {TAB_ICON[t]}
-            </svg>
-            {label}
-          </a>
-        ))}
-      </nav>
+      {/* 成員底部 Tab：與管理版共用同一個懸浮膠囊（滑動指示器／拖曳切換／捲動收合） */}
+      <FloatingNav
+        tabs={TABS.map(([t, label]) => ({
+          href: `${base}?tab=${t}`,
+          label,
+          icon: TAB_ICON[t],
+          active: t === tab,
+        }))}
+      />
     </main>
   );
 }
