@@ -446,7 +446,7 @@ export default async function MemberView({
   const nextYm = `${mm === 12 ? yy + 1 : yy}-${String(mm === 12 ? 1 : mm + 1).padStart(2, '0')}`;
 
   return (
-    <main className="mx-auto max-w-md pb-20">
+    <main className="nav-gap mx-auto max-w-md">
       <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
         <a href="/g" aria-label="回你的群組" className="-ml-1 p-1 text-gray-400">
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
@@ -697,15 +697,13 @@ export default async function MemberView({
       </div>
 
       {/* 成員底部 Tab（server 渲染，零 client JS） */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto flex max-w-md border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
+      <nav className="floating-nav">
         {TABS.map(([t, label]) => (
           <a
             key={t}
             href={`${base}?tab=${t}`}
             aria-current={t === tab ? 'page' : undefined}
-            className={`flex flex-1 flex-col items-center gap-0.5 pt-2 pb-1.5 text-[11px] ${
-              t === tab ? 'font-bold text-emerald-700' : 'text-gray-500'
-            }`}
+            className={t === tab ? 'font-bold text-emerald-800' : 'text-gray-500'}
           >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8">
               {TAB_ICON[t]}

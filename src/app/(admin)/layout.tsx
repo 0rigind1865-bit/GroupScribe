@@ -36,8 +36,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           </Suspense>
         </div>
       </header>
-      {/* 手機底部 Tab 佔位 pb-20；safe-area inset 由 BottomNav 自己處理 */}
-      <div className="pb-20 md:pb-0">{children}</div>
+      {/* 手機懸浮膠囊佔位；桌機沒有底部 Tab，不留白 */}
+      <div className="nav-gap md:!pb-0">{children}</div>
       <Suspense fallback={null}>
         <BottomNav pending={pending} />
       </Suspense>

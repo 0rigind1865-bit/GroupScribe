@@ -75,15 +75,13 @@ export function BottomNav({ pending }: { pending: number }) {
     { path: '/more', label: '更多', icon: 'more', active: MORE_PATHS.some((p) => pathname.startsWith(p)) },
   ];
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)] md:hidden">
+    <nav className="floating-nav md:hidden">
       {tabs.map((t) => (
         <a
           key={t.path}
           href={href(t.path)}
           aria-current={t.active ? 'page' : undefined}
-          className={`relative flex flex-1 flex-col items-center gap-0.5 pt-2 pb-1.5 text-[11px] ${
-            t.active ? 'font-bold text-emerald-700' : 'text-gray-500'
-          }`}
+          className={t.active ? 'font-bold text-emerald-800' : 'text-gray-500'}
         >
           <span className="relative">
             <Icon name={t.icon} />

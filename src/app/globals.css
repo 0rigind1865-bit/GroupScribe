@@ -37,6 +37,53 @@ html {
   .input {
     @apply rounded border border-gray-300 bg-white px-3 py-1.5 text-sm;
   }
+
+  /* ── 底部導覽：懸浮膠囊 ──
+     原本是齊底滿版列，safe-area 有留、但背景仍鋪到螢幕最底——iPhone 的主畫面指示器
+     就畫在那條背景上，視覺上壓在一起。膠囊整條浮在 inset 之上，指示器底下是頁面背景，
+     不再打架；順帶把 Tab 往拇指區收（費茨定律）。
+     放在 @layer components 而非未分層：admin 版靠 md:hidden 只在手機顯示，
+     未分層的 display:flex 會蓋掉那個 utility，桌機就會冒出一條膠囊。 */
+  .floating-nav {
+    position: fixed;
+    left: 50%;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    z-index: 20;
+    display: flex;
+    gap: 2px;
+    width: calc(100% - 2rem);
+    max-width: 26rem;
+    transform: translateX(-50%);
+    padding: 4px;
+    border: 1px solid rgb(229 231 235);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.85);
+    -webkit-backdrop-filter: blur(16px) saturate(1.6);
+    backdrop-filter: blur(16px) saturate(1.6);
+    box-shadow: 0 6px 24px rgb(0 0 0 / 0.12), 0 2px 6px rgb(0 0 0 / 0.06);
+  }
+  .floating-nav a {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 7px 0 6px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1.2;
+  }
+  /* 選中態改用實心藥丸：膠囊裡只靠文字變色太弱（原本滿版列有整格寬度可讀） */
+  .floating-nav a[aria-current="page"] {
+    background: rgb(209 250 229);
+  }
+  .floating-nav a:active {
+    transform: scale(0.95);
+  }
+  /* 頁面讓開膠囊：膠囊高約 3.5rem，加上離底 0.75rem 與 inset */
+  .nav-gap {
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
 }
 
 /* 手機觸控目標 ≥44px（Apple HIG 建議值；桌機維持緊湊） */
@@ -79,10 +126,10 @@ body:has(.batch-box:checked) #batch {
   border-radius: 0;
   padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
 }
-/* 手機讓開底部 Tab（nav 約 3.5rem＋safe-area，見 nav.tsx 的 BottomNav） */
+/* 手機讓開懸浮膠囊（膠囊高約 3.5rem＋離底 0.75rem＋safe-area，見 .floating-nav） */
 @media (max-width: 767px) {
   body:has(.batch-box:checked) #batch {
-    bottom: calc(3.5rem + env(safe-area-inset-bottom));
+    bottom: calc(4.75rem + env(safe-area-inset-bottom));
     padding-bottom: 0.5rem;
   }
 }
@@ -93,6 +140,12 @@ body:has(.batch-box:checked) #batch {
 
   .card { background: #1a211e; border-color: #2a332f; }
   .btn { background: #1a211e; border-color: #39443e; color: #e8edea; }
+  .floating-nav {
+    background: rgb(26 33 30 / 0.88);
+    border-color: #2a332f;
+    box-shadow: 0 6px 24px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.3);
+  }
+  .floating-nav a[aria-current="page"] { background: #1d3b30; }
   .btn:hover { background: #232b27; }
   .btn-danger { background: #1a211e; border-color: #542626; }
   .btn-danger:hover { background: #2b1d1d; }
