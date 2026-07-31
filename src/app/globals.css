@@ -1,0 +1,151 @@
+@import "tailwindcss";
+
+/* ── 視覺 token（UI 提案階段 A）──
+   深色模式策略：全站 Tailwind 色彩 utility 在深色下整表 remap（未分層規則勝過 Tailwind 的 layer，
+   不必逐頁加 dark: 變體）。淺色維持原樣零風險；深色跟隨系統（LIFF 在 LINE 深色主題不刺眼）。 */
+
+html {
+  color-scheme: light dark;
+}
+
+@layer base {
+  body {
+    font-family: system-ui, "PingFang TC", "Noto Sans TC", sans-serif;
+  }
+}
+
+/* 共用元件樣式：頁面 markup 保持乾淨 */
+@layer components {
+  .card {
+    @apply rounded-lg border border-gray-200 bg-white p-4 shadow-sm;
+  }
+  .btn {
+    @apply cursor-pointer rounded border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50;
+  }
+  .btn-primary {
+    @apply cursor-pointer rounded border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-sm text-white hover:bg-emerald-700;
+  }
+  .btn-danger {
+    @apply cursor-pointer rounded border border-red-300 bg-white px-3 py-1.5 text-sm text-red-700 hover:bg-red-50;
+  }
+  /* 「確認」＝核可 AI 的判斷（對資料的判斷）；「完成」＝這件事做完了（對工作的狀態）。
+     兩者語意完全不同卻長得一樣，是最容易按錯的一對。用琥珀＝AI 待確認的既有狀態色，
+     跟綠色的「完成」在色彩層就分開（見 principles.md：別讓我想）。 */
+  .btn-confirm {
+    @apply cursor-pointer rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-bold text-amber-900 hover:bg-amber-100;
+  }
+  .input {
+    @apply rounded border border-gray-300 bg-white px-3 py-1.5 text-sm;
+  }
+}
+
+/* 手機觸控目標 ≥44px（Apple HIG 建議值；桌機維持緊湊） */
+@media (max-width: 767px) {
+  .btn,
+  .btn-primary,
+  .btn-danger,
+  .btn-confirm {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .input,
+  select.input {
+    min-height: 44px;
+  }
+  input[type="checkbox"] {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+}
+
+/* ── 批次操作列：勾選後才浮出（principles.md 希克定律）──
+   沒勾選任何項目時這些按鈕一顆都按不了，卻天天佔著首屏最貴的位置（待辦/公告 28%、檔案更多）。
+   純 CSS :has()，維持 MPA 零 client JS。未分層寫法以勝過 BatchBar 自帶的 .flex utility。
+   「全選」留在浮出的列裡——要進批次模式必然先勾一個，勾完全選就在手邊。
+   浮在底部同時也讓動作靠近拇指（費茨定律）。 */
+#batch {
+  display: none;
+}
+body:has(.batch-box:checked) #batch {
+  display: flex;
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  margin: 0;
+  border-inline: 0;
+  border-radius: 0;
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom));
+}
+/* 手機讓開底部 Tab（nav 約 3.5rem＋safe-area，見 nav.tsx 的 BottomNav） */
+@media (max-width: 767px) {
+  body:has(.batch-box:checked) #batch {
+    bottom: calc(3.5rem + env(safe-area-inset-bottom));
+    padding-bottom: 0.5rem;
+  }
+}
+
+/* ── 深色模式：跟隨系統。綠偏中性色盤（提案定案），utility 整表 remap ── */
+@media (prefers-color-scheme: dark) {
+  body { background: #101513; color: #e8edea; }
+
+  .card { background: #1a211e; border-color: #2a332f; }
+  .btn { background: #1a211e; border-color: #39443e; color: #e8edea; }
+  .btn:hover { background: #232b27; }
+  .btn-danger { background: #1a211e; border-color: #542626; }
+  .btn-danger:hover { background: #2b1d1d; }
+  .btn-confirm { background: #33270f; border-color: #5c4718; color: #fcd34d; }
+  .btn-confirm:hover { background: #40300f; }
+  .border-amber-300 { border-color: #5c4718; }
+  .input { background: #151b18; border-color: #39443e; color: #e8edea; }
+
+  .bg-white { background-color: #1a211e; }
+  .bg-white\/90 { background-color: rgba(26, 33, 30, 0.9); }
+  .bg-gray-50 { background-color: #151b18; }
+  .bg-gray-100 { background-color: #232b27; }
+  .bg-gray-200 { background-color: #2a332f; }
+
+  .text-gray-900 { color: #e8edea; }
+  .text-gray-700 { color: #c8d2cd; }
+  .text-gray-600 { color: #a7b3ac; }
+  .text-gray-500 { color: #93a29b; }
+  .text-gray-400 { color: #6d7b74; }
+  .text-gray-300 { color: #4a564f; }
+
+  .border-gray-100 { border-color: #232b27; }
+  .border-gray-200 { border-color: #2a332f; }
+  .border-gray-300 { border-color: #39443e; }
+
+  .bg-emerald-50 { background-color: #12312a; }
+  .bg-emerald-100 { background-color: #164237; }
+  .bg-emerald-200 { background-color: #1d5245; }
+  .text-emerald-700 { color: #34d399; }
+  .text-emerald-900 { color: #a7f3d0; }
+  .border-emerald-200 { border-color: #1d5245; }
+
+  .bg-amber-50 { background-color: #33270f; }
+  .bg-amber-100 { background-color: #3a2e14; }
+  .bg-amber-200 { background-color: #4a3a17; }
+  .text-amber-700 { color: #fbbf24; }
+  .text-amber-900 { color: #fcd34d; }
+  .border-amber-200 { border-color: #4a3a17; }
+
+  .bg-red-50 { background-color: #391b1b; }
+  .text-red-600 { color: #f87171; }
+  .text-red-700 { color: #f87171; }
+  .border-red-200 { border-color: #542626; }
+  .border-red-300 { border-color: #542626; }
+
+  .bg-sky-100 { background-color: #12303f; }
+  .bg-sky-200 { background-color: #164054; }
+  .text-sky-900 { color: #7dd3fc; }
+
+  .bg-purple-100 { background-color: #2d2150; }
+  .bg-purple-200 { background-color: #3a2b66; }
+  .text-purple-900 { color: #c4b5fd; }
+
+  .bg-blue-100 { background-color: #172a45; }
+  .text-blue-900 { color: #93c5fd; }
+}

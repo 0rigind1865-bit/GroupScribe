@@ -1,0 +1,23 @@
+app = 'groupscribe'
+primary_region = 'nrt' # 東京，離台灣最近
+
+[build]
+
+[env]
+TZ = 'Asia/Taipei'
+NODE_ENV = 'production'
+
+[http_service]
+internal_port = 3000
+force_https = true
+# 以下三行是抽取正確性的前提，勿改：
+# auto_stop_machines=false → 停機會殺掉 webhook 回 200 後才跑的背景抽取
+# max_machines_running=1  → 多實例會讓 extract.ts 的 in-memory 並發鎖失效，導致重複抽取
+auto_stop_machines = false
+auto_start_machines = true
+min_machines_running = 1
+max_machines_running = 1
+
+[[vm]]
+size = 'shared-cpu-1x'
+memory = '512mb' # OOM 就升 1gb（/api/reindex 全量 embedding 較吃記憶體）

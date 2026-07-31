@@ -1,0 +1,9 @@
+node_modules/
+.next/
+.env*
+!.env.example
+*.tsbuildinfo
+.DS_Store
+
+# 本地開發工具設定（含 Supabase project ref，不該進公開版控）
+.mcp.json
