@@ -25,7 +25,9 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <>
       {/* 手機：整條頂欄就是群組 context（品牌名讓位給「你正在看哪個群組」）；桌面：品牌＋nav＋切換器 */}
-      <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-2 md:gap-5 md:py-3">
+      {/* 釘在頂端：這條就是「你正在看哪個群組」的唯一線索，捲走了畫面上就沒有任何東西
+          回答得了「這是哪一群」（principles.md：別讓我想） */}
+      <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-2 md:gap-5 md:py-3">
         <strong className="hidden text-lg tracking-wide md:block">GroupScribe</strong>
         <Suspense fallback={null}>
           <TopNav pending={pending} />

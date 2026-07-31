@@ -59,22 +59,89 @@ export function FloatingNav({ tabs, className = '' }: { tabs: NavTab[]; classNam
     setDragIndex(null);
   }, [activeIndex]);
 
+  // 捲動收合。三道防線，因為這條一旦收起來叫不回來就是死路：
+  //   (1) 頁面不夠長就完全不收——LINE 內建瀏覽器即使不能捲也會因為橡皮筋效果與網址列
+  //       收合而送出 scroll 事件，而短頁面的 atBottom() 永遠為真，於是「一進頁面就永久消失」。
+  //   (2) 往上捲一律叫回來，不等 idle timer。
+  //   (3) 視窗尺寸變動（網址列收合／轉向）重算，順便復原。
   useEffect(() => {
     let idle: ReturnType<typeof setTimeout> | null = null;
-    const atBottom = () =>
-      window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 8;
+    let lastY = 0;
+    const doc = () => document.documentElement;
+    // 24px 容差：網址列收放會讓 innerHeight 抖動，差幾 px 不該算「可捲動」
+    const scrollable = () => doc().scrollHeight > window.innerHeight + 24;
+    const atBottom = () => window.scrollY + window.innerHeight >= doc().scrollHeight - 8;
     const onScroll = () => {
       if (drag.current.active) return;
-      setMode('mini');
+      if (!scrollable()) {
+        setMode('full');
+        return;
+      }
+      const y = window.scrollY;
+      const up = y < lastY;
+      lastY = y;
       if (idle) clearTimeout(idle);
+      if (up) {
+        setMode('full');
+        return;
+      }
+      setMode('mini');
       idle = setTimeout(() => setMode(atBottom() ? 'hidden' : 'full'), 160);
     };
+    const onResize = () => {
+      if (idle) clearTimeout(idle);
+      setMode('full');
+    };
     window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onResize);
     return () => {
       window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onResize);
       if (idle) clearTimeout(idle);
     };
   }, []);
+
+  // 整頁左右滑動換頁。手機上這才是主要的換頁手勢——拖曳膠囊要先把拇指移到底部，
+  // 而分頁之間的來回是最高頻的動作（費茨定律：最好按的位置是「不用移動」）。
+  // 四個不攔的情況：多指縮放、從螢幕左緣起手（iOS 返回手勢）、橫向可捲的內容
+  // （時間軸表格、篩選 chip 列），以及膠囊本身（否則拖曳與滑動會各自 push 一次）。
+  useEffect(() => {
+    let sx = 0;
+    let sy = 0;
+    let st = 0;
+    let tracking = false;
+    const onStart = (e: TouchEvent) => {
+      const p = e.touches[0];
+      const el = e.target as Element | null;
+      tracking =
+        e.touches.length === 1 &&
+        p.clientX >= 24 &&
+        !el?.closest?.('.floating-nav, [data-no-swipe], .overflow-x-auto, table');
+      if (!tracking) return;
+      sx = p.clientX;
+      sy = p.clientY;
+      st = Date.now();
+    };
+    const onEnd = (e: TouchEvent) => {
+      if (!tracking) return;
+      tracking = false;
+      const p = e.changedTouches[0];
+      const dx = p.clientX - sx;
+      const dy = p.clientY - sy;
+      // 要「快、明顯橫向」才算：慢的、位移小的、偏直向的都放行給捲動
+      if (Date.now() - st > 600) return;
+      if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.8) return;
+      const next = activeIndex + (dx < 0 ? 1 : -1); // 左滑＝下一頁
+      if (next < 0 || next >= tabs.length) return; // 到底不繞回，免得從最後一頁滑回第一頁
+      router.push(tabs[next].href);
+    };
+    document.addEventListener('touchstart', onStart, { passive: true });
+    document.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', onStart);
+      document.removeEventListener('touchend', onEnd);
+    };
+  }, [activeIndex, tabs, router]);
 
   function tabAtX(clientX: number): number {
     const els = links();

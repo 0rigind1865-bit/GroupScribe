@@ -65,6 +65,9 @@ html {
     transition:
       transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
       opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    /* none 而非 pan-y：這是固定的浮動列，本來就不該用它捲頁面；
+       留任何一個方向給瀏覽器，它就可能在手指橫移時把 pointermove 收走，拖曳切換就失效。 */
+    touch-action: none;
   }
   /* 捲動中：縮小＋半透明，讓位但仍看得見自己在哪一頁；停下即回正常 */
   .floating-nav.nav-mini {
@@ -106,8 +109,6 @@ html {
     -webkit-user-select: none;
     user-select: none;
     -webkit-touch-callout: none;
-    /* 直向捲動照常，橫向留給拖曳切換 */
-    touch-action: pan-y;
   }
   /* 選中態實心藥丸：膠囊裡只靠文字變色太弱（原本滿版列有整格寬度可讀）。
      SSR 時由 aria-current 畫，指示器一就位就交棒，免得兩顆疊著。 */

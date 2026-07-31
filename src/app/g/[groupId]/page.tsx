@@ -448,7 +448,8 @@ export default async function MemberView({
 
   return (
     <main className="nav-gap mx-auto max-w-md">
-      <header className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
+      {/* 釘在頂端：與管理版同一個理由——群組名是成員唯一的 context 錨點 */}
+      <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
         <a href="/g" aria-label="回你的群組" className="-ml-1 p-1 text-gray-400">
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M15 6l-6 6 6 6" />
