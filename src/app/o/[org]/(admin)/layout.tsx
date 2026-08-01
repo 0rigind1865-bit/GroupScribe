@@ -5,7 +5,6 @@ import { notFound } from 'next/navigation';
 import { GroupSwitcher, type GroupOption } from '@/app/ui/group-switcher';
 import { ShellHeader } from '../shell-header';
 import { BottomNav } from '../nav';
-import { GS_MODULE } from '../routes';
 
 export const dynamic = 'force-dynamic';
 
@@ -45,7 +44,7 @@ export default async function AdminLayout({
       </Suspense>
       <div className="nav-gap md:!pb-0">{children}</div>
       <Suspense fallback={null}>
-        <BottomNav module={GS_MODULE} counts={counts} />
+        <BottomNav moduleId="gs" counts={counts} />
       </Suspense>
     </>
   );

@@ -5,7 +5,6 @@ import { orgBySlug } from '@/org/orgs';
 import { orgAdminAccess } from '@/attend/auth';
 import { ShellHeader } from '../shell-header';
 import { BottomNav } from '../nav';
-import { ATTEND_MODULE } from '../routes';
 import { EmployeeSwitcher } from './employee-switcher';
 
 export const dynamic = 'force-dynamic';
@@ -48,7 +47,7 @@ export default async function AttendLayout({
       </Suspense>
       <div className="nav-gap md:!pb-0">{children}</div>
       <Suspense fallback={null}>
-        <BottomNav module={ATTEND_MODULE} counts={counts} />
+        <BottomNav moduleId="attend" counts={counts} />
       </Suspense>
     </>
   );

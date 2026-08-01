@@ -2,7 +2,16 @@
 
 import { usePathname, useSearchParams } from 'next/navigation';
 import { FloatingNav } from '@/app/ui/floating-nav';
-import { bottomItems, moduleOf, type BadgeKey, type ModuleDef, type NavItem } from './routes';
+import {
+  ATTEND_MODULE,
+  GS_MODULE,
+  bottomItems,
+  moduleOf,
+  type BadgeKey,
+  type ModuleDef,
+  type ModuleId,
+  type NavItem,
+} from './routes';
 
 // 導覽：手機五格底部膠囊＋桌面頂部 nav，同一份路由表（routes.tsx）、皆帶 active 標記。
 // 換頁保留該模組的 context 參數（群組助理＝?group、考勤＝?emp）——原本會掉，
@@ -12,6 +21,11 @@ import { bottomItems, moduleOf, type BadgeKey, type ModuleDef, type NavItem } fr
 // 現在跟群組助理走同一套殼。
 
 export type Counts = Partial<Record<BadgeKey, number>>;
+
+// 只收 moduleId 字串，不收整個 ModuleDef——ModuleDef 帶 base() 函式，
+// 跨 server→client 邊界傳函式會被 React 擋下（"Functions cannot be passed
+// directly to Client Components"）。routes.tsx 只有常數與 JSX，client 端直接 import 即可。
+const modOf = (id: ModuleId) => (id === 'attend' ? ATTEND_MODULE : GS_MODULE);
 
 function useNav(module: ModuleDef) {
   const full = usePathname();
@@ -35,7 +49,8 @@ const Icon = ({ children }: { children: React.ReactNode }) => (
   </svg>
 );
 
-export function BottomNav({ module, counts = {} }: { module: ModuleDef; counts?: Counts }) {
+export function BottomNav({ moduleId, counts = {} }: { moduleId: ModuleId; counts?: Counts }) {
+  const module = modOf(moduleId);
   const { href, isActive, rel } = useNav(module);
   const items = bottomItems(module);
   // 「更多」格的 active 範圍＝它自己的頁 ＋ 收在裡面的所有項目（路徑全來自路由表）
@@ -59,7 +74,8 @@ export function BottomNav({ module, counts = {} }: { module: ModuleDef; counts?:
   );
 }
 
-export function TopNav({ module, counts = {} }: { module: ModuleDef; counts?: Counts }) {
+export function TopNav({ moduleId, counts = {} }: { moduleId: ModuleId; counts?: Counts }) {
+  const module = modOf(moduleId);
   const { href, isActive } = useNav(module);
   return (
     <nav className="hidden gap-1 text-sm md:flex">

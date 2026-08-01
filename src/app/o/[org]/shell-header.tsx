@@ -31,7 +31,7 @@ export async function ShellHeader({
         {access.modules.length < 2 && (
           <strong className="hidden truncate text-lg tracking-wide md:block">{access.org.name}</strong>
         )}
-        <TopNav module={mod} counts={counts} />
+        <TopNav moduleId={mod.id} counts={counts} />
         {context && <div className="ml-auto min-w-0 flex-1 md:flex-none">{context}</div>}
       </div>
     </header>
