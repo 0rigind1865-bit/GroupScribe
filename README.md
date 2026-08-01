@@ -219,6 +219,30 @@ src/
 
 ---
 
+## 介面架構
+
+一個殼、一份路由表、兩個工作區。
+
+```
+/o/[slug]/          layout.tsx      唯一權限閘門（visibleModules → notFound）
+                    routes.tsx      全站唯一路由表：MODULES = [群組助理, 考勤]
+                    shell-header    工作區切換器 + nav + context 切換器
+   ├── (admin)/     群組助理：今天/收件匣/月曆/待辦 + 更多(公告/檔案/群組/匯入/設定)
+   └── attend/      考勤：總覽/員工/審核/報表 + 更多(地點/規則)
+/g                  LINE 成員版（群組成員都看得到）
+/a                  員工打卡（頂部三 pill：打卡/月曆/我的申請）
+```
+
+- **加一頁＝在 `routes.tsx` 加一行** —— TopNav、底部膠囊、`/more` 頁、active 判定全部由此推導
+- **工作區切換器只在有兩個模組時渲染**：只有考勤權限的 org 管理員，畫面上不存在「另一個工作區」
+- **context 參數跟著換頁走**：群組助理帶 `?group=`、考勤帶 `?emp=`（用 URL 不用 cookie —— 可分享、狀態看得見）
+- **共用元件在 `src/app/ui/`**：Banner / Badge / MonthGrid / Empty / StatGrid / PageHeader，
+  以及狀態語意色 `tone.ts`（ok/warn/err/neutral 四個，跨模組不衝突）
+- **三支守門測試**把紀律變成 CI：`routes`（連結必帶 org 前綴）、`colors`（深色 remap 齊全、
+  indigo/teal 不復活）、`i18n`（五語系 key 一致、參數不漏）
+
+---
+
 ## 考勤模組（多租戶打卡與薪資）
 
 取代原 Attendance-System（GAS + Google Sheets）的重寫版，併入本專案共用 LINE 身分與部署。

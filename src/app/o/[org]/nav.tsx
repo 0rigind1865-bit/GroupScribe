@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
-import { FloatingNav } from '@/app/floating-nav';
+import { FloatingNav } from '@/app/ui/floating-nav';
 import { bottomItems, moduleOf, type BadgeKey, type ModuleDef, type NavItem } from './routes';
 
 // 導覽：手機五格底部膠囊＋桌面頂部 nav，同一份路由表（routes.tsx）、皆帶 active 標記。

@@ -1,10 +1,10 @@
 import { notFound } from 'next/navigation';
 import { orgBySlug } from '@/org/orgs';
 import { oh } from '@/org/href';
-import { ConfirmIcon, PendingBadge } from '@/app/review-ui';
+import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
 import { dbConfigured, getDb } from '@/db';
 import { mediaForItems } from '@/core/media';
-import { ItemPhotos } from '@/app/item-photos';
+import { ItemPhotos } from '@/app/ui/item-photos';
 import { SetupNotice } from '../setup-notice';
 import { fmtDate } from '@/core/date';
 

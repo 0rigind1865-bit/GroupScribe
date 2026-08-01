@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { orgBySlug } from '@/org/orgs';
-import { ConfirmIcon, PendingBadge } from '@/app/review-ui';
+import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
 import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb } from '@/db';
 import { relatedItems, type RelatedItem } from '@/core/links';
@@ -8,7 +8,7 @@ import { SetupNotice } from '../setup-notice';
 import { RelatedItems } from '../related-items';
 import { BatchBar, BatchBox } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
-import { ItemPhotos } from '@/app/item-photos';
+import { ItemPhotos } from '@/app/ui/item-photos';
 
 export const dynamic = 'force-dynamic';
 

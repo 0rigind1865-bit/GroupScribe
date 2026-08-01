@@ -1,14 +1,14 @@
-import { TaskCircle, TimeChip, realAssignee } from '../../item-marker';
-import { ConfirmIcon, PendingBadge } from '../../review-ui';
+import { TaskCircle, TimeChip, realAssignee } from '@/app/ui/item-marker';
+import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
 import { fmtDate, isOverdue, todayISO } from '@/core/date';
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
 import { isGroupMember, liffId, liffUser, memberName } from '@/core/liff';
 import { mediaForItems } from '@/core/media';
 import { monthGrid } from '@/core/grid';
-import { ItemPhotos } from '../../item-photos';
+import { ItemPhotos } from '@/app/ui/item-photos';
 import { LiffInit } from '../liff-init';
 import { SubscribeToggle } from '../subscribe-toggle';
-import { FloatingNav } from '../../floating-nav';
+import { FloatingNav } from '@/app/ui/floating-nav';
 
 export const dynamic = 'force-dynamic';
 

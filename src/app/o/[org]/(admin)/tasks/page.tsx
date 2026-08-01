@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { ConfirmIcon, DoneIcon, PendingBadge } from '@/app/review-ui';
+import { ConfirmIcon, DoneIcon, PendingBadge } from '@/app/ui/review-ui';
 import { fmtDate, isOverdue } from '@/core/date';
 import { orgBySlug } from '@/org/orgs';
 import { scopedGroup } from '../group-scope';
@@ -9,7 +9,7 @@ import { SetupNotice } from '../setup-notice';
 import { RelatedItems } from '../related-items';
 import { BatchBar, BatchBox } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
-import { ItemPhotos } from '@/app/item-photos';
+import { ItemPhotos } from '@/app/ui/item-photos';
 
 export const dynamic = 'force-dynamic';
 

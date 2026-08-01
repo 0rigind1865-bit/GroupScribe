@@ -2,7 +2,7 @@ import { Suspense, type ReactNode } from 'react';
 import { getDb } from '@/db';
 import { orgBySlug, orgGroups } from '@/org/orgs';
 import { notFound } from 'next/navigation';
-import { GroupSwitcher, type GroupOption } from '@/app/group-switcher';
+import { GroupSwitcher, type GroupOption } from '@/app/ui/group-switcher';
 import { ShellHeader } from '../shell-header';
 import { BottomNav } from '../nav';
 import { GS_MODULE } from '../routes';

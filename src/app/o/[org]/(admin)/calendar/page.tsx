@@ -8,7 +8,7 @@ import { RelatedItems } from '../related-items';
 import { addDays, agendaRange, hourRange, monthGrid, parseHour, splitTimed, weekDays, type AgendaPreset } from '@/core/grid';
 import { BatchBar, BatchBox } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
-import { ItemPhotos } from '@/app/item-photos';
+import { ItemPhotos } from '@/app/ui/item-photos';
 
 export const dynamic = 'force-dynamic';
 

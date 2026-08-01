@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { orgBySlug } from '@/org/orgs';
 import { oh } from '@/org/href';
-import { TaskCircle, TimeChip, realAssignee } from '@/app/item-marker';
+import { TaskCircle, TimeChip, realAssignee } from '@/app/ui/item-marker';
 import { dbConfigured, getDb } from '@/db';
 import { SetupNotice } from './setup-notice';
 import { addDays } from '@/core/grid';
