@@ -147,7 +147,7 @@ export const ATTEND_MODULE: ModuleDef = {
     { key: 'overview', path: '', label: '總覽', desc: '待處理事項與本月異常', icon: I.clock, primary: true },
     { key: 'employees', path: '/employees', label: '員工', desc: '啟用、月薪、部門與管理權', icon: I.people, primary: true, badge: 'pendingEmps' },
     { key: 'reviews', path: '/reviews', label: '審核', desc: '員工送出的補卡申請', icon: I.check, primary: true, badge: 'reviews' },
-    { key: 'report', path: '/calendar', label: '報表', desc: '月曆、工時與薪資明細', icon: I.chart, primary: true },
+    { key: 'report', path: '/report', label: '報表', desc: '月曆、工時與薪資明細', icon: I.chart, primary: true },
     { key: 'locations', path: '/locations', label: '打卡地點', desc: 'GPS 座標與允許半徑', icon: I.pin },
     { key: 'rules', path: '/rules', label: '薪資規則', desc: '倍率、休息時段與假日表', icon: I.rules },
   ],

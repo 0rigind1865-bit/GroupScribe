@@ -1,5 +1,6 @@
 import { LiffInit } from '@/app/g/liff-init';
 import { FloatingNav } from '@/app/ui/floating-nav';
+import { SurfaceSwitcher } from '@/app/ui/surface-switcher';
 import { LOCALES, type Locale, type MsgKey } from '@/attend/i18n';
 import type { Employee } from '@/attend/auth';
 
@@ -64,17 +65,13 @@ export function AttendShell({
 }) {
   return (
     <main className="mx-auto max-w-md p-4">
+      {/* 切換器取代原本的返回鍵：它已經包含「我的群組」，而且順帶回答
+          「我還能去哪」——返回鍵只能回答「上一步」。 */}
+      <div className="mb-2">
+        <SurfaceSwitcher current="punch" />
+      </div>
+
       <header className="mb-3 flex items-center gap-2">
-        {/* 返回群組助理：LIFF 深連結進來時 history 是空的，硬編碼路徑而非 back() */}
-        <a
-          href="/g"
-          aria-label={tt('BACK_TO_GROUPS')}
-          className="grid h-9 w-9 flex-none place-items-center rounded-full border border-gray-300 text-gray-600"
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6" />
-          </svg>
-        </a>
         {emp && (
           <>
             {emp.picture_url ? (

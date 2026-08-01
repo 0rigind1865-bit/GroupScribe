@@ -127,7 +127,7 @@ export default async function EmployeesPage({
                     ) : (
                       <button className="btn px-3 py-1.5" name="action" value="admin_on">設為管理員</button>
                     ))}
-                  <a className="btn ml-auto px-3 py-1.5" href={`/o/${slug}/attend/calendar?emp=${e.id}`}>月曆與薪資 →</a>
+                  <a className="btn ml-auto px-3 py-1.5" href={`/o/${slug}/attend/report?emp=${e.id}`}>月曆與薪資 →</a>
                 </form>
                 <p className="text-xs text-gray-400">
                   LINE ID：{e.line_user_id.slice(0, 12)}…｜加入於 {new Date(e.created_at).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}

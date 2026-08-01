@@ -61,7 +61,7 @@ export default async function AttendOverview({ params }: { params: Promise<{ org
               <div className="mb-1 flex items-center gap-2">
                 <span className="font-bold">{emp.display_name}</span>
                 <span className="text-xs text-gray-500">{emp.dept ?? ''}</span>
-                <a className="ml-auto text-sm text-emerald-700 underline" href={oh(slug, '/attend/calendar', { emp: emp.id })}>
+                <a className="ml-auto text-sm text-emerald-700 underline" href={oh(slug, '/attend/report', { emp: emp.id })}>
                   報表 →
                 </a>
               </div>

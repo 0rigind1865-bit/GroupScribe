@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   const access = await orgAdminAccess(slug);
   if (!access) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
-  const back = `/o/${slug}/attend/calendar?emp=${empId}&month=${month}`;
+  const back = `/o/${slug}/attend/report?emp=${empId}&month=${month}`;
   const db = getDb();
 
   if (action === 'unfinalize') {

@@ -72,7 +72,9 @@ async function validLiff(raw: string | undefined): Promise<boolean> {
 //
 // 這是**舊書籤相容層**，不是跨租戶連結的安全網——頁面內的連結一律用 oh(slug, path) 產生，
 // 由 tests/routes.test.ts 把關。這裡的預設 org 只服務「平台擁有者自己的舊書籤」。
-const LEGACY = new Set(['/', '/inbox', '/calendar', '/tasks', '/notes', '/files', '/groups', '/import', '/settings', '/more']);
+// 注意不含 '/'：根路徑改由 src/app/page.tsx 依身分落地——寫死導向 /o/main
+// 對第二個租戶是壞的（別家 org 的管理員會拿到 404），而身分要查 DB、edge 查不了。
+const LEGACY = new Set(['/inbox', '/calendar', '/tasks', '/notes', '/files', '/groups', '/import', '/settings', '/more']);
 const DEFAULT_ORG = process.env.DEFAULT_ORG_SLUG ?? 'main';
 
 export async function middleware(req: NextRequest) {
@@ -88,7 +90,7 @@ export async function middleware(req: NextRequest) {
   }
 
   if (LEGACY.has(pathname)) {
-    const dest = `/o/${DEFAULT_ORG}${pathname === '/' ? '' : pathname}${search}`;
+    const dest = `/o/${DEFAULT_ORG}${pathname}${search}`;
     // middleware 的 redirect 必須是絕對網址（Next edge 會 new URL() 驗證）。
     // 反向代理後 req.url 是容器內部 host，改用轉發標頭組公開網址（同 http.ts publicBase）。
     const proto = req.headers.get('x-forwarded-proto') ?? 'http';
@@ -112,6 +114,10 @@ export async function middleware(req: NextRequest) {
     const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host;
     return NextResponse.redirect(`${proto}://${host}/o/${orgHit[1]}/attend`, 302);
   }
+
+  // 根路徑一律放行：它自己會依身分落地（未登入時顯示 LIFF 開機畫面，
+  // 而不是一張員工永遠填不出來的密碼表單）。
+  if (pathname === '/') return NextResponse.next();
 
   // rewrite（非 redirect）：內部改寫顯示登入頁、瀏覽器 URL 不變，
   // 避開反向代理後 req.url 是容器內部 host、又不能用相對 URL 的雙重限制。

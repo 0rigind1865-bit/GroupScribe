@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { visibleModules } from '@/org/modules';
 import { ATTEND_MODULE, GS_MODULE, type ModuleId } from './routes';
-import { WorkspaceSwitcher } from './workspace-switcher';
+import { SurfaceSwitcher } from '@/app/ui/surface-switcher';
 import { TopNav, type Counts } from './nav';
 
 // 兩個模組共用的頂欄：工作區切換器 + 桌面 nav + 右側 context 切換器（群組 / 員工）。
@@ -26,11 +26,7 @@ export async function ShellHeader({
   return (
     <header className="sticky top-0 z-30 border-b border-gray-200 bg-white px-4 py-2 md:py-3">
       <div className="mx-auto flex max-w-5xl items-center gap-3 md:gap-5">
-        <WorkspaceSwitcher modules={access.modules} current={mod.id} slug={slug} />
-        {/* 單一模組時切換器不渲染，改顯示 org 名稱當品牌（桌面才有空間） */}
-        {access.modules.length < 2 && (
-          <strong className="hidden truncate text-lg tracking-wide md:block">{access.org.name}</strong>
-        )}
+        <SurfaceSwitcher current={mod.id} />
         <TopNav moduleId={mod.id} counts={counts} />
         {context && <div className="ml-auto min-w-0 flex-1 md:flex-none">{context}</div>}
       </div>

@@ -96,8 +96,8 @@ export default async function AttendCalendar({
         desc={emp.dept ?? undefined}
         right={
           <>
-            <a className="btn px-2.5 py-1 text-sm" href={oh(slug, '/attend/calendar', { emp: emp.id, month: shiftMonth(month, -1) })}>←</a>
-            <a className="btn px-2.5 py-1 text-sm" href={oh(slug, '/attend/calendar', { emp: emp.id, month: shiftMonth(month, 1) })}>→</a>
+            <a className="btn px-2.5 py-1 text-sm" href={oh(slug, '/attend/report', { emp: emp.id, month: shiftMonth(month, -1) })}>←</a>
+            <a className="btn px-2.5 py-1 text-sm" href={oh(slug, '/attend/report', { emp: emp.id, month: shiftMonth(month, 1) })}>→</a>
           </>
         }
       />
