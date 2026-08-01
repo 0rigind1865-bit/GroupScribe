@@ -8,8 +8,11 @@ import { currentRuleSet, holidayKinds } from '@/attend/rules-store';
 import { computeMonthHybrid, type HybridResult } from '@/attend/sandbox';
 import type { MonthDayInput } from '@/attend/salary';
 import { MonthGrid } from '@/app/ui/month-grid';
+import { PageHeader } from '@/app/ui/page-header';
+import { StatGrid } from '@/app/ui/stat';
 import { dayCellClass } from '@/attend/day-tone';
 import { Banner } from '@/app/ui/banner';
+import { Empty } from '@/app/ui/empty';
 import { oh } from '@/org/href';
 import type { Employee } from '@/attend/auth';
 
@@ -88,22 +91,16 @@ export default async function AttendCalendar({
 
   return (
     <main className="mx-auto max-w-4xl p-5">
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">月曆與薪資</h1>
-        {/* 員工切換：原生 select + GET（零 client JS） */}
-        <form method="get" className="ml-auto flex items-center gap-2">
-          <input type="hidden" name="month" value={month} />
-          <select className="input text-sm" name="emp" defaultValue={emp.id}>
-            {employees.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.display_name}
-                {e.status === 'disabled' ? '（停用）' : ''}
-              </option>
-            ))}
-          </select>
-          <button className="btn px-3 py-1.5 text-sm">切換</button>
-        </form>
-      </div>
+      <PageHeader
+        title={`${emp.display_name}｜${y} 年 ${m} 月`}
+        desc={emp.dept ?? undefined}
+        right={
+          <>
+            <a className="btn px-2.5 py-1 text-sm" href={oh(slug, '/attend/calendar', { emp: emp.id, month: shiftMonth(month, -1) })}>←</a>
+            <a className="btn px-2.5 py-1 text-sm" href={oh(slug, '/attend/calendar', { emp: emp.id, month: shiftMonth(month, 1) })}>→</a>
+          </>
+        }
+      />
 
       {sp.err === 'ERR_FINALIZE' && <Banner tone="err">結算失敗，請重試。</Banner>}
       {sp.ok === 'finalized' && <Banner>本月已結算，金額已凍結 ✓</Banner>}
@@ -122,24 +119,35 @@ export default async function AttendCalendar({
         </div>
       )}
 
+      {/* KPI 四格（對齊文輝考勤的管理端版面）：把「這個月到底怎樣」放在最上面，
+          細節留給下方月曆與明細。沒有成對打卡時不畫四個 0——那是噪音不是答案。 */}
+      {result.days.length > 0 ? (
+        <div className="mb-5">
+          <StatGrid
+            items={[
+              { n: result.totals.netHours, label: '淨工時 (h)' },
+              { n: result.totals.normalHours, label: '正常工時 (h)' },
+              { n: result.totals.overtimeHours, label: '加班工時 (h)', tone: result.totals.overtimeHours > 0 ? 'warn' : 'neutral' },
+              { n: result.total.toFixed(0), label: '本月總薪資' },
+            ]}
+          />
+        </div>
+      ) : (
+        <div className="mb-5">
+          <Empty
+            title="本月沒有成對的上下班紀錄"
+            hint="員工打卡後這裡會出現工時與薪資；若有漏打卡，先到「審核」處理補卡申請。"
+            action={
+              <a className="text-sm text-emerald-700 underline" href={oh(slug, '/attend/reviews')}>
+                前往補卡審核 →
+              </a>
+            }
+          />
+        </div>
+      )}
+
       <div className="grid gap-5 md:grid-cols-[1fr_320px]">
         <section>
-          <div className="mb-3 flex items-center justify-between">
-            <a className="btn px-3 py-1 text-sm" href={oh(slug, '/attend/calendar', { emp: emp.id, month: shiftMonth(month, -1) })}>←</a>
-            <h2 className="font-bold">
-              {emp.display_name}｜{y} 年 {m} 月
-              {finalized && (
-                <span className="ml-2 inline-flex items-center gap-1 rounded bg-gray-200 px-1.5 py-0.5 text-xs font-bold text-gray-700">
-                  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <rect x="5" y="11" width="14" height="10" rx="2" />
-                    <path d="M8 11V7a4 4 0 018 0v4" />
-                  </svg>
-                  已結算
-                </span>
-              )}
-            </h2>
-            <a className="btn px-3 py-1 text-sm" href={oh(slug, '/attend/calendar', { emp: emp.id, month: shiftMonth(month, 1) })}>→</a>
-          </div>
           <MonthGrid
             ym={month}
             weekLabels={WEEK}
