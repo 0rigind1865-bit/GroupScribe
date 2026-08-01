@@ -1,18 +1,50 @@
 import { LiffInit } from '@/app/g/liff-init';
+import { FloatingNav } from '@/app/ui/floating-nav';
 import { LOCALES, type Locale, type MsgKey } from '@/attend/i18n';
 import type { Employee } from '@/attend/auth';
 
-// 員工端的共用外框：頭部（返回 /g・姓名・語言）＋ 頂部 pill tab。
+// 員工端的共用外框：頭部（返回 /g・姓名・語言）＋ 底部懸浮膠囊。
 //
-// 為什麼是頂部 pill 而不是全站的懸浮膠囊（FloatingNav）：
-// 這一頁最高頻的動作是「打卡」那兩顆大按鈕，它們必須獨佔拇指區（費茨定律）。
-// 底部再浮一條膠囊會跟主動作搶同一塊螢幕。架構對齊文輝考勤系統的三顆 pill。
+// 導覽與管理端統一用 FloatingNav（滑動指示器／拖曳切換／捲動收合都是現成的），
+// 全站只有一種「切分頁」的手勢。打卡的兩顆大按鈕仍在首屏，膠囊浮在其下方，
+// 內容區用 nav-gap 讓開，兩者不重疊。
 
-type Tab = { key: 'dash' | 'records' | 'requests'; href: string; label: MsgKey };
+type TabKey = 'dash' | 'records' | 'requests';
+type Tab = { key: TabKey; href: string; label: MsgKey; icon: React.ReactNode };
 const TABS: Tab[] = [
-  { key: 'dash', href: '/a', label: 'TAB_DASHBOARD' },
-  { key: 'records', href: '/a/records', label: 'TAB_RECORDS' },
-  { key: 'requests', href: '/a/adjust', label: 'TAB_REQUESTS' },
+  {
+    key: 'dash',
+    href: '/a',
+    label: 'TAB_DASHBOARD',
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M12 7v5l3 2" />
+      </>
+    ),
+  },
+  {
+    key: 'records',
+    href: '/a/records',
+    label: 'TAB_RECORDS',
+    icon: (
+      <>
+        <rect x="3" y="4" width="18" height="17" rx="2" />
+        <path d="M3 9h18M9 13h.01M14 13h.01M9 17h.01M14 17h.01" />
+      </>
+    ),
+  },
+  {
+    key: 'requests',
+    href: '/a/adjust',
+    label: 'TAB_REQUESTS',
+    icon: (
+      <>
+        <path d="M4 4h16v12H8l-4 4z" />
+        <path d="M9 10h6" />
+      </>
+    ),
+  },
 ];
 
 export function AttendShell({
@@ -81,22 +113,20 @@ export function AttendShell({
         </details>
       </header>
 
-      <nav className="mb-4 flex gap-2">
-        {TABS.map((t) => (
-          <a
-            key={t.key}
-            href={t.href}
-            aria-current={t.key === current ? 'page' : undefined}
-            className={`flex-1 rounded-full py-2 text-center text-sm font-bold ${
-              t.key === current ? 'bg-emerald-600 text-white' : 'bg-gray-100 text-gray-600'
-            }`}
-          >
-            {tt(t.label)}
-          </a>
-        ))}
-      </nav>
+      <div className="nav-gap">{children}</div>
 
-      {children}
+      <FloatingNav
+        tabs={TABS.map((t) => ({
+          href: t.href,
+          label: tt(t.label),
+          icon: (
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              {t.icon}
+            </svg>
+          ),
+          active: t.key === current,
+        }))}
+      />
     </main>
   );
 }

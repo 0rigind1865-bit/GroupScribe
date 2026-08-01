@@ -47,7 +47,7 @@ export function PunchPanel({ locations, labels }: { locations: PunchLocation[]; 
   const [busy, setBusy] = useState<'in' | 'out' | null>(null);
   const [err, setErr] = useState('');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [mapOk, setMapOk] = useState(false);
+  const [mapFailed, setMapFailed] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const mapEl = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -66,49 +66,88 @@ export function PunchPanel({ locations, labels }: { locations: PunchLocation[]; 
     return () => navigator.geolocation.clearWatch(id);
   }, []);
 
-  // Leaflet：CDN 載入，任何一步失敗就整塊不顯示（mapOk 保持 false）
+  // Leaflet：CDN 載入。三個踩過的坑，缺一個地圖就是壞的：
+  //   1. 容器必須先有尺寸——初始若是 display:none，L.map() 會在 0×0 上算格線，
+  //      之後補 invalidateSize() 也常常來不及。所以容器一開始就佔位，只有「確定失敗」才隱藏。
+  //   2. CSS 必須先到——Leaflet 的 tile 定位全靠它的 stylesheet，CSS 晚於 JS 抵達時
+  //      所有 tile 會疊在左上角（看起來就是「地圖破圖」）。所以等 CSS onload 才 boot。
+  //   3. script 已在 DOM 裡時不能只掛 'load'——已載完的 script 不會再觸發，
+  //      換頁回來就永遠 boot 不了。要先檢查 window.L。
   useEffect(() => {
     if (!mapEl.current || mapRef.current) return;
-    if (!document.getElementById('leaflet-css')) {
-      const link = document.createElement('link');
-      link.id = 'leaflet-css';
-      link.rel = 'stylesheet';
-      link.href = LEAFLET_CSS;
-      document.head.appendChild(link);
-    }
+    let cancelled = false;
+
     const boot = () => {
+      if (cancelled) return;
       try {
         const L = window.L;
         if (!L || !mapEl.current) return;
         const map = L.map(mapEl.current, { attributionControl: false }).setView([25.033, 121.5654], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+        const group: any[] = [];
         for (const loc of locations) {
-          L.circle([loc.lat, loc.lng], { color: 'red', fillColor: '#f03', fillOpacity: 0.2, radius: loc.radius })
+          const c = L.circle([loc.lat, loc.lng], { color: '#dc2626', fillColor: '#ef4444', fillOpacity: 0.2, radius: loc.radius })
             .addTo(map)
             .bindPopup(`${loc.name}（${loc.radius}m）`);
+          group.push(c);
         }
+        // 沒有使用者位置時，先把視野框在所有打卡地點上（比預設的台北市中心有用）
+        if (group.length) map.fitBounds(L.featureGroup(group).getBounds().pad(0.3));
         mapRef.current = map;
-        setMapOk(true);
-        // 容器剛掛上時尺寸可能還是 0，Leaflet 會畫錯——文輝考勤踩過同一個坑
-        setTimeout(() => map.invalidateSize(), 100);
+        // 容器可能還在 layout 中（LIFF webview 尤其慢）：連補三次，成本可忽略
+        for (const d of [0, 200, 600]) setTimeout(() => !cancelled && map.invalidateSize(), d);
       } catch {
-        setMapOk(false);
+        setMapFailed(true);
       }
     };
-    if (window.L) return boot();
-    const existing = document.getElementById('leaflet-js');
-    if (existing) return existing.addEventListener('load', boot);
-    const s = document.createElement('script');
-    s.id = 'leaflet-js';
-    s.src = LEAFLET_JS;
-    s.onload = boot;
-    s.onerror = () => setMapOk(false); // CDN 掛掉：地圖沒了，打卡照常
-    document.head.appendChild(s);
+
+    // CSS：已在就直接用，否則等 onload（Leaflet 的定位全靠它）
+    const cssReady = new Promise<void>((resolve) => {
+      const existing = document.getElementById('leaflet-css') as HTMLLinkElement | null;
+      if (existing) return existing.dataset.loaded ? resolve() : existing.addEventListener('load', () => resolve());
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = LEAFLET_CSS;
+      link.onload = () => {
+        link.dataset.loaded = '1';
+        resolve();
+      };
+      link.onerror = () => resolve(); // CSS 掛了仍試著畫，至少有 tile
+      document.head.appendChild(link);
+    });
+
+    // JS：window.L 已存在＝載完了（不能只靠 'load' 事件，已載完的 script 不再觸發）
+    const jsReady = new Promise<boolean>((resolve) => {
+      if (window.L) return resolve(true);
+      const existing = document.getElementById('leaflet-js');
+      if (existing) {
+        existing.addEventListener('load', () => resolve(true));
+        existing.addEventListener('error', () => resolve(false));
+        return;
+      }
+      const s = document.createElement('script');
+      s.id = 'leaflet-js';
+      s.src = LEAFLET_JS;
+      s.onload = () => resolve(true);
+      s.onerror = () => resolve(false); // CDN 掛掉：地圖沒了，打卡照常
+      document.head.appendChild(s);
+    });
+
+    Promise.all([cssReady, jsReady]).then(([, ok]) => (ok ? boot() : setMapFailed(true)));
+
+    // 防呆：5 秒還沒畫出來（CDN 極慢、webview 靜默擋下…）就把容器收掉，
+    // 不留一塊解釋不了的灰底給員工看。打卡按鈕本來就不依賴地圖。
+    const giveUp = setTimeout(() => !mapRef.current && setMapFailed(true), 5000);
+    return () => {
+      cancelled = true;
+      clearTimeout(giveUp);
+    };
   }, [locations]);
 
   // 位置變動 → 移動 marker 與視野
   useEffect(() => {
-    if (!mapOk || !coords || !mapRef.current) return;
+    if (!coords || !mapRef.current) return;
     const L = window.L;
     if (!markerRef.current) {
       markerRef.current = L.marker([coords.lat, coords.lng]).addTo(mapRef.current);
@@ -116,7 +155,7 @@ export function PunchPanel({ locations, labels }: { locations: PunchLocation[]; 
     } else {
       markerRef.current.setLatLng([coords.lat, coords.lng]);
     }
-  }, [coords, mapOk]);
+  }, [coords]);
 
   const hit = coords ? locations.find((l) => distance(coords.lat, coords.lng, l.lat, l.lng) <= l.radius) : null;
   // 只有「已定位且確定不在任何範圍內」才擋；還沒定位到不擋（讓伺服端判定）
@@ -162,8 +201,12 @@ export function PunchPanel({ locations, labels }: { locations: PunchLocation[]; 
         <input type="hidden" name="lng" />
       </form>
 
-      {/* 地圖：載不起來就整塊不佔位（h-0 overflow-hidden 會留下奇怪的白，直接不渲染） */}
-      <div ref={mapEl} className={mapOk ? 'mb-3 h-56 w-full rounded-lg' : 'hidden'} />
+      {/* 地圖容器：一開始就佔位（Leaflet 需要真實尺寸才算得出格線）；
+          只有「確定載不起來」才收掉，不留空白。 */}
+      <div
+        ref={mapEl}
+        className={mapFailed ? 'hidden' : 'mb-3 h-56 w-full overflow-hidden rounded-lg bg-gray-100'}
+      />
 
       <div className="mb-3 rounded-lg bg-gray-50 p-2 text-xs">
         {coords ? (
