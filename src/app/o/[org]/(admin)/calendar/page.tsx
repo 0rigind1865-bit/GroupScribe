@@ -1,12 +1,14 @@
+import { notFound } from 'next/navigation';
+import { orgBySlug } from '@/org/orgs';
 import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb } from '@/db';
 import { relatedItems, type RelatedItem } from '@/core/links';
 import { SetupNotice } from '../setup-notice';
 import { RelatedItems } from '../related-items';
-import { addDays, agendaRange, hourRange, monthGrid, parseHour, splitTimed, weekDays, type AgendaPreset } from './grid';
+import { addDays, agendaRange, hourRange, monthGrid, parseHour, splitTimed, weekDays, type AgendaPreset } from '@/core/grid';
 import { BatchBar, BatchBox } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
-import { ItemPhotos } from '../../item-photos';
+import { ItemPhotos } from '@/app/item-photos';
 
 export const dynamic = 'force-dynamic';
 
@@ -189,20 +191,26 @@ function TimeGrid({
 }
 
 export default async function CalendarPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: Promise<{ org: string }>;
   searchParams: Promise<{ group?: string; view?: string; date?: string; month?: string; event?: string; range?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
+  const { org: slug } = await routeParams;
+  const org = await orgBySlug(slug);
+  if (!org) notFound();
   const params = await searchParams;
   const db = getDb();
 
   const { data: groupRows } = await db
     .from('groups_view')
     .select('group_id, name')
+    .eq('org_id', org.id)
     .order('last_at', { ascending: false });
   const groupOptions = (groupRows ?? []) as { group_id: string; name: string | null }[];
-  const group = scopedGroup('/calendar', params, groupOptions);
+  const group = scopedGroup(`/o/${slug}/calendar`, params, groupOptions);
   const groupName = groupOptions.find((g) => g.group_id === group)?.name ?? group;
 
   // 預設「議程」而不是「月」：預設值就是產品的主張（principles.md），而月格線在事件密度低的
@@ -271,7 +279,7 @@ export default async function CalendarPage({
     }
   }
 
-  const base = `/calendar?group=${encodeURIComponent(group ?? '')}`;
+  const base = `/o/${slug}/calendar?group=${encodeURIComponent(group ?? '')}`;
   const back = `${base}&view=${view}&date=${dateIso}`; // 詳情編輯後回跳到當前視圖與日期
   const chipHref = (id: string) => `${back}&event=${id}`;
   const navBase = `${base}&view=${view}`;

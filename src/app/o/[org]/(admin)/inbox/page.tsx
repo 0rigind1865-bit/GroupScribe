@@ -1,7 +1,9 @@
-import { ConfirmIcon, PendingBadge } from '../../review-ui';
+import { notFound } from 'next/navigation';
+import { orgBySlug } from '@/org/orgs';
+import { ConfirmIcon, PendingBadge } from '@/app/review-ui';
 import { dbConfigured, getDb } from '@/db';
 import { mediaForItems } from '@/core/media';
-import { ItemPhotos } from '../../item-photos';
+import { ItemPhotos } from '@/app/item-photos';
 import { SetupNotice } from '../setup-notice';
 import { fmtDate } from '@/core/date';
 
@@ -26,7 +28,14 @@ const KIND_STYLE = {
   note: { label: '公告', chip: 'bg-purple-600', route: '/api/notes/update', edit: (g: string, id: string) => `/notes?group=${g}&note=${id}` },
 } as const;
 
-export default async function InboxPage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
+export default async function InboxPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ org: string }>;
+  searchParams: Promise<{ group?: string }>;
+}) {
+  const { org: slug } = await params;
   if (!dbConfigured()) return <SetupNotice />;
   const { group } = await searchParams;
   const db = getDb();
@@ -57,7 +66,9 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     : { data: [] as any[] };
   const msgOf = new Map((msgs ?? []).map((m: any) => [m.id, m]));
 
-  const { data: groupRows } = await db.from('groups_view').select('group_id, name');
+  const org = await orgBySlug(slug);
+  if (!org) notFound();
+  const { data: groupRows } = await db.from('groups_view').select('group_id, name').eq('org_id', org.id);
   const nameOf = new Map((groupRows ?? []).map((g: any) => [g.group_id, g.name ?? g.group_id]));
 
   // 同時段照片：確認時看得到「講的是這張圖」，判斷更準。跨群時逐群查（單群只查一次）
@@ -68,7 +79,7 @@ export default async function InboxPage({ searchParams }: { searchParams: Promis
     for (const [k, v] of m) photos.set(k, v);
   }
 
-  const back = `/inbox${group ? `?group=${encodeURIComponent(group)}` : ''}`;
+  const back = `/o/${slug}/inbox${group ? `?group=${encodeURIComponent(group)}` : ''}`;
 
   return (
     <main className="mx-auto max-w-2xl p-5">

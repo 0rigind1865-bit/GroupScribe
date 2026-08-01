@@ -4,7 +4,7 @@ import { fmtDate, isOverdue, todayISO } from '@/core/date';
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
 import { isGroupMember, liffId, liffUser, memberName } from '@/core/liff';
 import { mediaForItems } from '@/core/media';
-import { monthGrid } from '../../(admin)/calendar/grid';
+import { monthGrid } from '@/core/grid';
 import { ItemPhotos } from '../../item-photos';
 import { LiffInit } from '../liff-init';
 import { SubscribeToggle } from '../subscribe-toggle';

@@ -3,51 +3,98 @@ import { NextRequest, NextResponse } from 'next/server';
 // Dashboard 登入保護；webhook、登入、LIFF、cron 路由除外。
 // cookie 為「到期時間 + HMAC 簽章」（見 core/auth.ts）。middleware 跑 edge runtime，
 // 只能用 Web Crypto，不能 import node:crypto，故在此重寫一份驗證。
-let cachedKey: CryptoKey | null = null;
-
-async function hmacKey(): Promise<CryptoKey | null> {
-  const pw = process.env.ADMIN_PASSWORD;
-  if (!pw) return null;
-  if (!cachedKey) {
-    cachedKey = await crypto.subtle.importKey(
-      'raw',
-      new TextEncoder().encode(pw),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign'],
-    );
-  }
-  return cachedKey;
+//
+// 多租戶（migration 012）後的分工：
+//   gs_auth（平台擁有者密碼 session）→ 全站放行（含 /o/[org]/(admin) 管理頁）
+//   gs_liff（LINE 身分）→ 只放行 /o/[org]/attend 考勤管理頁；
+//     org 成員資格屬 DB 查驗，在 server component 層做（middleware 只驗簽章與效期，
+//     與 /g + isGroupMember 的分層同構）
+//   舊路徑（/calendar、/tasks…）→ 302 到 /o/main/...，保住既有書籤與 LIFF admin 入口
+async function importHmacKey(secret: string): Promise<CryptoKey> {
+  return crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
 }
 
-async function valid(raw: string | undefined): Promise<boolean> {
+let adminKey: CryptoKey | null = null;
+let liffKey: CryptoKey | null = null;
+
+async function hmacHex(key: CryptoKey, payload: string): Promise<string> {
+  const buf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  return Array.from(new Uint8Array(buf))
+    .map((x) => x.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function timingEq(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0; // 定時比較，不早退
+  for (let j = 0; j < a.length; j++) diff |= a.charCodeAt(j) ^ b.charCodeAt(j);
+  return diff === 0;
+}
+
+// gs_auth：`exp.HMAC(exp)`，金鑰 = ADMIN_PASSWORD
+async function validAdmin(raw: string | undefined): Promise<boolean> {
   if (!raw) return false;
-  const key = await hmacKey();
-  if (!key) return false;
+  const pw = process.env.ADMIN_PASSWORD;
+  if (!pw) return false;
+  if (!adminKey) adminKey = await importHmacKey(pw);
   const i = raw.indexOf('.');
   if (i < 0) return false;
   const exp = raw.slice(0, i);
   const sig = raw.slice(i + 1);
   if (!/^\d+$/.test(exp) || Number(exp) < Date.now() / 1000) return false; // 過期即失效
-  const buf = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(exp));
-  const expect = Array.from(new Uint8Array(buf))
-    .map((x) => x.toString(16).padStart(2, '0'))
-    .join('');
-  if (sig.length !== expect.length) return false;
-  let diff = 0; // 定時比較，不早退
-  for (let j = 0; j < sig.length; j++) diff |= sig.charCodeAt(j) ^ expect.charCodeAt(j);
-  return diff === 0;
+  return timingEq(sig, await hmacHex(adminKey, exp));
 }
 
+// gs_liff：`userId.exp.HMAC(userId.exp)`，金鑰 = LINE_CHANNEL_SECRET ?? ADMIN_PASSWORD（與 core/liff.ts 一致）
+async function validLiff(raw: string | undefined): Promise<boolean> {
+  if (!raw) return false;
+  const secret = process.env.LINE_CHANNEL_SECRET ?? process.env.ADMIN_PASSWORD;
+  if (!secret) return false;
+  if (!liffKey) liffKey = await importHmacKey(secret);
+  const i = raw.lastIndexOf('.');
+  if (i < 0) return false;
+  const payload = raw.slice(0, i);
+  const sig = raw.slice(i + 1);
+  const j = payload.lastIndexOf('.');
+  if (j < 0) return false;
+  const exp = payload.slice(j + 1);
+  if (!payload.slice(0, j) || !/^\d+$/.test(exp) || Number(exp) < Date.now() / 1000) return false;
+  return timingEq(sig, await hmacHex(liffKey, payload));
+}
+
+// 搬入 /o/[org] 前的管理頁路徑；302 保舊書籤（redirect 而非 rewrite：讓網址列反映新結構）
+const LEGACY = new Set(['/', '/inbox', '/calendar', '/tasks', '/notes', '/files', '/groups', '/import', '/settings', '/more']);
+
 export async function middleware(req: NextRequest) {
-  if (await valid(req.cookies.get('gs_auth')?.value)) return NextResponse.next();
+  const { pathname, search } = req.nextUrl;
+
+  if (LEGACY.has(pathname)) {
+    const dest = `/o/main${pathname === '/' ? '' : pathname}${search}`;
+    return new NextResponse(null, { status: 302, headers: { Location: dest || '/o/main' } });
+  }
+
+  if (await validAdmin(req.cookies.get('gs_auth')?.value)) return NextResponse.next();
+
+  // 考勤管理頁：LINE 身分（org 成員資格由 /o/[org]/attend/layout.tsx 查 org_members 決定）
+  if (/^\/o\/[^/]+\/attend(\/|$)/.test(pathname) && (await validLiff(req.cookies.get('gs_liff')?.value))) {
+    return NextResponse.next();
+  }
+
   // rewrite（非 redirect）：內部改寫顯示登入頁、瀏覽器 URL 不變，
   // 避開反向代理後 req.url 是容器內部 host、又不能用相對 URL 的雙重限制。
   return NextResponse.rewrite(new URL('/login', req.url));
 }
 
 export const config = {
-  // /g 與 /api/liff 為 LIFF 成員入口：不走 admin cookie，改由 LINE ID token 驗證（見 core/liff.ts）
+  // /g 與 /api/liff 為 LIFF 成員入口、/a 與 /api/attend 為考勤員工入口：
+  // 不走 admin cookie，改由 LINE ID token 驗證（見 core/liff.ts；考勤 API 自帶三重把關）
+  // /api/auth 為 LINE Login 流程（登入本身不能要求已登入）
   // /api/digest 給 NAS cron 打，自行以 ?key=ADMIN_PASSWORD 把關
-  matcher: ['/((?!api/webhook|api/login|api/liff|api/digest|login|g/|g$|_next|favicon.ico).*)'],
+  matcher: ['/((?!api/webhook|api/login|api/liff|api/digest|api/attend|api/auth|login|g/|g$|a/|a$|_next|favicon.ico).*)'],
 };

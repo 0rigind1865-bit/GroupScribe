@@ -1,5 +1,7 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
+
 import { useRef, useState } from 'react';
 
 // 抽取按鈕＋即時進度：POST /api/extract 期間每 2 秒輪詢 GET /api/extract 的未提取數畫進度條。
@@ -7,6 +9,8 @@ import { useRef, useState } from 'react';
 type Stats = { processed: number; created: number; updated: number; skipped: number };
 
 export function ExtractButton({ groupId, pending }: { groupId: string; pending: number }) {
+  // 多租戶：從 pathname 取 org 前綴（/o/[org]/...），連結補回前綴
+  const base = usePathname().match(/^\/o\/[^/]+/)?.[0] ?? '';
   const [phase, setPhase] = useState<'idle' | 'extract' | 'profile' | 'done' | 'error'>('idle');
   const [left, setLeft] = useState(pending);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -86,7 +90,7 @@ export function ExtractButton({ groupId, pending }: { groupId: string; pending: 
       {zero ? (
         <p className="text-amber-700">
           沒有可提取的訊息——可能已在別處提取完成，或另一個抽取正在進行中。
-          <a className="ml-1 underline" href="/import">重新整理查看最新狀態</a>
+          <a className="ml-1 underline" href={`${base}/import`}>重新整理查看最新狀態</a>
         </p>
       ) : (
         <p>
@@ -96,9 +100,9 @@ export function ExtractButton({ groupId, pending }: { groupId: string; pending: 
         </p>
       )}
       <p className="text-gray-500">
-        查看：<a className="text-emerald-700 underline" href="/">總覽</a>｜
-        <a className="text-emerald-700 underline" href="/calendar">月曆</a>｜
-        <a className="text-emerald-700 underline" href="/tasks">待辦</a>
+        查看：<a className="text-emerald-700 underline" href={base || '/'}>總覽</a>｜
+        <a className="text-emerald-700 underline" href={`${base}/calendar`}>月曆</a>｜
+        <a className="text-emerald-700 underline" href={`${base}/tasks`}>待辦</a>
       </p>
     </div>
   );

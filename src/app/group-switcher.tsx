@@ -19,8 +19,10 @@ export function GroupSwitcher({ groups }: { groups: GroupOption[] }) {
 
   const current = search.get('group') ?? '';
   const cur = groups.find((g) => g.group_id === current);
+  // 多租戶後路徑是 /o/[org]/...：判斷頁面種類用去掉 org 前綴的相對路徑
+  const rel = pathname.replace(/^\/o\/[^/]+/, '') || '/';
   // 只有「今天」與收件匣是跨群聚合視圖，其餘頁面一定落在單一群組
-  const supportsAll = pathname === '/' || pathname.startsWith('/inbox');
+  const supportsAll = rel === '/' || rel.startsWith('/inbox');
   const label = cur ? (cur.name ?? cur.group_id) : supportsAll ? '全部群組' : '選擇群組…';
 
   const byCat = new Map<string, GroupOption[]>();

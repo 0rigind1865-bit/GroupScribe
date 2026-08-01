@@ -1,7 +1,9 @@
-import { TaskCircle, TimeChip, realAssignee } from '../item-marker';
+import { notFound } from 'next/navigation';
+import { orgBySlug } from '@/org/orgs';
+import { TaskCircle, TimeChip, realAssignee } from '@/app/item-marker';
 import { dbConfigured, getDb } from '@/db';
 import { SetupNotice } from './setup-notice';
-import { addDays } from './calendar/grid';
+import { addDays } from '@/core/grid';
 import { isOverdue, todayISO } from '@/core/date';
 
 export const dynamic = 'force-dynamic';
@@ -30,11 +32,16 @@ type Row = {
 };
 
 export default async function Today({
+  params,
   searchParams,
 }: {
+  params: Promise<{ org: string }>;
   searchParams: Promise<{ group?: string; q?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
+  const { org: slug } = await params;
+  const org = await orgBySlug(slug);
+  if (!org) notFound();
   const { group, q } = await searchParams;
   const db = getDb();
 
@@ -43,7 +50,7 @@ export default async function Today({
   const only = (qb: any) => (group ? qb.eq('group_id', group) : qb);
 
   const [{ data: groups }, { data: upcoming }, { data: dueTasks }, ev, tk, nt] = await Promise.all([
-    db.from('groups_view').select('group_id, name').order('last_at', { ascending: false }),
+    db.from('groups_view').select('group_id, name').eq('org_id', org.id).order('last_at', { ascending: false }),
     only(db.from('events').select('id, group_id, title, starts_at, start_time, location').neq('status', 'ignored'))
       .gte('starts_at', today).lte('starts_at', in7).order('starts_at').order('start_time', { nullsFirst: true }),
     only(db.from('tasks').select('id, group_id, title, due_at, assignee').eq('status', 'open'))
@@ -115,7 +122,7 @@ export default async function Today({
   }
 
   // 勾完回到原本這一頁（含群組篩選），不要把人丟回全部群組
-  const backHere = group ? `/?group=${encodeURIComponent(group)}` : '/';
+  const backHere = group ? `/o/${slug}/?group=${encodeURIComponent(group)}` : `/o/${slug}`;
 
   const href = (r: Row) =>
     r.kind === 'event'
@@ -131,7 +138,7 @@ export default async function Today({
           <p className="mb-1 font-bold text-gray-700">還沒有任何資料</p>
           <p>
             把 bot 加進 LINE 群組，或到{' '}
-            <a className="text-emerald-700 underline" href="/import">匯入聊天記錄</a> 上傳既有的 txt。
+            <a className="text-emerald-700 underline" href={`/o/${slug}/import`}>匯入聊天記錄</a> 上傳既有的 txt。
           </p>
         </div>
       ) : (
@@ -209,7 +216,7 @@ export default async function Today({
               <p className="mb-1 font-bold text-gray-700">未來 7 天沒有安排</p>
               <p>
                 群組有新對話時，AI 會自動整理出行程與待辦。也可以到{' '}
-                <a className="text-emerald-700 underline" href="/calendar">月曆</a> 看更遠的行程。
+                <a className="text-emerald-700 underline" href={`/o/${slug}/calendar`}>月曆</a> 看更遠的行程。
               </p>
             </div>
           )}

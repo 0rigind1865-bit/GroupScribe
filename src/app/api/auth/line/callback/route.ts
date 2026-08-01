@@ -1,0 +1,75 @@
+import { NextRequest } from 'next/server';
+import { getDb } from '@/db';
+import { publicBase, redirectTo } from '@/http';
+import { isAdminLineUser, liffId, sessionCookieValue, verifyIdToken } from '@/core/liff';
+
+// LINE Login callback：code 換 token → 驗 id_token → 設 gs_liff cookie →
+// 依 org_members 決定落地頁。與 LIFF 的 gs_liff 完全同一套 session（core/liff.ts），
+// 所以從這裡登入的管理員，之後開員工 LIFF 也是同一個身分。
+//
+// 需要 env LINE_LOGIN_CHANNEL_SECRET（LIFF 所屬 Login channel 的 Channel secret；
+// 與 LINE_CHANNEL_SECRET 不同——那是 Messaging API channel 的）。
+
+export async function GET(req: NextRequest) {
+  const code = req.nextUrl.searchParams.get('code');
+  const state = req.nextUrl.searchParams.get('state');
+  const expectState = req.cookies.get('gs_oauth_state')?.value;
+  if (!code || !state || !expectState || state !== expectState) {
+    return redirectTo('/login?error=state');
+  }
+
+  const channelId = liffId().split('-')[0];
+  const secret = process.env.LINE_LOGIN_CHANNEL_SECRET;
+  if (!channelId || !secret) return redirectTo('/login?error=noliff');
+
+  // code 換 token（https://developers.line.biz/en/reference/line-login/#issue-access-token）
+  const tokenRes = await fetch('https://api.line.me/oauth2/v2.1/token', {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: `${publicBase(req)}/api/auth/line/callback`,
+      client_id: channelId,
+      client_secret: secret,
+    }),
+  });
+  if (!tokenRes.ok) {
+    console.warn('LINE Login token 交換失敗', tokenRes.status, await tokenRes.text());
+    return redirectTo('/login?error=line');
+  }
+  const { id_token: idToken } = await tokenRes.json();
+  const user = idToken ? await verifyIdToken(idToken) : null;
+  if (!user) return redirectTo('/login?error=line');
+
+  const db = getDb();
+
+  // 平台擁有者自動種子（冪等）：ADMIN_LINE_USER_ID 登入即成為預設 org 的 owner，
+  // 免去部署者手動跑 SQL 的一次性步驟
+  if (isAdminLineUser(user.userId)) {
+    const { data: main } = await db.from('orgs').select('id').eq('slug', 'main').maybeSingle();
+    if (main) {
+      await db.from('org_members').upsert(
+        { org_id: main.id, line_user_id: user.userId, role: 'owner', display_name: user.name ?? null },
+        { onConflict: 'org_id,line_user_id' },
+      );
+    }
+  }
+
+  // 落地頁：第一個所屬 org 的考勤管理；無任何 org 身分＝不是管理員
+  const { data: memberships } = await db
+    .from('org_members')
+    .select('org_id, orgs(slug)')
+    .eq('line_user_id', user.userId)
+    .limit(1);
+  const slug = (memberships?.[0] as { orgs?: { slug?: string } } | undefined)?.orgs?.slug;
+
+  const cookie = sessionCookieValue(user.userId);
+  const res = redirectTo(slug ? `/o/${slug}/attend` : '/login?error=noorg');
+  res.headers.append(
+    'Set-Cookie',
+    `${cookie.name}=${cookie.value}; Path=/; Max-Age=${cookie.maxAge}; HttpOnly; SameSite=Lax; Secure`,
+  );
+  res.headers.append('Set-Cookie', 'gs_oauth_state=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure');
+  return res;
+}

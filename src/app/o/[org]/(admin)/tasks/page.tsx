@@ -1,5 +1,7 @@
-import { ConfirmIcon, DoneIcon, PendingBadge } from '../../review-ui';
+import { notFound } from 'next/navigation';
+import { ConfirmIcon, DoneIcon, PendingBadge } from '@/app/review-ui';
 import { fmtDate, isOverdue } from '@/core/date';
+import { orgBySlug } from '@/org/orgs';
 import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb } from '@/db';
 import { relatedItems, type RelatedItem } from '@/core/links';
@@ -7,7 +9,7 @@ import { SetupNotice } from '../setup-notice';
 import { RelatedItems } from '../related-items';
 import { BatchBar, BatchBox } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
-import { ItemPhotos } from '../../item-photos';
+import { ItemPhotos } from '@/app/item-photos';
 
 export const dynamic = 'force-dynamic';
 
@@ -70,20 +72,26 @@ function TaskRow({ t, back }: { t: any; back: string }) {
 }
 
 export default async function TasksPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: Promise<{ org: string }>;
   searchParams: Promise<{ group?: string; task?: string; view?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
+  const { org: slug } = await routeParams;
+  const org = await orgBySlug(slug);
+  if (!org) notFound();
   const params = await searchParams;
   const db = getDb();
 
   const { data: groupRows } = await db
     .from('groups_view')
     .select('group_id, name')
+    .eq('org_id', org.id)
     .order('last_at', { ascending: false });
   const groupOptions = (groupRows ?? []) as { group_id: string; name: string | null }[];
-  const group = scopedGroup('/tasks', params, groupOptions);
+  const group = scopedGroup(`/o/${slug}/tasks`, params, groupOptions);
   const groupName = groupOptions.find((g) => g.group_id === group)?.name ?? group;
 
   // 已處置的待辦降到深一層視圖（principles.md 規則三）：主畫面只查進行中，
@@ -129,7 +137,7 @@ export default async function TasksPage({
   }
 
   const g = encodeURIComponent(group ?? '');
-  const back = `/tasks?group=${g}${archived ? `&view=${archived}` : ''}`;
+  const back = `/o/${slug}/tasks?group=${g}${archived ? `&view=${archived}` : ''}`;
 
   return (
     <main className="mx-auto max-w-4xl p-5">
@@ -176,7 +184,7 @@ export default async function TasksPage({
               </div>
             )}
           </section>
-          <a className="inline-block text-sm text-emerald-700 underline" href={`/tasks?group=${g}`}>
+          <a className="inline-block text-sm text-emerald-700 underline" href={`/o/${slug}/tasks?group=${g}`}>
             ← 回到待辦
           </a>
         </div>
@@ -207,17 +215,17 @@ export default async function TasksPage({
                 <p className="mb-1 font-bold text-gray-700">目前沒有進行中的待辦</p>
                 <p>
                   群組裡交辦事情時，AI 會自動整理進來。也可以到{' '}
-                  <a className="text-emerald-700 underline" href="/inbox">收件匣</a> 看待確認的項目。
+                  <a className="text-emerald-700 underline" href={`/o/${slug}/inbox`}>收件匣</a> 看待確認的項目。
                 </p>
               </div>
             )}
           </section>
           {/* 入口不帶筆數：計數本身就是噪音（principles.md 規則三） */}
           <div className="flex flex-wrap gap-4">
-            <a className="text-sm text-gray-500 underline" href={`/tasks?group=${g}&view=done`}>
+            <a className="text-sm text-gray-500 underline" href={`/o/${slug}/tasks?group=${g}&view=done`}>
               已完成的待辦 →
             </a>
-            <a className="text-sm text-gray-500 underline" href={`/tasks?group=${g}&view=ignored`}>
+            <a className="text-sm text-gray-500 underline" href={`/o/${slug}/tasks?group=${g}&view=ignored`}>
               已忽略的待辦 →
             </a>
           </div>

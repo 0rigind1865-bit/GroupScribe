@@ -15,7 +15,7 @@ import {
   parseHour,
   hourRange,
   splitTimed,
-} from '../src/app/(admin)/calendar/grid';
+} from '../src/core/grid';
 
 const SAMPLE = `[LINE] 工作群的聊天記錄
 儲存日期：2026/07/10 12:00

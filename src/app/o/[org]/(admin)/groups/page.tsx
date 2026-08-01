@@ -1,3 +1,5 @@
+import { notFound } from 'next/navigation';
+import { orgBySlug } from '@/org/orgs';
 import { dbConfigured, getDb } from '@/db';
 import { SetupNotice } from '../setup-notice';
 
@@ -9,15 +11,20 @@ function fmt(d: string) {
 }
 
 export default async function GroupsPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ org: string }>;
   searchParams: Promise<{ group?: string; profile_error?: string; save_error?: string }>;
 }) {
+  const { org: slug } = await params;
   if (!dbConfigured()) return <SetupNotice />;
   const { profile_error, save_error } = await searchParams;
   const db = getDb();
 
-  const { data: groups } = await db.from('groups_view').select('*').order('last_at', { ascending: false });
+  const org = await orgBySlug(slug);
+  if (!org) notFound();
+  const { data: groups } = await db.from('groups_view').select('*').eq('org_id', org.id).order('last_at', { ascending: false });
   const { data: profRows, error: profErr } = await db.from('groups').select('group_id, profile, profile_updated_at');
   if (profErr) console.error('讀取群組理解失敗（migration 004 跑了嗎？）', profErr);
   const profileOf = new Map((profRows ?? []).map((r: any) => [r.group_id, r]));
@@ -59,7 +66,7 @@ export default async function GroupsPage({
         <div className="card text-sm text-gray-500">
           <p className="mb-1 font-bold text-gray-700">還沒有任何群組</p>
           <p>
-            把 bot 加進 LINE 群組，或到 <a className="text-emerald-700 underline" href="/import">匯入聊天記錄</a>{' '}
+            把 bot 加進 LINE 群組，或到 <a className="text-emerald-700 underline" href={`/o/${slug}/import`}>匯入聊天記錄</a>{' '}
             建立一個純匯入的群組。
           </p>
         </div>
@@ -84,7 +91,7 @@ export default async function GroupsPage({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={g.picture_url} alt="" className="h-8 w-8 rounded-full" />
                     )}
-                    <a className="font-semibold text-emerald-700 hover:underline" href={`/?group=${encodeURIComponent(g.group_id)}`}>
+                    <a className="font-semibold text-emerald-700 hover:underline" href={`/o/${slug}/?group=${encodeURIComponent(g.group_id)}`}>
                       {g.name ?? g.group_id}
                     </a>
                     {g.left_at && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">bot 已離開</span>}

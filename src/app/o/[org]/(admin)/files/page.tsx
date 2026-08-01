@@ -1,3 +1,5 @@
+import { notFound } from 'next/navigation';
+import { orgBySlug } from '@/org/orgs';
 import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
 import { SetupNotice } from '../setup-notice';
@@ -26,8 +28,10 @@ const SORTS: [string, string][] = [
 ];
 
 export default async function FilesPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: Promise<{ org: string }>;
   searchParams: Promise<{
     group?: string;
     category?: string;
@@ -40,15 +44,19 @@ export default async function FilesPage({
   }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
+  const { org: slug } = await routeParams;
+  const org = await orgBySlug(slug);
+  if (!org) notFound();
   const params = await searchParams;
   const db = getDb();
 
   const { data: groupRows } = await db
     .from('groups_view')
     .select('group_id, name')
+    .eq('org_id', org.id)
     .order('last_at', { ascending: false });
   const groupOptions = (groupRows ?? []) as { group_id: string; name: string | null }[];
-  const group = scopedGroup('/files', params, groupOptions);
+  const group = scopedGroup(`/o/${slug}/files`, params, groupOptions);
   const groupName = groupOptions.find((g) => g.group_id === group)?.name ?? group;
 
   let assets: any[] = [];

@@ -1,4 +1,6 @@
-import { ConfirmIcon, PendingBadge } from '../../review-ui';
+import { notFound } from 'next/navigation';
+import { orgBySlug } from '@/org/orgs';
+import { ConfirmIcon, PendingBadge } from '@/app/review-ui';
 import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb } from '@/db';
 import { relatedItems, type RelatedItem } from '@/core/links';
@@ -6,7 +8,7 @@ import { SetupNotice } from '../setup-notice';
 import { RelatedItems } from '../related-items';
 import { BatchBar, BatchBox } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
-import { ItemPhotos } from '../../item-photos';
+import { ItemPhotos } from '@/app/item-photos';
 
 export const dynamic = 'force-dynamic';
 
@@ -64,20 +66,26 @@ function NoteRow({ n, back }: { n: any; back: string }) {
 }
 
 export default async function NotesPage({
+  params: routeParams,
   searchParams,
 }: {
+  params: Promise<{ org: string }>;
   searchParams: Promise<{ group?: string; note?: string; view?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
+  const { org: slug } = await routeParams;
+  const org = await orgBySlug(slug);
+  if (!org) notFound();
   const params = await searchParams;
   const db = getDb();
 
   const { data: groupRows } = await db
     .from('groups_view')
     .select('group_id, name')
+    .eq('org_id', org.id)
     .order('last_at', { ascending: false });
   const groupOptions = (groupRows ?? []) as { group_id: string; name: string | null }[];
-  const group = scopedGroup('/notes', params, groupOptions);
+  const group = scopedGroup(`/o/${slug}/notes`, params, groupOptions);
   const groupName = groupOptions.find((g) => g.group_id === group)?.name ?? group;
 
   // 已處置的項目降到深一層視圖（principles.md 規則三）：主畫面不查、不顯示、連筆數都不提，
@@ -121,7 +129,7 @@ export default async function NotesPage({
   }
 
   const g = encodeURIComponent(group ?? '');
-  const back = `/notes?group=${g}${archived ? '&view=ignored' : ''}`;
+  const back = `/o/${slug}/notes?group=${g}${archived ? '&view=ignored' : ''}`;
 
   return (
     <main className="mx-auto max-w-4xl p-5">
@@ -161,7 +169,7 @@ export default async function NotesPage({
               </div>
             )}
           </section>
-          <a className="inline-block text-sm text-emerald-700 underline" href={`/notes?group=${g}`}>
+          <a className="inline-block text-sm text-emerald-700 underline" href={`/o/${slug}/notes?group=${g}`}>
             ← 回到公告 / 決議
           </a>
         </div>
@@ -195,7 +203,7 @@ export default async function NotesPage({
             )}
           </section>
           {/* 入口不帶筆數：計數本身就是噪音（principles.md 規則三） */}
-          <a className="inline-block text-sm text-gray-500 underline" href={`/notes?group=${g}&view=ignored`}>
+          <a className="inline-block text-sm text-gray-500 underline" href={`/o/${slug}/notes?group=${g}&view=ignored`}>
             已忽略的公告 →
           </a>
         </div>

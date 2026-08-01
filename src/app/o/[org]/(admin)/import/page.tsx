@@ -1,3 +1,5 @@
+import { notFound } from 'next/navigation';
+import { orgBySlug } from '@/org/orgs';
 import { dbConfigured, getDb } from '@/db';
 import { SetupNotice } from '../setup-notice';
 import { ExtractButton } from './extract-button';
@@ -5,8 +7,10 @@ import { ExtractButton } from './extract-button';
 export const dynamic = 'force-dynamic';
 
 export default async function ImportPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ org: string }>;
   searchParams: Promise<{
     inserted?: string;
     indexed?: string;
@@ -16,11 +20,15 @@ export default async function ImportPage({
   }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
+  const { org: slug } = await params;
+  const org = await orgBySlug(slug);
+  if (!org) notFound();
   const { inserted, indexed, archived, error, group } = await searchParams;
   const db = getDb();
   const { data: groups } = await db
     .from('groups_view')
     .select('group_id, name, message_count')
+    .eq('org_id', org.id)
     .order('last_at', { ascending: false });
 
   // 各群組未提取則數（extracted_at 游標保證已提取的不會重複提取）

@@ -1,7 +1,7 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
-import { FloatingNav } from '../floating-nav';
+import { FloatingNav } from '@/app/floating-nav';
 
 // 導覽（UI 提案階段 B）：手機五格底部 Tab＋桌面頂部 nav，同一份路由表、皆帶 active 標記。
 // 換頁保留 ?group（原本會掉，是「不直覺」主因之一）。
@@ -43,9 +43,16 @@ const ICONS: Record<string, React.ReactNode> = {
 };
 
 function useNav() {
-  const pathname = usePathname();
+  const full = usePathname();
+  // 多租戶後路徑是 /o/[org]/...：從 pathname 取出 org 前綴，href 補回、active 判斷用相對路徑。
+  // 從 pathname 而非 props 取得——client component 不必為了一個前綴串接 params。
+  const base = full.match(/^\/o\/[^/]+/)?.[0] ?? '';
+  const pathname = full.slice(base.length) || '/';
   const group = useSearchParams().get('group');
-  const href = (path: string) => (group ? `${path}?group=${encodeURIComponent(group)}` : path);
+  const href = (path: string) => {
+    const p = `${base}${path === '/' ? '' : path}` || '/';
+    return group ? `${p}?group=${encodeURIComponent(group)}` : p;
+  };
   return { pathname, href };
 }
 
