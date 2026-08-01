@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { fmtDate } from './date';
+import { oh } from '../org/href';
 
 // 反向連結（Obsidian backlinks 等價物）：只走「共享來源訊息」這條確定性硬連結。
 // 刻意不碰兩種弱訊號：
@@ -28,13 +29,13 @@ export type RelatedItem = {
 // 對應 Postgres 陣列重疊運算子 &&（supabase-js 的 .overlaps）。
 export async function relatedItems(
   db: SupabaseClient,
+  orgSlug: string,
   groupId: string,
   sourceIds: string[],
   self: { type: RelatedType; id: string },
 ): Promise<RelatedItem[]> {
   // 空陣列的 overlaps 恆假、也無意義：直接短路
   if (!sourceIds.length) return [];
-  const g = encodeURIComponent(groupId);
   const overlap = (t: string, cols: string) =>
     db
       .from(t)
@@ -60,7 +61,7 @@ export async function relatedItems(
       tag: '事件',
       title: e.title,
       label: e.starts_at ?? '',
-      href: `/calendar?group=${g}&date=${e.starts_at}&event=${e.id}`,
+      href: oh(orgSlug, '/calendar', { group: groupId, date: e.starts_at, event: e.id }),
       sourceMessageIds: e.source_message_ids ?? [],
       shared: shared(e.source_message_ids),
     });
@@ -72,7 +73,7 @@ export async function relatedItems(
       tag: '待辦',
       title: t.title,
       label: [t.assignee, t.due_at && `期限 ${fmtDate(t.due_at)}`].filter(Boolean).join('・'),
-      href: `/tasks?group=${g}&task=${t.id}`,
+      href: oh(orgSlug, '/tasks', { group: groupId, task: t.id }),
       sourceMessageIds: t.source_message_ids ?? [],
       shared: shared(t.source_message_ids),
     });
@@ -84,7 +85,7 @@ export async function relatedItems(
       tag: n.kind === 'decision' ? '決議' : '公告',
       title: n.title,
       label: '',
-      href: `/notes?group=${g}&note=${n.id}`,
+      href: oh(orgSlug, '/notes', { group: groupId, note: n.id }),
       sourceMessageIds: n.source_message_ids ?? [],
       shared: shared(n.source_message_ids),
     });

@@ -1,6 +1,7 @@
 import { getDb } from '@/db';
 import { notFound } from 'next/navigation';
 import { orgBySlug, orgSettings } from '@/org/orgs';
+import { liffUrl } from '@/core/ingest';
 import type { Employee } from '@/attend/auth';
 
 export const dynamic = 'force-dynamic';
@@ -34,27 +35,42 @@ export default async function EmployeesPage({
   const employees = (emps ?? []) as Employee[];
   const adminSet = new Map((admins ?? []).map((a) => [a.line_user_id, a.role]));
   const joinCode = (settings.attend_join_code as string | null) ?? null;
+  const liff = liffUrl();
+  const joinLink = liff && joinCode ? `${liff}/a/join?org=${slug}&code=${joinCode}` : null;
 
   return (
     <main className="mx-auto max-w-4xl p-5">
       <h1 className="mb-4 text-2xl font-bold">員工管理</h1>
       {err && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">操作失敗，請重試。</p>}
 
+      {/* 加入邀請：員工端的打卡入口只對「已是員工」的人顯示（見 src/app/g/page.tsx 檔頭），
+          所以這條連結是新員工唯一的入口——發連結這個動作本身就是授權。 */}
       <section className="card mb-5">
-        <h2 className="mb-1 text-sm font-bold text-gray-700">員工加入碼</h2>
+        <h2 className="mb-1 text-sm font-bold text-gray-700">邀請員工加入</h2>
         {joinCode ? (
-          <p className="mb-2 text-sm">
-            組織代號 <code className="rounded bg-gray-100 px-1.5 font-bold">{slug}</code>｜加入碼{' '}
-            <code className="rounded bg-gray-100 px-1.5 font-bold">{joinCode}</code>
-            <span className="ml-2 text-xs text-gray-500">員工在 LIFF「加入公司」頁輸入這兩個值</span>
-          </p>
+          <>
+            <p className="mb-2 text-xs text-gray-500">
+              把下面這條連結傳給要加入的員工（只發給該加入的人——收到的人才看得到考勤系統）。
+              他開啟後組織與加入碼會自動帶入，送出即可，之後在下方清單啟用。
+            </p>
+            {/* readOnly input 而非純文字：長按/雙擊即可全選複製，零 client JS */}
+            <input
+              readOnly
+              className="input mb-2 w-full font-mono text-xs"
+              defaultValue={joinLink ?? `組織代號 ${slug}｜加入碼 ${joinCode}（未設 LIFF_ID，無法產生連結）`}
+            />
+            <p className="mb-2 text-xs text-gray-400">
+              連結失效時請員工手動輸入：組織代號 <code className="font-bold">{slug}</code>、加入碼{' '}
+              <code className="font-bold">{joinCode}</code>
+            </p>
+          </>
         ) : (
-          <p className="mb-2 text-sm text-gray-500">尚未產生加入碼。</p>
+          <p className="mb-2 text-sm text-gray-500">尚未產生加入碼，按下方按鈕產生後才能邀請員工。</p>
         )}
         <form action="/api/attend/employee" method="post">
           <input type="hidden" name="org" value={slug} />
           <button className="btn px-3 py-1 text-sm" name="action" value="joincode">
-            {joinCode ? '重設加入碼（舊碼立即失效）' : '產生加入碼'}
+            {joinCode ? '重設加入碼（舊碼與舊連結立即失效）' : '產生加入碼'}
           </button>
         </form>
       </section>

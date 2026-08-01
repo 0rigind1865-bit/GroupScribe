@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { orgBySlug } from '@/org/orgs';
+import { oh } from '@/org/href';
 import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
 import { SetupNotice } from '../setup-notice';
@@ -116,7 +117,6 @@ export default async function FilesPage({
         }, new Map<string, any[]>());
 
   const qs = (patch: Record<string, string | undefined>) => {
-    const p = new URLSearchParams();
     const cur: Record<string, string | undefined> = {
       group,
       category: params.category,
@@ -125,8 +125,7 @@ export default async function FilesPage({
       sort: sort === 'new' ? undefined : sort,
       ...patch,
     };
-    for (const [k, v] of Object.entries(cur)) if (v) p.set(k, v);
-    return `/files?${p.toString()}`;
+    return oh(slug, '/files', cur);
   };
   // 作用中的篩選：摺疊起來時 summary 仍要看得出「現在只看得到一部分檔案」
   const activeFilters = [

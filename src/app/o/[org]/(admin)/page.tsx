@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { orgBySlug } from '@/org/orgs';
+import { oh } from '@/org/href';
 import { TaskCircle, TimeChip, realAssignee } from '@/app/item-marker';
 import { dbConfigured, getDb } from '@/db';
 import { SetupNotice } from './setup-notice';
@@ -74,10 +75,10 @@ export default async function Today({
     db.from('media_assets').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
   ]);
   const attention: { n: number; label: string; href: string; hint: string }[] = [
-    { n: pendingCount, label: '待你確認', href: '/inbox', hint: 'AI 整理的內容等你把關' },
-    { n: odq.count ?? 0, label: '已逾期', href: '/tasks', hint: '過了期限還沒完成' },
-    { n: unassigned.count ?? 0, label: '沒有負責人', href: '/tasks', hint: '沒指定人就不會有人做' },
-    { n: media.count ?? 0, label: '檔案未解析', href: '/settings', hint: 'AI 讀不到內容，也進不了抽取' },
+    { n: pendingCount, label: '待你確認', href: oh(slug, '/inbox'), hint: 'AI 整理的內容等你把關' },
+    { n: odq.count ?? 0, label: '已逾期', href: oh(slug, '/tasks'), hint: '過了期限還沒完成' },
+    { n: unassigned.count ?? 0, label: '沒有負責人', href: oh(slug, '/tasks'), hint: '沒指定人就不會有人做' },
+    { n: media.count ?? 0, label: '檔案未解析', href: oh(slug, '/settings'), hint: 'AI 讀不到內容，也進不了抽取' },
   ].filter((a) => a.n > 0);
   const nameOf = new Map((groups ?? []).map((g: any) => [g.group_id, g.name ?? g.group_id]));
 
@@ -126,8 +127,12 @@ export default async function Today({
 
   const href = (r: Row) =>
     r.kind === 'event'
-      ? `/calendar?group=${encodeURIComponent(r.group_id)}&view=day&date=${[...byDay.entries()].find(([, rs]) => rs.includes(r))?.[0] ?? today}`
-      : `/tasks?group=${encodeURIComponent(r.group_id)}&task=${r.id}`;
+      ? oh(slug, '/calendar', {
+          group: r.group_id,
+          view: 'day',
+          date: [...byDay.entries()].find(([, rs]) => rs.includes(r))?.[0] ?? today,
+        })
+      : oh(slug, '/tasks', { group: r.group_id, task: r.id });
 
   return (
     <main className="mx-auto max-w-3xl p-4 md:p-5">

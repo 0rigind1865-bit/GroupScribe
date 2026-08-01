@@ -274,7 +274,7 @@ export default async function CalendarPage({
             .in('id', detail.source_message_ids)
             .order('created_at')
         ).data ?? [];
-      related = await relatedItems(db, group, detail.source_message_ids, { type: 'event', id: detail.id });
+      related = await relatedItems(db, slug, group, detail.source_message_ids, { type: 'event', id: detail.id });
       photos = (await mediaForItems(db, group, [{ id: detail.id, sourceIds: detail.source_message_ids }])).get(detail.id) ?? [];
     }
   }

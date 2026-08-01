@@ -1,17 +1,21 @@
+import { notFound } from 'next/navigation';
 import { liffUrl } from '@/core/ingest';
+import { orgBySlug } from '@/org/orgs';
+import { oh } from '@/org/href';
 export const dynamic = 'force-dynamic';
 
 // 「更多」（UI 提案階段 B）：低頻功能的手機入口——公告/檔案屬查閱型、匯入/設定屬管理雜務。
 // 桌面 nav 已直列全部連結，此頁主要服務手機底部 Tab 的第五格。
-const ENTRIES: { href: string; title: string; desc: string; icon: React.ReactNode }[] = [
+// path 為模組內相對路徑，渲染時才用 oh() 補上 /o/<slug>（多租戶：絕不寫死絕對路徑）
+const ENTRIES: { path: string; title: string; desc: string; icon: React.ReactNode }[] = [
   {
-    href: '/notes',
+    path: '/notes',
     title: '公告 / 決議',
     desc: '群組裡拍板的規則與宣布',
     icon: <path d="M4 4h16v12H8l-4 4z" />,
   },
   {
-    href: '/files',
+    path: '/files',
     title: '檔案',
     desc: '圖片與文件，依類型/專案分類',
     icon: (
@@ -22,7 +26,7 @@ const ENTRIES: { href: string; title: string; desc: string; icon: React.ReactNod
     ),
   },
   {
-    href: '/groups',
+    path: '/groups',
     title: '群組管理',
     desc: '分類、群組理解、刪除群組資料',
     icon: (
@@ -34,7 +38,7 @@ const ENTRIES: { href: string; title: string; desc: string; icon: React.ReactNod
     ),
   },
   {
-    href: '/import',
+    path: '/import',
     title: '匯入聊天記錄',
     desc: '貼上或上傳 txt，補歷史資料與提取',
     icon: (
@@ -45,7 +49,7 @@ const ENTRIES: { href: string; title: string; desc: string; icon: React.ReactNod
     ),
   },
   {
-    href: '/settings',
+    path: '/settings',
     title: '設定',
     desc: '進群告知訊息、AI 用量與預算',
     icon: (
@@ -57,16 +61,23 @@ const ENTRIES: { href: string; title: string; desc: string; icon: React.ReactNod
   },
 ];
 
-export default async function MorePage({ searchParams }: { searchParams: Promise<{ group?: string }> }) {
+export default async function MorePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ org: string }>;
+  searchParams: Promise<{ group?: string }>;
+}) {
+  const { org: slug } = await params;
+  if (!(await orgBySlug(slug))) notFound();
   const { group } = await searchParams;
-  const q = group ? `?group=${encodeURIComponent(group)}` : '';
   const liff = liffUrl(); // 未設 LIFF_ID 時整塊不出現
   return (
     <main className="mx-auto max-w-3xl p-5">
       <h1 className="mb-4 text-2xl font-bold">更多</h1>
       <div className="space-y-2">
         {ENTRIES.map((e) => (
-          <a key={e.href} href={`${e.href}${q}`} className="card flex items-center gap-4 hover:bg-gray-50">
+          <a key={e.path} href={oh(slug, e.path, { group })} className="card flex items-center gap-4 hover:bg-gray-50">
             <svg viewBox="0 0 24 24" className="h-7 w-7 flex-none text-emerald-700" fill="none" stroke="currentColor" strokeWidth="1.6">
               {e.icon}
             </svg>

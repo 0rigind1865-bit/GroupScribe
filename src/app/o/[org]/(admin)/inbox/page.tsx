@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { orgBySlug } from '@/org/orgs';
+import { oh } from '@/org/href';
 import { ConfirmIcon, PendingBadge } from '@/app/review-ui';
 import { dbConfigured, getDb } from '@/db';
 import { mediaForItems } from '@/core/media';
@@ -23,9 +24,9 @@ const md = fmtDate; // 期限/日期的格式統一在 core/date.ts
 type Row = { kind: 'event' | 'task' | 'note'; item: any };
 
 const KIND_STYLE = {
-  event: { label: '事件', chip: 'bg-emerald-600', route: '/api/events/update', edit: (g: string, id: string) => `/calendar?group=${g}&event=${id}` },
-  task: { label: '待辦', chip: 'bg-sky-600', route: '/api/tasks/update', edit: (g: string, id: string) => `/tasks?group=${g}&task=${id}` },
-  note: { label: '公告', chip: 'bg-purple-600', route: '/api/notes/update', edit: (g: string, id: string) => `/notes?group=${g}&note=${id}` },
+  event: { label: '事件', chip: 'bg-emerald-600', route: '/api/events/update', edit: (o: string, g: string, id: string) => oh(o, '/calendar', { group: g, event: id }) },
+  task: { label: '待辦', chip: 'bg-sky-600', route: '/api/tasks/update', edit: (o: string, g: string, id: string) => oh(o, '/tasks', { group: g, task: id }) },
+  note: { label: '公告', chip: 'bg-purple-600', route: '/api/notes/update', edit: (o: string, g: string, id: string) => oh(o, '/notes', { group: g, note: id }) },
 } as const;
 
 export default async function InboxPage({
@@ -159,7 +160,7 @@ export default async function InboxPage({
                 </form>
                 <a
                   className="btn flex flex-1 items-center justify-center"
-                  href={s.edit(encodeURIComponent(item.group_id), item.id)}
+                  href={s.edit(slug, item.group_id, item.id)}
                 >
                   編輯
                 </a>

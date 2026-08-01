@@ -68,8 +68,12 @@ async function validLiff(raw: string | undefined): Promise<boolean> {
   return timingEq(sig, await hmacHex(liffKey, payload));
 }
 
-// 搬入 /o/[org] 前的管理頁路徑；302 保舊書籤（redirect 而非 rewrite：讓網址列反映新結構）
+// 搬入 /o/[org] 前的管理頁路徑；302 保舊書籤（redirect 而非 rewrite：讓網址列反映新結構）。
+//
+// 這是**舊書籤相容層**，不是跨租戶連結的安全網——頁面內的連結一律用 oh(slug, path) 產生，
+// 由 tests/routes.test.ts 把關。這裡的預設 org 只服務「平台擁有者自己的舊書籤」。
 const LEGACY = new Set(['/', '/inbox', '/calendar', '/tasks', '/notes', '/files', '/groups', '/import', '/settings', '/more']);
+const DEFAULT_ORG = process.env.DEFAULT_ORG_SLUG ?? 'main';
 
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
@@ -84,7 +88,7 @@ export async function middleware(req: NextRequest) {
   }
 
   if (LEGACY.has(pathname)) {
-    const dest = `/o/main${pathname === '/' ? '' : pathname}${search}`;
+    const dest = `/o/${DEFAULT_ORG}${pathname === '/' ? '' : pathname}${search}`;
     // middleware 的 redirect 必須是絕對網址（Next edge 會 new URL() 驗證）。
     // 反向代理後 req.url 是容器內部 host，改用轉發標頭組公開網址（同 http.ts publicBase）。
     const proto = req.headers.get('x-forwarded-proto') ?? 'http';
