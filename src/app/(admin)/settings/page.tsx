@@ -1,8 +1,22 @@
 import { dbConfigured, getDb } from '@/db';
 import { DEFAULT_NOTICE } from '@/core/ingest';
 import { SetupNotice } from '../setup-notice';
+import { messageQuota } from '@/connectors/line';
+import { refreshSettings, DEFAULT_EMBEDDING_MODEL } from '@/core/settings';
 
 export const dynamic = 'force-dynamic';
+
+// 三條進度條同一個形狀：綠→琥珀→紅，門檻一致，看一眼就知道哪條該擔心
+function Meter({ pct }: { pct: number }) {
+  return (
+    <div className="h-3 overflow-hidden rounded bg-gray-200">
+      <div
+        className={`h-full rounded ${pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+        style={{ width: `${pct}%` }}
+      />
+    </div>
+  );
+}
 
 // 各模型每百萬 token 價格（美元，2026-07 官方牌價）；換模型記得對一下 ai.google.dev/gemini-api/docs/pricing
 const PRICES: Record<string, { input: number; output: number }> = {
@@ -93,13 +107,22 @@ export default async function SettingsPage({
   const adoptRate = judged > 0 ? Math.round((adopted / judged) * 100) : null;
   const worst = kinds.filter((k) => k.judged >= 5 && k.rate !== null).sort((a, b) => a.rate! - b.rate!)[0];
 
+  // LINE 推送額度（官方端點，非自記帳）與生效中的 AI 設定
+  const [lineQuota, cfgAi] = await Promise.all([messageQuota(), refreshSettings(true)]);
+
   const sum = (k: string) => (usageRows ?? []).reduce((n: number, r: any) => n + Number(r[k] ?? 0), 0);
-  const model = process.env.GEMINI_MODEL ?? 'gemini-3.5-flash-lite'; // 與 providers/gemini.ts 的預設一致
+  const model = cfgAi.genModel;
   const price = PRICES[model] ?? PRICES['gemini-3.5-flash-lite'];
   const cost =
     (sum('input_tokens') * price.input + sum('output_tokens') * price.output + sum('embed_tokens') * EMBED_PRICE) / 1e6;
   const pct = Math.min(100, Math.round((cost / budget) * 100));
   const todayRow = (usageRows ?? []).find((r: any) => r.day === today);
+  // 免費層是「每日請求次數」不是花費，跟月預算是兩回事：錢還沒花完也可能今天先被擋下
+  const freeLimit = cfgAi.aiDailyFreeCalls;
+  const callsToday = Number(todayRow?.calls ?? 0);
+  const freePct = freeLimit ? Math.min(100, Math.round((callsToday / freeLimit) * 100)) : 0;
+  const linePct =
+    'limit' in lineQuota && lineQuota.limit ? Math.min(100, Math.round((lineQuota.used / lineQuota.limit) * 100)) : 0;
 
   return (
     <main className="mx-auto max-w-2xl p-5">
@@ -110,13 +133,19 @@ export default async function SettingsPage({
           已解析 {processed} 個圖片／PDF。{Number(processed) === 20 && '（單次上限 20 個，還有積壓就再按一次。）'}
         </p>
       )}
+      {error === 'ai' && (
+        <p className="card mb-4 border-red-200 bg-red-50 text-sm text-red-700">
+          AI 設定儲存失敗——欄位可能尚未建立，請在 Supabase SQL Editor 執行{' '}
+          <code>supabase/migrations/011_ai_settings.sql</code>。
+        </p>
+      )}
       {error === 'budget' && (
         <p className="card mb-4 border-red-200 bg-red-50 text-sm text-red-700">
           預算儲存失敗——<code>monthly_budget_usd</code> 欄位可能尚未建立，請在 Supabase SQL Editor 執行{' '}
           <code>supabase/migrations/006_api_usage.sql</code>。
         </p>
       )}
-      {error && error !== 'budget' && (
+      {error && error !== 'budget' && error !== 'ai' && (
         <p className="card mb-4 border-red-200 bg-red-50 text-sm text-red-700">
           儲存失敗——<code>app_settings</code> 表可能尚未建立，請在 Supabase SQL Editor 執行{' '}
           <code>supabase/migrations/003_app_settings.sql</code>。
@@ -169,6 +198,38 @@ export default async function SettingsPage({
         )}
       </section>
 
+      {/* LINE 推送額度：與 AI 用量分開一張卡，因為它們是兩種完全不同的破產方式——
+          AI 用完是花錢，LINE 用完是「訊息安靜地送不出去」而且不會有人發現。 */}
+      <section className="card mb-6 space-y-3">
+        <h2 className="font-bold">LINE 推送訊息（本月）</h2>
+        {'error' in lineQuota ? (
+          <p className="text-sm text-gray-500">查不到額度：{lineQuota.error}</p>
+        ) : lineQuota.limit === null ? (
+          <p className="text-sm text-gray-600">
+            目前方案沒有推送上限，已用 <strong>{lineQuota.used}</strong> 則。
+          </p>
+        ) : (
+          <>
+            <div className="flex items-baseline justify-between text-sm">
+              <span>
+                已用 <strong>{lineQuota.used}</strong> / {lineQuota.limit} 則（{linePct}%）
+              </span>
+              <span className="text-gray-500">每月 1 號重置</span>
+            </div>
+            <Meter pct={linePct} />
+            {linePct >= 90 && (
+              <p className="text-sm text-red-700">
+                ⚠️ 額度快用完了。用完之後每日摘要會安靜地送不出去——LINE 不會通知你，訂閱的人也不會察覺。
+              </p>
+            )}
+          </>
+        )}
+        <p className="text-xs text-gray-400">
+          數字來自 LINE 官方端點（非本站記帳）。只計主動推送——群組裡 @bot 的回覆不佔額度，
+          所以這條幾乎都是每日摘要推播用掉的。
+        </p>
+      </section>
+
       <section className="card mb-6 space-y-3">
         <h2 className="font-bold">AI 用量（本月）</h2>
         {usageErr ? (
@@ -187,12 +248,29 @@ export default async function SettingsPage({
                 {Math.round(sum('output_tokens') / 1000)}k tokens
               </span>
             </div>
-            <div className="h-3 overflow-hidden rounded bg-gray-200">
-              <div
-                className={`h-full rounded ${pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
+            <Meter pct={pct} />
+
+            {/* 免費層用量：與月預算是兩件事——錢沒花完也可能今天先撞到每日次數上限 */}
+            {freeLimit ? (
+              <>
+                <div className="flex items-baseline justify-between pt-1 text-sm">
+                  <span>
+                    今日免費額度 <strong>{callsToday}</strong> / {freeLimit} 次（{freePct}%）
+                  </span>
+                  <span className="text-gray-500">每日重置</span>
+                </div>
+                <Meter pct={freePct} />
+              </>
+            ) : (
+              <p className="pt-1 text-xs text-gray-400">
+                想看免費層的每日次數進度，在下方「AI 設定」填入上限——Google 沒有查詢額度的 API，
+                數字要自己從{' '}
+                <a className="underline" href="https://aistudio.google.com/rate-limit" target="_blank" rel="noreferrer">
+                  rate-limit
+                </a>{' '}
+                抄過來。
+              </p>
+            )}
             {(todayRow?.blocked ?? 0) > 0 && (
               <p className="text-sm text-red-700">
                 ⚠️ 今天有 {todayRow.blocked} 次呼叫被 Gemini 拒絕（429 配額/花費上限）——到{' '}
@@ -227,6 +305,56 @@ export default async function SettingsPage({
             </p>
           </>
         )}
+      </section>
+
+      {/* AI 設定：原本要 ssh 進機器改 .env.local 再重建容器，而換模型是會反覆試的事。
+          金鑰刻意不放進來——service-role 讀得到整張表，API key 進 DB 等於多開一條外洩路徑，
+          而且金鑰本來就不是會反覆調整的東西。 */}
+      <section className="card mb-6 space-y-3">
+        <h2 className="font-bold">AI 設定</h2>
+        <form action="/api/settings" method="post" className="space-y-3 text-sm">
+          <input type="hidden" name="ai" value="1" />
+          <label className="block">
+            <span className="mb-1 block font-bold">生成模型</span>
+            <select className="input w-full" name="gen_model" defaultValue={cfgAi.genModel}>
+              {Object.keys(PRICES).map((m) => (
+                <option key={m} value={m}>
+                  {m}（輸入 ${PRICES[m].input} / 輸出 ${PRICES[m].output} 每百萬 token）
+                </option>
+              ))}
+              {!PRICES[cfgAi.genModel] && <option value={cfgAi.genModel}>{cfgAi.genModel}（無牌價，費用會低估）</option>}
+            </select>
+            <span className="mt-1 block text-xs text-gray-400">
+              清單來自本頁的牌價表——換到表上沒有的模型，估算費用會失準，要同步更新 PRICES。
+            </span>
+          </label>
+          <label className="block">
+            <span className="mb-1 block font-bold">免費層每日請求上限</span>
+            <input
+              className="input w-32"
+              name="ai_daily_free_calls"
+              type="number"
+              min="0"
+              step="1"
+              defaultValue={cfgAi.aiDailyFreeCalls ?? ''}
+              placeholder="留空＝不顯示"
+            />
+            <span className="mt-1 block text-xs text-gray-400">
+              Google 沒有查詢額度的 API，數字要自己填。填了上方才會出現今日免費額度的進度條。
+            </span>
+          </label>
+          <button className="btn-primary">儲存 AI 設定</button>
+        </form>
+        <p className="text-xs text-gray-400">
+          向量模型維持 <code>{cfgAi.embeddingModel}</code>
+          {cfgAi.embeddingModel === DEFAULT_EMBEDDING_MODEL ? '（預設）' : ''}——
+          刻意不放在這裡改：換了之後舊向量與新查詢不同模型就對不起來，必須先跑 <code>/api/reindex</code> 全量重建。
+          要換請改環境變數 <code>EMBEDDING_MODEL_ID</code>，改完立刻重建。
+        </p>
+        <p className="text-xs text-gray-400">
+          金鑰（<code>GEMINI_API_KEY</code>、<code>LINE_CHANNEL_ACCESS_TOKEN</code>、
+          <code>ADMIN_PASSWORD</code>）仍然只能改環境變數——那是刻意的，不是還沒做。
+        </p>
       </section>
 
       {/* 抽取品質：這是產品價值的健康指標，比用量更重要——

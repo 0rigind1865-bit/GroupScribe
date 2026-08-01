@@ -218,6 +218,11 @@ $$;
 
 alter table app_settings add column if not exists monthly_budget_usd numeric;
 
+-- 可在 /settings 網頁調整的 AI 設定（migration 011）。金鑰不進 DB，只讀環境變數。
+alter table app_settings add column if not exists gen_model text;          -- null = 用環境變數/程式預設
+alter table app_settings add column if not exists embedding_model text;    -- 同上；改了要重建向量（/api/reindex）
+alter table app_settings add column if not exists ai_daily_free_calls int; -- 免費層每日請求上限，自填（Google 無查詢 API）
+
 -- 檔案的專案歸屬（migration 007）：AI 依前後對話判斷檔案屬於哪個案子
 alter table media_assets add column if not exists project text;
 

@@ -1,5 +1,6 @@
 import type { EmbeddingProvider, LLMProvider, VisionProvider } from '@/core/types';
 import { getDb } from '@/db';
+import { currentSettings, refreshSettings } from '@/core/settings';
 
 // Gemini REST API（規劃書預設 Provider）。API 單純，直接 fetch，不裝 SDK。
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -8,8 +9,10 @@ const KEY = () => {
   if (!k) throw new Error('缺少 GEMINI_API_KEY 環境變數');
   return k;
 };
-const GEN_MODEL = () => process.env.GEMINI_MODEL ?? 'gemini-3.5-flash-lite'; // 2.5-flash 已不開放新專案（2026-07 起新金鑰 404）
-const EMB_MODEL = () => process.env.EMBEDDING_MODEL_ID ?? 'gemini-embedding-001';
+// 模型名改由 core/settings 決定（DB → env → 預設），讓 /settings 換模型不必進機器改檔案。
+// post() 會先 await refreshSettings()，所以這兩個同步讀取拿到的是該次呼叫前剛更新的值。
+const GEN_MODEL = () => currentSettings().genModel;
+const EMB_MODEL = () => currentSettings().embeddingModel;
 
 const EMBEDDING_DIM = 768; // 與 supabase/schema.sql 的 vector(768) 一致
 
@@ -34,6 +37,7 @@ function bump(f: { calls?: number; input?: number; output?: number; embed?: numb
 }
 
 async function post(path: string, body: unknown): Promise<any> {
+  await refreshSettings(); // 所有 Gemini 呼叫的唯一收口：30 秒 TTL，一次 select 涵蓋整批
   const res = await fetch(`${BASE}/${path}?key=${KEY()}`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },

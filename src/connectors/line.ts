@@ -145,3 +145,28 @@ export const lineConnector: MessagingConnector = {
     return displayName;
   },
 };
+
+// 本月推送訊息用量（設定頁的進度條）。LINE 有官方查詢端點，不必自己記帳：
+//   /message/quota            → { type: 'limited', value } 或 { type: 'none' }（無上限方案）
+//   /message/quota/consumption → { totalUsage }（本月已用，每月 1 號重置）
+// 只計「主動推送」——回覆訊息（reply）不計入額度，所以這條數字通常是每日摘要推播貢獻的。
+// 任何一支失敗就回 null，設定頁改顯示查不到的原因，不擋整頁。
+export async function messageQuota(): Promise<
+  { limit: number | null; used: number } | { error: string }
+> {
+  if (!token()) return { error: '缺少 LINE_CHANNEL_ACCESS_TOKEN' };
+  const get = async (path: string) => {
+    const res = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token()}` } });
+    if (!res.ok) throw new Error(`${res.status} ${(await res.text()).slice(0, 120)}`);
+    return res.json();
+  };
+  try {
+    const [quota, used] = await Promise.all([get('/message/quota'), get('/message/quota/consumption')]);
+    return {
+      limit: quota?.type === 'limited' ? Number(quota.value) : null, // null = 方案無上限
+      used: Number(used?.totalUsage ?? 0),
+    };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+}
