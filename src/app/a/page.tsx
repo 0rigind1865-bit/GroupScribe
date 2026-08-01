@@ -1,20 +1,20 @@
-import { dbConfigured } from '@/db';
+import { dbConfigured, getDb } from '@/db';
 import { liffId, liffUser } from '@/core/liff';
 import { myEmployees } from '@/attend/auth';
 import { monthData } from '@/attend/data';
 import { workDate } from '@/attend/util';
 import { locale, t, type MsgKey } from '@/attend/i18n';
-import { LiffInit } from '@/app/g/liff-init';
 import { Banner } from '@/app/ui/banner';
 import { PunchBadge } from '@/app/ui/badge';
-import { LangBar } from './lang-bar';
-import { PunchButtons } from './punch-client';
+import { Empty } from '@/app/ui/empty';
+import { AttendLiffBoot, AttendShell } from './shell';
+import { PunchPanel, type PunchLocation } from './punch-client';
 
 export const dynamic = 'force-dynamic';
 
-// 員工打卡首頁（LIFF）：今日狀態＋上下班鈕。org 不放 URL——員工開 LIFF 的入口
-// 必須是固定連結（LIFF endpoint 只有一個），org 由 employees 表以 line_user_id 反查。
-// 訊息 key：查詢參數 → i18n key（值不合法時原樣顯示無害）
+// 員工打卡首頁（LIFF）：打卡專區（地圖＋狀態＋兩顆鈕）→ 今日紀錄 → 異常提醒。
+// 版面對齊文輝考勤系統的儀表板。org 不放 URL——LIFF endpoint 只有一個固定連結，
+// org 由 employees 表以 line_user_id 反查。
 const MSG: Record<string, { key: MsgKey; ok?: boolean }> = {
   'ok=in': { key: 'MSG_PUNCH_IN_OK', ok: true },
   'ok=out': { key: 'MSG_PUNCH_OUT_OK', ok: true },
@@ -29,10 +29,10 @@ export default async function AttendHome({
 }: {
   searchParams: Promise<{ ok?: string; err?: string; joined?: string }>;
 }) {
-  const uid = await liffUser();
-  if (!uid) return <LiffInit liffId={liffId()} />;
   const loc = await locale();
   const tt = (key: MsgKey, params?: Record<string, string | number>) => t(loc, key, params);
+  const uid = await liffUser();
+  if (!uid) return <AttendLiffBoot liffId={liffId()} tt={tt} />;
   if (!dbConfigured()) return <main className="p-6 text-gray-500">{tt('DB_NOT_CONFIGURED')}</main>;
 
   const sp = await searchParams;
@@ -43,52 +43,80 @@ export default async function AttendHome({
   const employees = await myEmployees();
   const emp = employees.find((e) => e.status === 'active') ?? employees[0];
 
-  if (!emp || emp.status !== 'active') {
+  // 尚未加入：唯一入口是管理員發的深連結（見 src/app/g/page.tsx 檔頭的權限說明），
+  // 但已經走到這頁的人顯然拿到了連結，給他一個補填加入碼的路
+  if (!emp) {
     return (
-      <main className="mx-auto max-w-md p-5">
-        <h1 className="mb-2 text-xl font-bold">{tt('APP_TITLE')}</h1>
+      <AttendShell current="dash" loc={loc} tt={tt} back="/a">
         {banner}
-        {!emp ? (
-          <>
-            <p className="mb-4 text-sm text-gray-600">{tt('NOT_JOINED')}</p>
-            <a href="/a/join" className="btn-primary inline-block">{tt('ENTER_CODE')}</a>
-          </>
-        ) : (
-          <div className="card text-sm text-gray-600">
+        <Empty
+          title={tt('NOT_JOINED')}
+          hint=""
+          action={
+            <a href="/a/join" className="btn-primary inline-block">
+              {tt('ENTER_CODE')}
+            </a>
+          }
+        />
+      </AttendShell>
+    );
+  }
+
+  // 待啟用／已停用：原本是一張沒有任何下一步的灰卡（進得來出不去）。
+  // 現在明確講「接下來會發生什麼」並給兩個出口。
+  if (emp.status !== 'active') {
+    return (
+      <AttendShell emp={emp} current="dash" loc={loc} tt={tt} back="/a">
+        {banner}
+        <div className="card space-y-3 text-sm">
+          <p className="font-bold text-gray-700">
             {emp.status === 'pending' ? tt('PENDING_ACTIVATION') : tt('DISABLED_ACCOUNT')}
+          </p>
+          {emp.status === 'pending' && <p className="text-gray-500">{tt('PENDING_NEXT')}</p>}
+          <div className="flex flex-wrap gap-2">
+            <a href="/a" className="btn">
+              {tt('REFRESH')}
+            </a>
+            <a href="/g" className="btn">
+              {tt('BACK_TO_GROUPS')}
+            </a>
           </div>
-        )}
-        <LangBar current={loc} back="/a" />
-      </main>
+          {emp.status === 'pending' && (
+            <a href="/a/join" className="inline-block text-xs text-gray-400 underline">
+              {tt('WRONG_CODE')}
+            </a>
+          )}
+        </div>
+      </AttendShell>
     );
   }
 
   const today = workDate(new Date());
   const month = today.slice(0, 7);
-  const { days } = await monthData(emp.org_id, emp.id, month);
+  const [{ days }, { data: locs }] = await Promise.all([
+    monthData(emp.org_id, emp.id, month),
+    getDb()
+      .from('punch_locations')
+      .select('name, lat, lng, radius_m')
+      .eq('org_id', emp.org_id)
+      .eq('enabled', true),
+  ]);
+  const locations: PunchLocation[] = (locs ?? []).map((l) => ({
+    name: l.name,
+    lat: l.lat,
+    lng: l.lng,
+    radius: l.radius_m,
+  }));
   const todayStatus = days.find((d) => d.date === today);
   const abnormalCount = days.filter((d) => d.abnormal).length;
 
   return (
-    <main className="mx-auto max-w-md p-5">
-      <header className="mb-4 flex items-center gap-3">
-        {emp.picture_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={emp.picture_url} alt="" className="h-10 w-10 rounded-full" />
-        ) : (
-          <span className="grid h-10 w-10 place-items-center rounded-full bg-emerald-600 font-bold text-white">
-            {emp.display_name.slice(0, 1)}
-          </span>
-        )}
-        <div>
-          <p className="font-bold">{emp.display_name}</p>
-          <p className="text-xs text-gray-500">{emp.dept ?? '—'}</p>
-        </div>
-      </header>
-
+    <AttendShell emp={emp} current="dash" loc={loc} tt={tt} back="/a">
       {banner}
+      {!locations.length && <Banner tone="warn">{tt('NO_LOCATIONS')}</Banner>}
 
-      <PunchButtons
+      <PunchPanel
+        locations={locations}
         labels={{
           punchIn: tt('PUNCH_IN_BTN'),
           punchOut: tt('PUNCH_OUT_BTN'),
@@ -96,6 +124,9 @@ export default async function AttendHome({
           geoUnsupported: tt('GEO_UNSUPPORTED'),
           geoDenied: tt('GEO_DENIED'),
           geoFailed: tt('GEO_FAILED'),
+          inRange: tt('IN_RANGE'),
+          outOfRange: tt('OUT_OF_RANGE'),
+          locatingStatus: tt('LOCATING_STATUS'),
         }}
       />
 
@@ -118,22 +149,12 @@ export default async function AttendHome({
         )}
       </section>
 
-      <div className="mt-4 grid grid-cols-2 gap-3 text-center text-sm">
-        <a href="/a/records" className="card hover:bg-gray-50">
-          <span className="block font-bold">{tt('MONTH_RECORDS')}</span>
-          <span className="text-xs text-gray-500">{tt('MONTH_RECORDS_SUB')}</span>
+      {abnormalCount > 0 && (
+        <a href="/a/adjust" className="card mt-3 flex items-center gap-2 text-sm hover:bg-gray-50">
+          <span className="font-bold text-red-600">{tt('ABNORMAL_DAYS', { n: abnormalCount })}</span>
+          <span className="ml-auto text-gray-400">›</span>
         </a>
-        <a href="/a/adjust" className="card hover:bg-gray-50">
-          <span className="block font-bold">{tt('ADJUST_TITLE')}</span>
-          {abnormalCount > 0 ? (
-            <span className="text-xs font-bold text-red-600">{tt('ABNORMAL_DAYS', { n: abnormalCount })}</span>
-          ) : (
-            <span className="text-xs text-gray-500">{tt('ADJUST_SUB')}</span>
-          )}
-        </a>
-      </div>
-
-      <LangBar current={loc} back="/a" />
-    </main>
+      )}
+    </AttendShell>
   );
 }

@@ -8,12 +8,34 @@ declare global {
   }
 }
 
+// 文案由伺服端傳入：這支同時服務 /g（繁中）與 /a（員工端五語系）。
+// 越南籍員工開打卡連結時，第一眼不該是繁體中文的 GroupScribe。
+export type LiffMsgs = {
+  brand: string;
+  connecting: string;
+  noId: string;
+  noIdentity: string;
+  authFailed: string;
+  sdkFailed: string;
+  initFailed: string; // 含 {msg}
+};
+
+const ZH: LiffMsgs = {
+  brand: 'GroupScribe',
+  connecting: '連線 LINE 中…',
+  noId: '尚未設定 LIFF_ID（管理者請在 .env 加入後重啟）',
+  noIdentity: '取不到 LINE 身份，請關閉後重新開啟',
+  authFailed: '身份驗證失敗，請關閉後重新開啟',
+  sdkFailed: '無法載入 LINE SDK，請檢查網路',
+  initFailed: '初始化失敗：{msg}',
+};
+
 // LIFF 開機：載 SDK（CDN，不進 npm）→ init → 取 ID token → 後端驗證換 session cookie → 重載出內容
-export function LiffInit({ liffId }: { liffId: string }) {
-  const [msg, setMsg] = useState('連線 LINE 中…');
+export function LiffInit({ liffId, msgs = ZH }: { liffId: string; msgs?: LiffMsgs }) {
+  const [msg, setMsg] = useState(msgs.connecting);
   useEffect(() => {
     if (!liffId) {
-      setMsg('尚未設定 LIFF_ID（管理者請在 .env 加入後重啟）');
+      setMsg(msgs.noId);
       return;
     }
     const s = document.createElement('script');
@@ -27,7 +49,7 @@ export function LiffInit({ liffId }: { liffId: string }) {
         }
         const idToken = window.liff.getIDToken();
         if (!idToken) {
-          setMsg('取不到 LINE 身份，請關閉後重新開啟');
+          setMsg(msgs.noIdentity);
           return;
         }
         const r = await fetch('/api/liff/session', {
@@ -36,21 +58,21 @@ export function LiffInit({ liffId }: { liffId: string }) {
           body: JSON.stringify({ idToken }),
         });
         if (!r.ok) {
-          setMsg('身份驗證失敗，請關閉後重新開啟');
+          setMsg(msgs.authFailed);
           return;
         }
         location.reload();
       } catch (e) {
-        setMsg(`初始化失敗：${String(e)}`);
+        setMsg(msgs.initFailed.replace('{msg}', String(e)));
       }
     };
-    s.onerror = () => setMsg('無法載入 LINE SDK，請檢查網路');
+    s.onerror = () => setMsg(msgs.sdkFailed);
     document.head.appendChild(s);
-  }, [liffId]);
+  }, [liffId, msgs]);
   return (
     <main className="grid min-h-dvh place-items-center p-6 text-center">
       <div>
-        <p className="mb-2 text-lg font-bold">GroupScribe</p>
+        <p className="mb-2 text-lg font-bold">{msgs.brand}</p>
         <p className="text-sm text-gray-500">{msg}</p>
       </div>
     </main>

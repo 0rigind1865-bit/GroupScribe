@@ -72,5 +72,22 @@
   "REQ_APPROVED": "Đã duyệt",
   "REQ_REJECTED": "Bị từ chối",
   "NOT_ACTIVE": "Tài khoản chưa được kích hoạt.",
-  "DB_NOT_CONFIGURED": "Cơ sở dữ liệu chưa được cấu hình."
+  "DB_NOT_CONFIGURED": "Cơ sở dữ liệu chưa được cấu hình.",
+  "TAB_DASHBOARD": "Chấm công",
+  "TAB_RECORDS": "Lịch",
+  "TAB_REQUESTS": "Yêu cầu của tôi",
+  "IN_RANGE": "Trong khu vực \"{name}\"",
+  "OUT_OF_RANGE": "Không ở trong khu vực chấm công nào",
+  "LOCATING_STATUS": "Đang định vị…",
+  "LIFF_CONNECTING": "Đang kết nối LINE…",
+  "LIFF_NO_ID": "LIFF chưa được cấu hình. Vui lòng liên hệ quản lý.",
+  "LIFF_NO_IDENTITY": "Không lấy được danh tính LINE. Vui lòng đóng và mở lại.",
+  "LIFF_AUTH_FAILED": "Xác thực thất bại. Vui lòng đóng và mở lại.",
+  "LIFF_SDK_FAILED": "Không tải được thành phần LINE. Kiểm tra mạng.",
+  "LIFF_INIT_FAILED": "Khởi tạo thất bại: {msg}",
+  "PENDING_NEXT": "Sau khi quản lý kích hoạt, nút chấm công sẽ xuất hiện ở đây.",
+  "REFRESH": "Tải lại",
+  "BACK_TO_GROUPS": "Về trợ lý nhóm",
+  "WRONG_CODE": "Sai mã tham gia? Nhập lại",
+  "NO_LOCATIONS": "Chưa có địa điểm chấm công. Vui lòng liên hệ quản lý."
 }

@@ -72,5 +72,22 @@
   "REQ_APPROVED": "承認済み",
   "REQ_REJECTED": "却下",
   "NOT_ACTIVE": "アカウントはまだ有効化されていません。",
-  "DB_NOT_CONFIGURED": "データベースが未設定です。"
+  "DB_NOT_CONFIGURED": "データベースが未設定です。",
+  "TAB_DASHBOARD": "打刻",
+  "TAB_RECORDS": "カレンダー",
+  "TAB_REQUESTS": "申請履歴",
+  "IN_RANGE": "「{name}」の範囲内",
+  "OUT_OF_RANGE": "打刻可能な範囲外です",
+  "LOCATING_STATUS": "位置情報を取得中…",
+  "LIFF_CONNECTING": "LINE に接続中…",
+  "LIFF_NO_ID": "LIFF が未設定です。管理者に連絡してください",
+  "LIFF_NO_IDENTITY": "LINE の身分が取得できません。閉じて開き直してください",
+  "LIFF_AUTH_FAILED": "認証に失敗しました。閉じて開き直してください",
+  "LIFF_SDK_FAILED": "LINE コンポーネントを読み込めません。ネットワークを確認してください",
+  "LIFF_INIT_FAILED": "初期化に失敗：{msg}",
+  "PENDING_NEXT": "管理者が承認すると、ここに打刻ボタンが表示されます。",
+  "REFRESH": "再読み込み",
+  "BACK_TO_GROUPS": "グループアシスタントへ",
+  "WRONG_CODE": "参加コードが違う？入力し直す",
+  "NO_LOCATIONS": "打刻場所が未設定です。管理者に連絡してください"
 }

@@ -72,5 +72,22 @@
   "REQ_APPROVED": "Approved",
   "REQ_REJECTED": "Rejected",
   "NOT_ACTIVE": "Account not activated yet.",
-  "DB_NOT_CONFIGURED": "Database is not configured yet."
+  "DB_NOT_CONFIGURED": "Database is not configured yet.",
+  "TAB_DASHBOARD": "Punch",
+  "TAB_RECORDS": "Calendar",
+  "TAB_REQUESTS": "My Requests",
+  "IN_RANGE": "Inside \"{name}\"",
+  "OUT_OF_RANGE": "Not within any punch location",
+  "LOCATING_STATUS": "Locating…",
+  "LIFF_CONNECTING": "Connecting to LINE…",
+  "LIFF_NO_ID": "LIFF is not configured. Please contact your admin.",
+  "LIFF_NO_IDENTITY": "Cannot get your LINE identity. Please close and reopen.",
+  "LIFF_AUTH_FAILED": "Authentication failed. Please close and reopen.",
+  "LIFF_SDK_FAILED": "Failed to load LINE components. Check your network.",
+  "LIFF_INIT_FAILED": "Initialization failed: {msg}",
+  "PENDING_NEXT": "Once your admin activates the account, the punch buttons will appear here.",
+  "REFRESH": "Refresh",
+  "BACK_TO_GROUPS": "Back to group assistant",
+  "WRONG_CODE": "Wrong join code? Enter again",
+  "NO_LOCATIONS": "No punch location configured yet. Please contact your admin."
 }

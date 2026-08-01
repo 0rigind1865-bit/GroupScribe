@@ -4,11 +4,10 @@ import { myEmployees } from '@/attend/auth';
 import { monthData } from '@/attend/data';
 import { workDate } from '@/attend/util';
 import { locale, t, type MsgKey } from '@/attend/i18n';
-import { LiffInit } from '@/app/g/liff-init';
 import { Banner } from '@/app/ui/banner';
 import { Badge } from '@/app/ui/badge';
 import type { Tone } from '@/app/ui/tone';
-import { LangBar } from '../lang-bar';
+import { AttendLiffBoot, AttendShell } from '../shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,15 +30,20 @@ export default async function AdjustPage({
 }: {
   searchParams: Promise<{ ok?: string; err?: string; d?: string; t?: string }>;
 }) {
-  const uid = await liffUser();
-  if (!uid) return <LiffInit liffId={liffId()} />;
   const loc = await locale();
   const tt = (key: MsgKey, params?: Record<string, string | number>) => t(loc, key, params);
+  const uid = await liffUser();
+  if (!uid) return <AttendLiffBoot liffId={liffId()} tt={tt} />;
   if (!dbConfigured()) return <main className="p-6 text-gray-500">{tt('DB_NOT_CONFIGURED')}</main>;
 
   const employees = await myEmployees();
   const emp = employees.find((e) => e.status === 'active');
-  if (!emp) return <main className="mx-auto max-w-md p-5 text-sm text-gray-600">{tt('NOT_ACTIVE')}</main>;
+  if (!emp)
+    return (
+      <AttendShell current="requests" loc={loc} tt={tt} back="/a/adjust">
+        <p className="text-sm text-gray-600">{tt('NOT_ACTIVE')}</p>
+      </AttendShell>
+    );
 
   const sp = await searchParams;
   const today = workDate(new Date());
@@ -59,8 +63,7 @@ export default async function AdjustPage({
   const defDatetime = sp.d ? `${sp.d}T${defType === 'in' ? '09:00' : '18:00'}` : '';
 
   return (
-    <main className="mx-auto max-w-md p-5">
-      <h1 className="mb-3 text-xl font-bold">{tt('ADJUST_TITLE')}</h1>
+    <AttendShell emp={emp} current="requests" loc={loc} tt={tt} back="/a/adjust">
       {sp.ok && <Banner>{tt('MSG_ADJUST_SENT')}</Banner>}
       {sp.err && <Banner tone="err">{ERR[sp.err] ? tt(ERR[sp.err]) : sp.err}</Banner>}
 
@@ -129,8 +132,6 @@ export default async function AdjustPage({
         </section>
       )}
 
-      <a href="/a" className="mt-4 inline-block text-sm text-gray-500 underline">{tt('BACK_HOME')}</a>
-      <LangBar current={loc} back="/a/adjust" />
-    </main>
+    </AttendShell>
   );
 }

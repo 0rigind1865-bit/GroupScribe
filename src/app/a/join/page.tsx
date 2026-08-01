@@ -1,8 +1,8 @@
 import { liffId, liffUser } from '@/core/liff';
 import { locale, t, type MsgKey } from '@/attend/i18n';
-import { LiffInit } from '@/app/g/liff-init';
 import { Banner } from '@/app/ui/banner';
-import { LangBar } from '../lang-bar';
+import { PageHeader } from '@/app/ui/page-header';
+import { AttendLiffBoot } from '../shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,15 +19,15 @@ export default async function JoinPage({
 }: {
   searchParams: Promise<{ org?: string; code?: string; err?: string }>;
 }) {
-  const uid = await liffUser();
-  if (!uid) return <LiffInit liffId={liffId()} />;
   const loc = await locale();
   const tt = (key: MsgKey) => t(loc, key);
+  const uid = await liffUser();
+  if (!uid) return <AttendLiffBoot liffId={liffId()} tt={tt} />;
   const { org, code, err } = await searchParams;
 
   return (
     <main className="mx-auto max-w-md p-5">
-      <h1 className="mb-2 text-xl font-bold">{tt('JOIN_TITLE')}</h1>
+      <PageHeader back="/g" title={tt('JOIN_TITLE')} />
       <p className="mb-4 text-sm text-gray-600">{tt('JOIN_DESC')}</p>
       {err && <Banner tone="err">{ERR[err] ? tt(ERR[err]) : err}</Banner>}
       <form action="/api/attend/join" method="post" className="card space-y-3">
@@ -45,7 +45,6 @@ export default async function JoinPage({
         </label>
         <button className="btn-primary w-full">{tt('SUBMIT')}</button>
       </form>
-      <LangBar current={loc} back="/a/join" />
     </main>
   );
 }

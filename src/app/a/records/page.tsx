@@ -7,8 +7,7 @@ import { locale, t, type MsgKey } from '@/attend/i18n';
 import { MonthGrid } from '@/app/ui/month-grid';
 import { dayCellClass } from '@/attend/day-tone';
 import { PunchBadge, Badge } from '@/app/ui/badge';
-import { LiffInit } from '@/app/g/liff-init';
-import { LangBar } from '../lang-bar';
+import { AttendLiffBoot, AttendShell } from '../shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,19 +19,19 @@ export default async function RecordsPage({
 }: {
   searchParams: Promise<{ month?: string; d?: string }>;
 }) {
-  const uid = await liffUser();
-  if (!uid) return <LiffInit liffId={liffId()} />;
   const loc = await locale();
   const tt = (key: MsgKey, params?: Record<string, string | number>) => t(loc, key, params);
+  const uid = await liffUser();
+  if (!uid) return <AttendLiffBoot liffId={liffId()} tt={tt} />;
   if (!dbConfigured()) return <main className="p-6 text-gray-500">{tt('DB_NOT_CONFIGURED')}</main>;
 
   const employees = await myEmployees();
   const emp = employees.find((e) => e.status === 'active');
   if (!emp) {
     return (
-      <main className="mx-auto max-w-md p-5">
+      <AttendShell current="records" loc={loc} tt={tt} back="/a/records">
         <p className="text-sm text-gray-600">{tt('NOT_ACTIVE')}</p>
-      </main>
+      </AttendShell>
     );
   }
 
@@ -46,7 +45,7 @@ export default async function RecordsPage({
   const sel = sp.d && byDate.has(sp.d) ? byDate.get(sp.d)! : null;
 
   return (
-    <main className="mx-auto max-w-md p-5">
+    <AttendShell emp={emp} current="records" loc={loc} tt={tt} back={`/a/records?month=${month}`}>
       <div className="mb-3 flex items-center justify-between">
         <a className="btn px-3 py-1 text-sm" href={`/a/records?month=${shiftMonth(month, -1)}`}>←</a>
         <h1 className="text-lg font-bold">{tt('MONTH_TITLE', { y, m })}</h1>
@@ -101,8 +100,6 @@ export default async function RecordsPage({
         </section>
       )}
 
-      <a href="/a" className="mt-4 inline-block text-sm text-gray-500 underline">{tt('BACK_HOME')}</a>
-      <LangBar current={loc} back={`/a/records?month=${month}`} />
-    </main>
+    </AttendShell>
   );
 }

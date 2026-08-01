@@ -72,5 +72,22 @@
   "REQ_APPROVED": "Disetujui",
   "REQ_REJECTED": "Ditolak",
   "NOT_ACTIVE": "Akun belum diaktifkan.",
-  "DB_NOT_CONFIGURED": "Basis data belum dikonfigurasi."
+  "DB_NOT_CONFIGURED": "Basis data belum dikonfigurasi.",
+  "TAB_DASHBOARD": "Absen",
+  "TAB_RECORDS": "Kalender",
+  "TAB_REQUESTS": "Permintaan Saya",
+  "IN_RANGE": "Di dalam \"{name}\"",
+  "OUT_OF_RANGE": "Tidak berada di area absen mana pun",
+  "LOCATING_STATUS": "Mencari lokasi…",
+  "LIFF_CONNECTING": "Menghubungkan ke LINE…",
+  "LIFF_NO_ID": "LIFF belum dikonfigurasi. Hubungi admin.",
+  "LIFF_NO_IDENTITY": "Tidak bisa mendapatkan identitas LINE. Tutup dan buka lagi.",
+  "LIFF_AUTH_FAILED": "Autentikasi gagal. Tutup dan buka lagi.",
+  "LIFF_SDK_FAILED": "Gagal memuat komponen LINE. Periksa jaringan.",
+  "LIFF_INIT_FAILED": "Inisialisasi gagal: {msg}",
+  "PENDING_NEXT": "Setelah admin mengaktifkan, tombol absen akan muncul di sini.",
+  "REFRESH": "Muat ulang",
+  "BACK_TO_GROUPS": "Kembali ke asisten grup",
+  "WRONG_CODE": "Kode gabung salah? Masukkan lagi",
+  "NO_LOCATIONS": "Belum ada lokasi absen. Hubungi admin."
 }

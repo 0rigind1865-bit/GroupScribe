@@ -72,5 +72,22 @@
   "REQ_APPROVED": "已核准",
   "REQ_REJECTED": "已拒絕",
   "NOT_ACTIVE": "帳號尚未啟用。",
-  "DB_NOT_CONFIGURED": "系統尚未設定資料庫。"
+  "DB_NOT_CONFIGURED": "系統尚未設定資料庫。",
+  "TAB_DASHBOARD": "打卡",
+  "TAB_RECORDS": "月曆",
+  "TAB_REQUESTS": "我的申請",
+  "IN_RANGE": "在「{name}」範圍內",
+  "OUT_OF_RANGE": "不在任何打卡範圍內",
+  "LOCATING_STATUS": "正在定位…",
+  "LIFF_CONNECTING": "連線 LINE 中…",
+  "LIFF_NO_ID": "系統尚未設定 LIFF，請聯絡管理員",
+  "LIFF_NO_IDENTITY": "取不到 LINE 身分，請關閉後重新開啟",
+  "LIFF_AUTH_FAILED": "身分驗證失敗，請關閉後重新開啟",
+  "LIFF_SDK_FAILED": "無法載入 LINE 元件，請檢查網路",
+  "LIFF_INIT_FAILED": "初始化失敗：{msg}",
+  "PENDING_NEXT": "管理員啟用後，這裡就會出現打卡按鈕。",
+  "REFRESH": "重新整理",
+  "BACK_TO_GROUPS": "回群組助理",
+  "WRONG_CODE": "加入碼填錯了？重新輸入",
+  "NO_LOCATIONS": "公司尚未設定打卡地點，請聯絡管理員"
 }
