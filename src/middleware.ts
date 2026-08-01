@@ -74,6 +74,15 @@ const LEGACY = new Set(['/', '/inbox', '/calendar', '/tasks', '/notes', '/files'
 export async function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
 
+  // LIFF 深連結相容：LIFF app 的 Endpoint URL 若設在 /g（GroupScribe 成員版原本的位置），
+  // https://liff.line.me/<id>/a/... 會被導到 /g/a/... 這條死路。
+  // 一條 rewrite 讓 endpoint 設在根或 /g 都能開員工端，省去改 LINE Developers 設定。
+  if (pathname.startsWith('/g/a/') || pathname === '/g/a') {
+    const url = req.nextUrl.clone();
+    url.pathname = pathname.slice(2); // '/g/a/join' → '/a/join'
+    return NextResponse.rewrite(url);
+  }
+
   if (LEGACY.has(pathname)) {
     const dest = `/o/main${pathname === '/' ? '' : pathname}${search}`;
     // middleware 的 redirect 必須是絕對網址（Next edge 會 new URL() 驗證）。
@@ -100,5 +109,7 @@ export const config = {
   // 不走 admin cookie，改由 LINE ID token 驗證（見 core/liff.ts；考勤 API 自帶三重把關）
   // /api/auth 為 LINE Login 流程（登入本身不能要求已登入）
   // /api/digest 給 NAS cron 打，自行以 ?key=ADMIN_PASSWORD 把關
-  matcher: ['/((?!api/webhook|api/login|api/liff|api/digest|api/attend|api/auth|login|g/|g$|a/|a$|_next|favicon.ico).*)'],
+  // g/(?!a/|a$)：/g 成員版整段跳過，但 /g/a...（LIFF endpoint 設在 /g 時的員工端深連結）
+  // 要進來走上面的 rewrite。群組 id 以 a 開頭的 /g/abc 仍會被排除（負向前瞻只認 a/ 與 a 結尾）。
+  matcher: ['/((?!api/webhook|api/login|api/liff|api/digest|api/attend|api/auth|login|g/(?!a/|a$)|g$|a/|a$|_next|favicon.ico).*)'],
 };
