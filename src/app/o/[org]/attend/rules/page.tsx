@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { orgBySlug } from '@/org/orgs';
 import { currentRuleSet } from '@/attend/rules-store';
 import { workDate } from '@/attend/util';
+import { Banner } from '@/app/ui/banner';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,8 +52,8 @@ export default async function RulesPage({
         目前版本：v{ruleSet.version}
         {ruleSet.version === 0 && '（預設勞基法模板，尚未自訂）'}｜每次存檔會建立新版本；已結算月份不受影響。
       </p>
-      {sp.ok && <p className="mb-3 rounded bg-emerald-50 p-2 text-sm text-emerald-800">已存為 v{ruleSet.version} ✓</p>}
-      {sp.err && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">{ERR[sp.err] ?? sp.err}</p>}
+      {sp.ok && <Banner>已存為 v{ruleSet.version} ✓</Banner>}
+      {sp.err && <Banner tone="err">{ERR[sp.err] ?? sp.err}</Banner>}
 
       <form action="/api/attend/rules" method="post" className="space-y-4">
         <input type="hidden" name="org" value={slug} />

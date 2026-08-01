@@ -3,15 +3,19 @@ import { notFound } from 'next/navigation';
 import { orgBySlug, orgSettings } from '@/org/orgs';
 import { liffUrl } from '@/core/ingest';
 import type { Employee } from '@/attend/auth';
+import { Banner } from '@/app/ui/banner';
+import { Badge, OutlineBadge } from '@/app/ui/badge';
+import { Empty } from '@/app/ui/empty';
+import type { Tone } from '@/app/ui/tone';
 
 export const dynamic = 'force-dynamic';
 
 // 員工管理（對等舊員工管理分頁：啟用/停用、部門、月薪、管理權、加入碼）。
 // 全部原生 form POST → /api/attend/employee → redirect 回來（MPA，零 client JS）。
-const STATUS_BADGE: Record<string, [string, string]> = {
-  pending: ['待啟用', 'bg-amber-100 text-amber-800'],
-  active: ['在職', 'bg-emerald-100 text-emerald-800'],
-  disabled: ['停用', 'bg-gray-200 text-gray-500'],
+const STATUS_BADGE: Record<string, [string, Tone]> = {
+  pending: ['待啟用', 'warn'],
+  active: ['在職', 'ok'],
+  disabled: ['停用', 'neutral'],
 };
 
 export default async function EmployeesPage({
@@ -41,7 +45,7 @@ export default async function EmployeesPage({
   return (
     <main className="mx-auto max-w-4xl p-5">
       <h1 className="mb-4 text-2xl font-bold">員工管理</h1>
-      {err && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">操作失敗，請重試。</p>}
+      {err && <Banner tone="err">操作失敗，請重試。</Banner>}
 
       {/* 加入邀請：員工端的打卡入口只對「已是員工」的人顯示（見 src/app/g/page.tsx 檔頭），
           所以這條連結是新員工唯一的入口——發連結這個動作本身就是授權。 */}
@@ -77,7 +81,7 @@ export default async function EmployeesPage({
 
       <section className="space-y-3">
         {employees.map((e) => {
-          const [label, cls] = STATUS_BADGE[e.status] ?? [e.status, ''];
+          const [label, tone] = STATUS_BADGE[e.status] ?? [e.status, 'neutral' as Tone];
           const isAdmin = adminSet.has(e.line_user_id);
           const open = openId === e.id;
           return (
@@ -85,8 +89,10 @@ export default async function EmployeesPage({
               <summary className="flex cursor-pointer items-center gap-2">
                 <span className="font-bold">{e.display_name}</span>
                 <span className="text-xs text-gray-500">{e.dept ?? ''}</span>
-                {isAdmin && <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-xs font-bold text-indigo-800">管理員</span>}
-                <span className={`ml-auto rounded px-1.5 py-0.5 text-xs font-bold ${cls}`}>{label}</span>
+                {isAdmin && <OutlineBadge>管理員</OutlineBadge>}
+                <span className="ml-auto">
+                  <Badge tone={tone}>{label}</Badge>
+                </span>
               </summary>
               <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
                 <form action="/api/attend/employee" method="post" className="flex flex-wrap items-end gap-2 text-sm">
@@ -130,7 +136,9 @@ export default async function EmployeesPage({
             </details>
           );
         })}
-        {!employees.length && <p className="text-gray-500">還沒有員工。把加入碼發給員工即可開始。</p>}
+        {!employees.length && (
+          <Empty title="還沒有員工" hint="把上面那條邀請連結傳給員工，他們加入後會出現在這裡等你啟用。" />
+        )}
       </section>
     </main>
   );

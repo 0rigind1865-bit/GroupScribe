@@ -5,6 +5,8 @@ import { monthData } from '@/attend/data';
 import { workDate } from '@/attend/util';
 import { locale, t, type MsgKey } from '@/attend/i18n';
 import { LiffInit } from '@/app/g/liff-init';
+import { Banner } from '@/app/ui/banner';
+import { PunchBadge } from '@/app/ui/badge';
 import { LangBar } from './lang-bar';
 import { PunchButtons } from './punch-client';
 
@@ -36,11 +38,7 @@ export default async function AttendHome({
   const sp = await searchParams;
   const msgKey = sp.ok ? `ok=${sp.ok}` : sp.err ? `err=${sp.err}` : sp.joined ? 'joined=1' : '';
   const msg = MSG[msgKey];
-  const banner = msg && (
-    <p className={`mb-3 rounded p-2 text-sm ${msg.ok ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'}`}>
-      {tt(msg.key)}
-    </p>
-  );
+  const banner = msg && <Banner tone={msg.ok ? 'ok' : 'err'}>{tt(msg.key)}</Banner>;
 
   const employees = await myEmployees();
   const emp = employees.find((e) => e.status === 'active') ?? employees[0];
@@ -109,9 +107,7 @@ export default async function AttendHome({
           <ul className="space-y-1 text-sm">
             {todayStatus.punches.map((p, i) => (
               <li key={i} className="flex items-center gap-2">
-                <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${p.type === 'in' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                  {p.type === 'in' ? tt('PUNCH_IN') : tt('PUNCH_OUT')}
-                </span>
+                <PunchBadge type={p.type} label={p.type === 'in' ? tt('PUNCH_IN') : tt('PUNCH_OUT')} />
                 <span>{p.time}</span>
                 {p.locationName && <span className="text-xs text-gray-500">{p.locationName}</span>}
               </li>

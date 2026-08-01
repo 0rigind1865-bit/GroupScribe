@@ -2,12 +2,15 @@ import { getDb } from '@/db';
 import { notFound } from 'next/navigation';
 import { orgBySlug } from '@/org/orgs';
 import { monthData } from '@/attend/data';
-import { dayInOut, type DayStatus } from '@/attend/abnormal';
+import { dayInOut } from '@/attend/abnormal';
 import { isYm, shiftMonth, workDate } from '@/attend/util';
 import { currentRuleSet, holidayKinds } from '@/attend/rules-store';
 import { computeMonthHybrid, type HybridResult } from '@/attend/sandbox';
 import type { MonthDayInput } from '@/attend/salary';
-import { monthGrid } from '@/core/grid';
+import { MonthGrid } from '@/app/ui/month-grid';
+import { dayCellClass } from '@/attend/day-tone';
+import { Banner } from '@/app/ui/banner';
+import { oh } from '@/org/href';
 import type { Employee } from '@/attend/auth';
 
 export const dynamic = 'force-dynamic';
@@ -15,15 +18,6 @@ export const dynamic = 'force-dynamic';
 // 員工月曆＋薪資明細（對等舊管理員日曆＋月薪摘要＋計算細節）。
 // 已結算月份讀 payroll_snapshots 快照（金額凍結）；未結算＝以最新規則即時計算。
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
-const CELL: Record<DayStatus['status'], string> = {
-  STATUS_PUNCH_NORMAL: 'bg-emerald-100 text-emerald-900',
-  STATUS_REPAIR_APPROVED: 'bg-teal-100 text-teal-900',
-  STATUS_REPAIR_PENDING: 'bg-amber-100 text-amber-900',
-  STATUS_PUNCH_IN_MISSING: 'bg-red-100 text-red-800',
-  STATUS_PUNCH_OUT_MISSING: 'bg-red-100 text-red-800',
-  STATUS_PUNCH_BOTH_MISSING: 'bg-gray-100 text-gray-400',
-  STATUS_TODAY_OPEN: 'bg-sky-100 text-sky-900',
-};
 const DAY_TYPE_TEXT: Record<string, string> = {
   normal: '平日',
   rest_day: '休息日',
@@ -55,7 +49,6 @@ export default async function AttendCalendar({
 
   const today = workDate(new Date());
   const month = sp.month && isYm(sp.month) ? sp.month : today.slice(0, 7);
-  const base = `/o/${slug}/attend/calendar`;
 
   if (!emp) {
     return (
@@ -91,9 +84,7 @@ export default async function AttendCalendar({
     : await computeMonthHybrid(inputs, emp.monthly_salary, ruleSet.rules, ruleSet.scriptEnabled ? ruleSet.script : null);
 
   const byDate = new Map(days.map((d) => [d.date, d]));
-  const payByDate = new Map(result.days.map((d) => [d.date, d]));
   const [y, m] = month.split('-').map(Number);
-  const weeks = monthGrid(y, m);
 
   return (
     <main className="mx-auto max-w-4xl p-5">
@@ -114,12 +105,12 @@ export default async function AttendCalendar({
         </form>
       </div>
 
-      {sp.err === 'ERR_FINALIZE' && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">結算失敗，請重試。</p>}
-      {sp.ok === 'finalized' && <p className="mb-3 rounded bg-emerald-50 p-2 text-sm text-emerald-800">本月已結算，金額已凍結 ✓</p>}
-      {sp.ok === 'unfinalized' && <p className="mb-3 rounded bg-amber-50 p-2 text-sm text-amber-800">已解除結算，回到即時計算。</p>}
+      {sp.err === 'ERR_FINALIZE' && <Banner tone="err">結算失敗，請重試。</Banner>}
+      {sp.ok === 'finalized' && <Banner>本月已結算，金額已凍結 ✓</Banner>}
+      {sp.ok === 'unfinalized' && <Banner tone="warn">已解除結算，回到即時計算。</Banner>}
 
       {result.scriptErrors?.length > 0 && (
-        <div className="mb-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+        <div className="mb-3 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           <p className="font-bold">⚠ 自訂腳本在 {result.scriptErrors.length} 天計算失敗，已回退預設規則：</p>
           <ul className="ml-4 list-disc">
             {result.scriptErrors.slice(0, 5).map((e) => (
@@ -134,31 +125,34 @@ export default async function AttendCalendar({
       <div className="grid gap-5 md:grid-cols-[1fr_320px]">
         <section>
           <div className="mb-3 flex items-center justify-between">
-            <a className="btn px-3 py-1 text-sm" href={`${base}?emp=${emp.id}&month=${shiftMonth(month, -1)}`}>←</a>
+            <a className="btn px-3 py-1 text-sm" href={oh(slug, '/attend/calendar', { emp: emp.id, month: shiftMonth(month, -1) })}>←</a>
             <h2 className="font-bold">
               {emp.display_name}｜{y} 年 {m} 月
-              {finalized && <span className="ml-2 rounded bg-indigo-100 px-1.5 py-0.5 text-xs font-bold text-indigo-800">已結算</span>}
+              {finalized && (
+                <span className="ml-2 inline-flex items-center gap-1 rounded bg-gray-200 px-1.5 py-0.5 text-xs font-bold text-gray-700">
+                  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="5" y="11" width="14" height="10" rx="2" />
+                    <path d="M8 11V7a4 4 0 018 0v4" />
+                  </svg>
+                  已結算
+                </span>
+              )}
             </h2>
-            <a className="btn px-3 py-1 text-sm" href={`${base}?emp=${emp.id}&month=${shiftMonth(month, 1)}`}>→</a>
+            <a className="btn px-3 py-1 text-sm" href={oh(slug, '/attend/calendar', { emp: emp.id, month: shiftMonth(month, 1) })}>→</a>
           </div>
-          <div className="mb-1 grid grid-cols-7 text-center text-xs text-gray-500">
-            {WEEK.map((w) => (
-              <div key={w} className="py-1">{w}</div>
-            ))}
-          </div>
-          <div className="grid grid-cols-7 gap-1">
-            {weeks.flat().map((cell, i) => {
-              if (!cell) return <div key={i} />;
-              const st = byDate.get(cell.iso);
-              const holiday = hk.get(cell.iso) === 'national';
-              const cls = st ? CELL[st.status] : 'text-gray-400';
+          <MonthGrid
+            ym={month}
+            weekLabels={WEEK}
+            cell={(iso, day) => {
+              const st = byDate.get(iso);
+              const holiday = hk.get(iso) === 'national';
               return (
-                <div key={i} className={`grid h-11 place-items-center rounded text-sm ${cls}`}>
-                  <span className={holiday ? 'font-bold text-red-600' : ''}>{cell.day}</span>
+                <div className={`grid h-11 place-items-center rounded text-sm ${st ? dayCellClass(st.status) : 'text-gray-400'}`}>
+                  <span className={holiday ? 'font-bold text-red-600' : ''}>{day}</span>
                 </div>
               );
-            })}
-          </div>
+            }}
+          />
 
           {/* 每日計算明細（對等舊「計算細節」展開區塊） */}
           <details className="mt-4 text-sm" open={!!result.days.length}>
@@ -171,7 +165,7 @@ export default async function AttendCalendar({
                     <span className="ml-2 font-normal text-gray-500">
                       淨 {d.netHours}h｜休息扣除 {d.restHours}h
                     </span>
-                    <span className="float-right text-indigo-700">+{d.pay.toFixed(2)}</span>
+                    <span className="float-right font-bold">+{d.pay.toFixed(2)}</span>
                   </p>
                   {d.breakdown.length > 0 && (
                     <ul className="mt-1 ml-4 list-disc text-xs text-gray-500">
@@ -196,7 +190,7 @@ export default async function AttendCalendar({
             <div className="flex justify-between"><dt className="text-gray-500">月薪</dt><dd>{result.base.toFixed(2)} NTD</dd></div>
             <div className="flex justify-between"><dt className="text-gray-500">等效時薪</dt><dd>{result.hourlyRate.toFixed(2)} NTD/h</dd></div>
             <div className="flex justify-between"><dt className="text-gray-500">加班／假日加給</dt><dd>+{result.extra.toFixed(2)} NTD</dd></div>
-            <div className="flex justify-between border-t border-gray-200 pt-1 font-bold"><dt>本月總薪資</dt><dd className="text-indigo-700">{result.total.toFixed(2)} NTD</dd></div>
+            <div className="flex justify-between border-t border-gray-200 pt-1 font-bold"><dt>本月總薪資</dt><dd>{result.total.toFixed(2)} NTD</dd></div>
             <div className="flex justify-between pt-2"><dt className="text-gray-500">正常工時</dt><dd>{result.totals.normalHours} h</dd></div>
             <div className="flex justify-between"><dt className="text-gray-500">加班工時</dt><dd>{result.totals.overtimeHours} h</dd></div>
             <div className="flex justify-between"><dt className="text-gray-500">總淨工時</dt><dd>{result.totals.netHours} h</dd></div>
@@ -224,7 +218,7 @@ export default async function AttendCalendar({
           <p className="mt-2 text-xs text-gray-400">
             規則版本：v{ruleSet.version}
             {ruleSet.scriptEnabled && '（含自訂腳本）'}｜
-            <a className="underline" href={`/o/${slug}/attend/rules`}>編輯規則</a>
+            <a className="underline" href={oh(slug, '/attend/rules')}>編輯規則</a>
           </p>
           <a className="mt-2 inline-block text-xs text-emerald-700 underline" href={`/api/attend/export?org=${slug}&emp=${emp.id}&month=${month}`}>
             匯出 CSV ↓

@@ -4,24 +4,15 @@ import { myEmployees } from '@/attend/auth';
 import { monthData } from '@/attend/data';
 import { isYm, shiftMonth, workDate } from '@/attend/util';
 import { locale, t, type MsgKey } from '@/attend/i18n';
-import { monthGrid } from '@/core/grid';
+import { MonthGrid } from '@/app/ui/month-grid';
+import { dayCellClass } from '@/attend/day-tone';
+import { PunchBadge, Badge } from '@/app/ui/badge';
 import { LiffInit } from '@/app/g/liff-init';
 import { LangBar } from '../lang-bar';
-import type { DayStatus } from '@/attend/abnormal';
 
 export const dynamic = 'force-dynamic';
 
 // 我的月曆與打卡明細（對等舊員工月曆）。日格顏色 = 每日狀態；點日期看當日明細（?d=）。
-const CELL: Record<DayStatus['status'], string> = {
-  STATUS_PUNCH_NORMAL: 'bg-emerald-100 text-emerald-900',
-  STATUS_REPAIR_APPROVED: 'bg-teal-100 text-teal-900',
-  STATUS_REPAIR_PENDING: 'bg-amber-100 text-amber-900',
-  STATUS_PUNCH_IN_MISSING: 'bg-red-100 text-red-800',
-  STATUS_PUNCH_OUT_MISSING: 'bg-red-100 text-red-800',
-  STATUS_PUNCH_BOTH_MISSING: 'bg-gray-100 text-gray-400',
-  STATUS_TODAY_OPEN: 'bg-sky-100 text-sky-900',
-};
-
 const WEEK_KEYS: MsgKey[] = ['WEEK_SUN', 'WEEK_MON', 'WEEK_TUE', 'WEEK_WED', 'WEEK_THU', 'WEEK_FRI', 'WEEK_SAT'];
 
 export default async function RecordsPage({
@@ -52,7 +43,6 @@ export default async function RecordsPage({
   const byDate = new Map(days.map((d) => [d.date, d]));
 
   const [y, m] = month.split('-').map(Number);
-  const weeks = monthGrid(y, m);
   const sel = sp.d && byDate.has(sp.d) ? byDate.get(sp.d)! : null;
 
   return (
@@ -63,27 +53,26 @@ export default async function RecordsPage({
         <a className="btn px-3 py-1 text-sm" href={`/a/records?month=${shiftMonth(month, 1)}`}>→</a>
       </div>
 
-      <div className="mb-1 grid grid-cols-7 text-center text-xs text-gray-500">
-        {WEEK_KEYS.map((w) => (
-          <div key={w} className="py-1">{tt(w)}</div>
-        ))}
-      </div>
-      <div className="grid grid-cols-7 gap-1">
-        {weeks.flat().map((cell, i) => {
-          if (!cell) return <div key={i} />;
-          const st = byDate.get(cell.iso);
-          const cls = st ? CELL[st.status] : 'text-gray-400';
+      <MonthGrid
+        ym={month}
+        weekLabels={WEEK_KEYS.map((k) => tt(k))}
+        cell={(iso, day) => {
+          const st = byDate.get(iso);
+          // 有狀態＝過去日或今天（monthStatuses 只產出到今天）→ 可點看明細；
+          // 未來日渲染成 div，不再是「長得像連結卻按不動」的 <a>
+          if (!st) return <div className="grid h-10 place-items-center text-sm text-gray-300">{day}</div>;
           return (
             <a
-              key={i}
-              href={st ? `/a/records?month=${month}&d=${cell.iso}` : undefined}
-              className={`grid h-10 place-items-center rounded text-sm ${cls} ${sp.d === cell.iso ? 'ring-2 ring-emerald-500' : ''}`}
+              href={`/a/records?month=${month}&d=${iso}`}
+              className={`grid h-10 place-items-center rounded text-sm ${dayCellClass(st.status)} ${
+                sp.d === iso ? 'ring-2 ring-emerald-500' : ''
+              }`}
             >
-              {cell.day}
+              {day}
             </a>
           );
-        })}
-      </div>
+        }}
+      />
 
       {sel && (
         <section className="card mt-4">
@@ -94,11 +83,9 @@ export default async function RecordsPage({
             <ul className="space-y-1 text-sm">
               {sel.punches.map((p, i) => (
                 <li key={i} className="flex items-center gap-2">
-                  <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${p.type === 'in' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                    {p.type === 'in' ? tt('PUNCH_IN') : tt('PUNCH_OUT')}
-                  </span>
+                  <PunchBadge type={p.type} label={p.type === 'in' ? tt('PUNCH_IN') : tt('PUNCH_OUT')} />
                   <span>{p.time}</span>
-                  {p.source === 'adjustment' && <span className="rounded bg-teal-100 px-1 text-xs text-teal-800">{tt('ADJ_BADGE')}</span>}
+                  {p.source === 'adjustment' && <Badge tone="neutral">{tt('ADJ_BADGE')}</Badge>}
                   {p.locationName && <span className="text-xs text-gray-500">{p.locationName}</span>}
                 </li>
               ))}

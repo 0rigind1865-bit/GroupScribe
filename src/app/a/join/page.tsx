@@ -1,6 +1,7 @@
 import { liffId, liffUser } from '@/core/liff';
 import { locale, t, type MsgKey } from '@/attend/i18n';
 import { LiffInit } from '@/app/g/liff-init';
+import { Banner } from '@/app/ui/banner';
 import { LangBar } from '../lang-bar';
 
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,7 @@ export default async function JoinPage({
     <main className="mx-auto max-w-md p-5">
       <h1 className="mb-2 text-xl font-bold">{tt('JOIN_TITLE')}</h1>
       <p className="mb-4 text-sm text-gray-600">{tt('JOIN_DESC')}</p>
-      {err && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">{ERR[err] ? tt(ERR[err]) : err}</p>}
+      {err && <Banner tone="err">{ERR[err] ? tt(ERR[err]) : err}</Banner>}
       <form action="/api/attend/join" method="post" className="card space-y-3">
         <label className="block text-sm">
           <span className="mb-1 block font-bold text-gray-700">{tt('ORG_LABEL')}</span>

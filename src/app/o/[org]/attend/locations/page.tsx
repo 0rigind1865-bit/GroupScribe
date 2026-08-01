@@ -1,6 +1,8 @@
 import { getDb } from '@/db';
 import { notFound } from 'next/navigation';
 import { orgBySlug } from '@/org/orgs';
+import { Banner } from '@/app/ui/banner';
+import { Empty } from '@/app/ui/empty';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,8 +37,8 @@ export default async function LocationsPage({
   return (
     <main className="mx-auto max-w-4xl p-5">
       <h1 className="mb-4 text-2xl font-bold">打卡地點</h1>
-      {ok && <p className="mb-3 rounded bg-emerald-50 p-2 text-sm text-emerald-800">地點已新增 ✓</p>}
-      {err && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">{ERR[err] ?? err}</p>}
+      {ok && <Banner>地點已新增 ✓</Banner>}
+      {err && <Banner tone="err">{ERR[err] ?? err}</Banner>}
 
       <section className="card mb-5">
         <h2 className="mb-2 text-sm font-bold text-gray-700">新增地點</h2>
@@ -91,7 +93,9 @@ export default async function LocationsPage({
             </form>
           </div>
         ))}
-        {!(locs ?? []).length && <p className="text-gray-500">還沒有打卡地點。員工必須在地點半徑內才能打卡。</p>}
+        {!(locs ?? []).length && (
+          <Empty title="還沒有打卡地點" hint="員工必須站在某個地點的半徑內才能打卡——先用上面的表單新增一個。" />
+        )}
       </section>
     </main>
   );

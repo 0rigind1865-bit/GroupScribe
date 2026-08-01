@@ -1,6 +1,9 @@
 import { getDb } from '@/db';
 import { notFound } from 'next/navigation';
 import { orgBySlug } from '@/org/orgs';
+import { Banner } from '@/app/ui/banner';
+import { Badge, PunchBadge } from '@/app/ui/badge';
+import { Empty } from '@/app/ui/empty';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,18 +45,16 @@ export default async function ReviewsPage({
   return (
     <main className="mx-auto max-w-4xl p-5">
       <h1 className="mb-4 text-2xl font-bold">補卡審核</h1>
-      {ok === 'approved' && <p className="mb-3 rounded bg-emerald-50 p-2 text-sm text-emerald-800">已核准，打卡紀錄已生成 ✓</p>}
-      {ok === 'rejected' && <p className="mb-3 rounded bg-gray-100 p-2 text-sm text-gray-700">已拒絕。</p>}
-      {err && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">操作失敗或申請已被處理，請重新整理。</p>}
+      {ok === 'approved' && <Banner>已核准，打卡紀錄已生成 ✓</Banner>}
+      {ok === 'rejected' && <Banner tone="neutral">已拒絕。</Banner>}
+      {err && <Banner tone="err">操作失敗或申請已被處理，請重新整理。</Banner>}
 
       <section className="space-y-2">
         {((pending ?? []) as unknown as Row[]).map((r) => (
           <div key={r.id} className="card flex flex-wrap items-center gap-2 text-sm">
             <span className="font-bold">{r.employees?.display_name ?? '—'}</span>
             <span className="text-xs text-gray-500">{r.employees?.dept ?? ''}</span>
-            <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${r.type === 'in' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'}`}>
-              {r.type === 'in' ? '補上班卡' : '補下班卡'}
-            </span>
+            <PunchBadge type={r.type as 'in' | 'out'} label={r.type === 'in' ? '補上班卡' : '補下班卡'} />
             <span>{fmt(r.requested_at)}</span>
             {r.reason && <span className="text-xs text-gray-500">「{r.reason}」</span>}
             <form action="/api/attend/review" method="post" className="ml-auto flex gap-2">
@@ -64,7 +65,7 @@ export default async function ReviewsPage({
             </form>
           </div>
         ))}
-        {!(pending ?? []).length && <p className="text-gray-500">沒有待審核的補卡申請。</p>}
+        {!(pending ?? []).length && <Empty title="沒有待審核的補卡申請" hint="員工在打卡端送出補卡後，會出現在這裡等你核准。" />}
       </section>
 
       {((recent ?? []) as unknown as Row[]).length > 0 && (
@@ -75,8 +76,8 @@ export default async function ReviewsPage({
               <li key={r.id} className="flex items-center gap-2">
                 <span>{r.employees?.display_name ?? '—'}</span>
                 <span className="text-xs">{r.type === 'in' ? '上班' : '下班'} {fmt(r.requested_at)}</span>
-                <span className={`ml-auto rounded px-1.5 py-0.5 text-xs font-bold ${r.status === 'approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'}`}>
-                  {r.status === 'approved' ? '已核准' : '已拒絕'}
+                <span className="ml-auto">
+                  <Badge tone={r.status === 'approved' ? 'ok' : 'err'}>{r.status === 'approved' ? '已核准' : '已拒絕'}</Badge>
                 </span>
               </li>
             ))}

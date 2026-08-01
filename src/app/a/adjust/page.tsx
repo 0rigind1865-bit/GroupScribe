@@ -5,6 +5,9 @@ import { monthData } from '@/attend/data';
 import { workDate } from '@/attend/util';
 import { locale, t, type MsgKey } from '@/attend/i18n';
 import { LiffInit } from '@/app/g/liff-init';
+import { Banner } from '@/app/ui/banner';
+import { Badge } from '@/app/ui/badge';
+import type { Tone } from '@/app/ui/tone';
 import { LangBar } from '../lang-bar';
 
 export const dynamic = 'force-dynamic';
@@ -17,10 +20,10 @@ const ERR: Record<string, MsgKey> = {
   ERR_SESSION: 'ERR_SESSION',
 };
 
-const STATUS_BADGE: Record<string, [MsgKey, string]> = {
-  pending: ['REQ_PENDING', 'bg-amber-100 text-amber-800'],
-  approved: ['REQ_APPROVED', 'bg-emerald-100 text-emerald-800'],
-  rejected: ['REQ_REJECTED', 'bg-red-100 text-red-700'],
+const STATUS_BADGE: Record<string, [MsgKey, Tone]> = {
+  pending: ['REQ_PENDING', 'warn'],
+  approved: ['REQ_APPROVED', 'ok'],
+  rejected: ['REQ_REJECTED', 'err'],
 };
 
 export default async function AdjustPage({
@@ -58,8 +61,8 @@ export default async function AdjustPage({
   return (
     <main className="mx-auto max-w-md p-5">
       <h1 className="mb-3 text-xl font-bold">{tt('ADJUST_TITLE')}</h1>
-      {sp.ok && <p className="mb-3 rounded bg-emerald-50 p-2 text-sm text-emerald-800">{tt('MSG_ADJUST_SENT')}</p>}
-      {sp.err && <p className="mb-3 rounded bg-red-50 p-2 text-sm text-red-700">{ERR[sp.err] ? tt(ERR[sp.err]) : sp.err}</p>}
+      {sp.ok && <Banner>{tt('MSG_ADJUST_SENT')}</Banner>}
+      {sp.err && <Banner tone="err">{ERR[sp.err] ? tt(ERR[sp.err]) : sp.err}</Banner>}
 
       {abnormal.length > 0 && (
         <section className="card mb-4">
@@ -111,12 +114,14 @@ export default async function AdjustPage({
           <h2 className="mb-2 text-sm font-bold text-gray-700">{tt('MY_REQUESTS')}</h2>
           <ul className="space-y-1.5 text-sm">
             {(reqs ?? []).map((r) => {
-              const [labelKey, cls] = STATUS_BADGE[r.status] ?? ['REQ_PENDING' as MsgKey, 'bg-gray-100 text-gray-600'];
+              const [labelKey, tone] = STATUS_BADGE[r.status] ?? ['REQ_PENDING' as MsgKey, 'neutral' as Tone];
               return (
                 <li key={r.id} className="flex items-center gap-2">
                   <span>{new Date(r.requested_at).toLocaleString(loc, { timeZone: 'Asia/Taipei', hour12: false, month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                   <span className="text-xs text-gray-500">{r.type === 'in' ? tt('PUNCH_IN') : tt('PUNCH_OUT')}</span>
-                  <span className={`ml-auto rounded px-1.5 py-0.5 text-xs font-bold ${cls}`}>{tt(labelKey)}</span>
+                  <span className="ml-auto">
+                    <Badge tone={tone}>{tt(labelKey)}</Badge>
+                  </span>
                 </li>
               );
             })}

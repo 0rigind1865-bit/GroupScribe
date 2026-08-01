@@ -1,5 +1,8 @@
 import { getDb } from '@/db';
 import { orgBySlug } from '@/org/orgs';
+import { oh } from '@/org/href';
+import { StatGrid } from '@/app/ui/stat';
+import { Empty } from '@/app/ui/empty';
 import { notFound } from 'next/navigation';
 import { monthData } from '@/attend/data';
 import { workDate } from '@/attend/util';
@@ -36,23 +39,19 @@ export default async function AttendOverview({ params }: { params: Promise<{ org
     <main className="mx-auto max-w-4xl p-5">
       <h1 className="mb-4 text-2xl font-bold">考勤總覽（{month}）</h1>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <a href={`/o/${slug}/attend/reviews`} className="card text-center hover:bg-gray-50">
-          <span className={`block text-2xl font-bold ${pendingReviews ? 'text-amber-600' : ''}`}>{pendingReviews ?? 0}</span>
-          <span className="text-xs text-gray-500">待審補卡</span>
-        </a>
-        <a href={`/o/${slug}/attend/employees`} className="card text-center hover:bg-gray-50">
-          <span className={`block text-2xl font-bold ${pendingEmps ? 'text-amber-600' : ''}`}>{pendingEmps ?? 0}</span>
-          <span className="text-xs text-gray-500">待啟用員工</span>
-        </a>
-        <div className="card text-center">
-          <span className="block text-2xl font-bold">{employees.length}</span>
-          <span className="text-xs text-gray-500">在職員工</span>
-        </div>
-        <div className="card text-center">
-          <span className={`block text-2xl font-bold ${withIssues.length ? 'text-red-600' : ''}`}>{withIssues.length}</span>
-          <span className="text-xs text-gray-500">本月有異常的員工</span>
-        </div>
+      {/* 待處理區：只渲染 n > 0 的格（principles.md 規則二——「顯示 0 的統計卡」是呈現層噪音，
+          一個永遠寫著 0 的格子每天消耗一次判斷卻從不需要行動）。
+          「在職員工數」不是待處理事項，已移到員工分頁的標題旁。 */}
+      <div className="mb-5">
+        <StatGrid
+          hideZero
+          cols={3}
+          items={[
+            { n: pendingReviews ?? 0, label: '待審補卡', tone: 'warn', href: oh(slug, '/attend/reviews') },
+            { n: pendingEmps ?? 0, label: '待啟用員工', tone: 'warn', href: oh(slug, '/attend/employees') },
+            { n: withIssues.length, label: '本月有異常的員工', tone: 'err' },
+          ]}
+        />
       </div>
 
       {withIssues.length ? (
@@ -62,8 +61,8 @@ export default async function AttendOverview({ params }: { params: Promise<{ org
               <div className="mb-1 flex items-center gap-2">
                 <span className="font-bold">{emp.display_name}</span>
                 <span className="text-xs text-gray-500">{emp.dept ?? ''}</span>
-                <a className="ml-auto text-sm text-emerald-700 underline" href={`/o/${slug}/attend/calendar?emp=${emp.id}`}>
-                  月曆 →
+                <a className="ml-auto text-sm text-emerald-700 underline" href={oh(slug, '/attend/calendar', { emp: emp.id })}>
+                  報表 →
                 </a>
               </div>
               <ul className="flex flex-wrap gap-2 text-xs">
@@ -77,7 +76,10 @@ export default async function AttendOverview({ params }: { params: Promise<{ org
           ))}
         </section>
       ) : (
-        <p className="text-gray-500">本月目前沒有異常打卡。</p>
+        <Empty
+          title={pendingReviews || pendingEmps ? '本月沒有異常打卡' : '本月考勤沒有待處理事項'}
+          hint={`${employees.length} 位在職員工的打卡都成對，也沒有待審或待啟用的項目。`}
+        />
       )}
     </main>
   );
