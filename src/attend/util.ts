@@ -23,3 +23,10 @@ export function taipeiHm(d: Date): string {
 
 /** YYYY-MM 合法性（月查詢參數驗證） */
 export const isYm = (s: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
+
+/** YYYY-MM 位移 n 個月 */
+export function shiftMonth(ym: string, n: number): string {
+  const [y, m] = ym.split('-').map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + n, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}

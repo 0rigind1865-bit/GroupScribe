@@ -2,7 +2,7 @@ import { dbConfigured } from '@/db';
 import { liffId, liffUser } from '@/core/liff';
 import { myEmployees } from '@/attend/auth';
 import { monthData } from '@/attend/data';
-import { isYm, workDate } from '@/attend/util';
+import { isYm, shiftMonth, workDate } from '@/attend/util';
 import { monthGrid } from '@/core/grid';
 import { LiffInit } from '@/app/g/liff-init';
 import type { DayStatus } from '@/attend/abnormal';
@@ -31,12 +31,6 @@ const STATUS_TEXT: Record<DayStatus['status'], string> = {
   STATUS_PUNCH_BOTH_MISSING: '無打卡',
   STATUS_TODAY_OPEN: '進行中',
 };
-
-function shiftMonth(ym: string, n: number): string {
-  const [y, m] = ym.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + n, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
-}
 
 export default async function RecordsPage({
   searchParams,
