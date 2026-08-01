@@ -3,15 +3,15 @@ import { liffId, liffUser } from '@/core/liff';
 import { myEmployees } from '@/attend/auth';
 import { monthData } from '@/attend/data';
 import { isYm, shiftMonth, workDate } from '@/attend/util';
+import { locale, t, type MsgKey } from '@/attend/i18n';
 import { monthGrid } from '@/core/grid';
 import { LiffInit } from '@/app/g/liff-init';
+import { LangBar } from '../lang-bar';
 import type { DayStatus } from '@/attend/abnormal';
 
 export const dynamic = 'force-dynamic';
 
 // 我的月曆與打卡明細（對等舊員工月曆）。日格顏色 = 每日狀態；點日期看當日明細（?d=）。
-const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
-
 const CELL: Record<DayStatus['status'], string> = {
   STATUS_PUNCH_NORMAL: 'bg-emerald-100 text-emerald-900',
   STATUS_REPAIR_APPROVED: 'bg-teal-100 text-teal-900',
@@ -22,15 +22,7 @@ const CELL: Record<DayStatus['status'], string> = {
   STATUS_TODAY_OPEN: 'bg-sky-100 text-sky-900',
 };
 
-const STATUS_TEXT: Record<DayStatus['status'], string> = {
-  STATUS_PUNCH_NORMAL: '正常',
-  STATUS_REPAIR_APPROVED: '補卡通過',
-  STATUS_REPAIR_PENDING: '補卡審核中',
-  STATUS_PUNCH_IN_MISSING: '未打上班卡',
-  STATUS_PUNCH_OUT_MISSING: '未打下班卡',
-  STATUS_PUNCH_BOTH_MISSING: '無打卡',
-  STATUS_TODAY_OPEN: '進行中',
-};
+const WEEK_KEYS: MsgKey[] = ['WEEK_SUN', 'WEEK_MON', 'WEEK_TUE', 'WEEK_WED', 'WEEK_THU', 'WEEK_FRI', 'WEEK_SAT'];
 
 export default async function RecordsPage({
   searchParams,
@@ -39,14 +31,16 @@ export default async function RecordsPage({
 }) {
   const uid = await liffUser();
   if (!uid) return <LiffInit liffId={liffId()} />;
-  if (!dbConfigured()) return <main className="p-6 text-gray-500">系統尚未設定資料庫。</main>;
+  const loc = await locale();
+  const tt = (key: MsgKey, params?: Record<string, string | number>) => t(loc, key, params);
+  if (!dbConfigured()) return <main className="p-6 text-gray-500">{tt('DB_NOT_CONFIGURED')}</main>;
 
   const employees = await myEmployees();
   const emp = employees.find((e) => e.status === 'active');
   if (!emp) {
     return (
       <main className="mx-auto max-w-md p-5">
-        <p className="text-sm text-gray-600">帳號尚未啟用。</p>
+        <p className="text-sm text-gray-600">{tt('NOT_ACTIVE')}</p>
       </main>
     );
   }
@@ -65,13 +59,13 @@ export default async function RecordsPage({
     <main className="mx-auto max-w-md p-5">
       <div className="mb-3 flex items-center justify-between">
         <a className="btn px-3 py-1 text-sm" href={`/a/records?month=${shiftMonth(month, -1)}`}>←</a>
-        <h1 className="text-lg font-bold">{y} 年 {m} 月</h1>
+        <h1 className="text-lg font-bold">{tt('MONTH_TITLE', { y, m })}</h1>
         <a className="btn px-3 py-1 text-sm" href={`/a/records?month=${shiftMonth(month, 1)}`}>→</a>
       </div>
 
       <div className="mb-1 grid grid-cols-7 text-center text-xs text-gray-500">
-        {WEEK.map((w) => (
-          <div key={w} className="py-1">{w}</div>
+        {WEEK_KEYS.map((w) => (
+          <div key={w} className="py-1">{tt(w)}</div>
         ))}
       </div>
       <div className="grid grid-cols-7 gap-1">
@@ -94,33 +88,34 @@ export default async function RecordsPage({
       {sel && (
         <section className="card mt-4">
           <h2 className="mb-1 text-sm font-bold text-gray-700">
-            {sel.date}｜{STATUS_TEXT[sel.status]}
+            {sel.date}｜{tt(sel.status)}
           </h2>
           {sel.punches.length ? (
             <ul className="space-y-1 text-sm">
               {sel.punches.map((p, i) => (
                 <li key={i} className="flex items-center gap-2">
                   <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${p.type === 'in' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                    {p.type === 'in' ? '上班' : '下班'}
+                    {p.type === 'in' ? tt('PUNCH_IN') : tt('PUNCH_OUT')}
                   </span>
                   <span>{p.time}</span>
-                  {p.source === 'adjustment' && <span className="rounded bg-teal-100 px-1 text-xs text-teal-800">補卡</span>}
+                  {p.source === 'adjustment' && <span className="rounded bg-teal-100 px-1 text-xs text-teal-800">{tt('ADJ_BADGE')}</span>}
                   {p.locationName && <span className="text-xs text-gray-500">{p.locationName}</span>}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-gray-500">這天沒有打卡紀錄。</p>
+            <p className="text-sm text-gray-500">{tt('DAY_NO_RECORDS')}</p>
           )}
           {sel.abnormal && (
             <a href="/a/adjust" className="mt-2 inline-block text-sm text-emerald-700 underline">
-              去補卡 →
+              {tt('GO_ADJUST')}
             </a>
           )}
         </section>
       )}
 
-      <a href="/a" className="mt-4 inline-block text-sm text-gray-500 underline">← 回打卡首頁</a>
+      <a href="/a" className="mt-4 inline-block text-sm text-gray-500 underline">{tt('BACK_HOME')}</a>
+      <LangBar current={loc} back={`/a/records?month=${month}`} />
     </main>
   );
 }
