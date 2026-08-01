@@ -99,8 +99,18 @@ export async function middleware(req: NextRequest) {
   if (await validAdmin(req.cookies.get('gs_auth')?.value)) return NextResponse.next();
 
   // 考勤管理頁：LINE 身分（org 成員資格由 /o/[org]/attend/layout.tsx 查 org_members 決定）
-  if (/^\/o\/[^/]+\/attend(\/|$)/.test(pathname) && (await validLiff(req.cookies.get('gs_liff')?.value))) {
-    return NextResponse.next();
+  const liffOk = await validLiff(req.cookies.get('gs_liff')?.value);
+  if (/^\/o\/[^/]+\/attend(\/|$)/.test(pathname) && liffOk) return NextResponse.next();
+
+  // gs_liff 有效但踩到同一個 org 的非考勤路徑：他能進的只有考勤模組，直接送過去。
+  // 丟一張他永遠填不出來的密碼表單是最糟的表現方式——牆本身是對的（群組助理＝
+  // 平台擁有者專屬），但要讓人知道「這裡不是你的地方」而不是「你密碼打錯了」。
+  // 無迴圈：/o/x/attend 在上一條就放行；非該 org 成員由 layout 回 404 而不是再導一次。
+  const orgHit = pathname.match(/^\/o\/([^/]+)/);
+  if (orgHit && liffOk) {
+    const proto = req.headers.get('x-forwarded-proto') ?? 'http';
+    const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host;
+    return NextResponse.redirect(`${proto}://${host}/o/${orgHit[1]}/attend`, 302);
   }
 
   // rewrite（非 redirect）：內部改寫顯示登入頁、瀏覽器 URL 不變，

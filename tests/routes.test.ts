@@ -17,10 +17,10 @@ const SCAN_FILES = [join(ROOT, 'src/core/links.ts')];
 // 允許的絕對路徑開頭：org 連結、API、兩個 LIFF 入口、登入頁
 const ALLOWED = /^\/(o\/|api\/|g$|g\/|a$|a\/|login|_next)/;
 
-// 路由表定義檔：裡面的 '/inbox' 等是「模組內相對 path」，由 nav 組合時才加上 /o/<slug>。
-// 語法上與漏改的絕對連結無法區分，只能整檔豁免。
-// Phase 3 統一路由表後，這份清單會收斂成單一的 routes.tsx。
-const EXEMPT = ['(admin)/nav.tsx', 'attend/layout.tsx'];
+// 路由表定義檔：裡面的 '/inbox' 等是「模組內相對 path」，由 module.base(slug) 組合時
+// 才加上 /o/<slug>。語法上與漏改的絕對連結無法區分，只能整檔豁免——
+// 但全站只有這一個檔案豁免，這正是「五份路由表收斂成一份」的附帶好處。
+const EXEMPT = ['o/[org]/routes.tsx'];
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
