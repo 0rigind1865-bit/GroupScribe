@@ -76,7 +76,11 @@ export async function middleware(req: NextRequest) {
 
   if (LEGACY.has(pathname)) {
     const dest = `/o/main${pathname === '/' ? '' : pathname}${search}`;
-    return new NextResponse(null, { status: 302, headers: { Location: dest || '/o/main' } });
+    // middleware 的 redirect 必須是絕對網址（Next edge 會 new URL() 驗證）。
+    // 反向代理後 req.url 是容器內部 host，改用轉發標頭組公開網址（同 http.ts publicBase）。
+    const proto = req.headers.get('x-forwarded-proto') ?? 'http';
+    const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host;
+    return NextResponse.redirect(`${proto}://${host}${dest}`, 302);
   }
 
   if (await validAdmin(req.cookies.get('gs_auth')?.value)) return NextResponse.next();

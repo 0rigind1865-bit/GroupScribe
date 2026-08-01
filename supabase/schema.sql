@@ -248,3 +248,165 @@ alter table app_settings add column if not exists last_webhook_at timestamptz;
 -- 抽取認領租約（migration 009）
 alter table messages add column if not exists claimed_at timestamptz;
 create index if not exists messages_claim on messages (group_id, extracted_at, claimed_at);
+
+-- ── 多租戶（migration 012 回寫）：orgs / org_members / org_settings ──────────
+-- 詳細註解見 supabase/migrations/012_orgs.sql
+create table if not exists orgs (
+  id uuid primary key default gen_random_uuid(),
+  slug text unique not null check (slug ~ '^[a-z0-9][a-z0-9-]{1,30}$'),
+  name text not null,
+  created_at timestamptz not null default now()
+);
+insert into orgs (slug, name) values ('main', '預設組織') on conflict (slug) do nothing;
+
+create or replace function default_org_id() returns uuid stable
+language sql set search_path = public as $$
+  select id from orgs where slug = 'main'
+$$;
+
+alter table groups   add column if not exists org_id uuid references orgs(id) default default_org_id();
+alter table channels add column if not exists org_id uuid references orgs(id) default default_org_id();
+create index if not exists groups_org on groups (org_id);
+
+create table if not exists org_members (
+  org_id uuid not null references orgs(id) on delete cascade,
+  line_user_id text not null,
+  role text not null default 'admin' check (role in ('owner','admin')),
+  display_name text,
+  created_at timestamptz not null default now(),
+  primary key (org_id, line_user_id)
+);
+
+create table if not exists org_settings (
+  org_id uuid primary key references orgs(id) on delete cascade,
+  join_notice_enabled boolean not null default true,
+  join_notice_text text,
+  monthly_budget_usd numeric,
+  gen_model text,
+  embedding_model text,
+  ai_daily_free_calls int,
+  last_webhook_at timestamptz,
+  attend_join_code text,
+  updated_at timestamptz not null default now()
+);
+
+-- groups_view 加 org_id（清單過濾依據；孤兒群組 coalesce 歸預設 org）
+drop view if exists groups_view;
+create view groups_view as
+  select m.group_id, g.name, g.picture_url, g.category, g.left_at,
+         coalesce(g.org_id, default_org_id()) as org_id,
+         count(*)::int as message_count, max(m.created_at) as last_at
+  from messages m
+  left join groups g on g.group_id = m.group_id
+  group by m.group_id, g.name, g.picture_url, g.category, g.left_at, g.org_id;
+alter view groups_view set (security_invoker = on);
+
+alter table orgs enable row level security;
+alter table org_members enable row level security;
+alter table org_settings enable row level security;
+
+-- ── 考勤模組（migration 013 回寫）────────────────────────────
+-- 詳細註解見 supabase/migrations/013_attendance.sql
+create table if not exists employees (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references orgs(id) on delete cascade,
+  line_user_id text not null,
+  display_name text not null,
+  email text,
+  picture_url text,
+  dept text,
+  monthly_salary numeric not null default 30000,
+  status text not null default 'pending' check (status in ('pending','active','disabled')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (org_id, line_user_id)
+);
+create index if not exists employees_line on employees (line_user_id);
+
+create table if not exists punch_locations (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references orgs(id) on delete cascade,
+  name text not null,
+  lat double precision not null,
+  lng double precision not null,
+  radius_m int not null default 100,
+  enabled boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists punch_records (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references orgs(id) on delete cascade,
+  employee_id uuid not null references employees(id) on delete cascade,
+  type text not null check (type in ('in','out')),
+  punched_at timestamptz not null,
+  work_date date not null,
+  lat double precision,
+  lng double precision,
+  location_id uuid references punch_locations(id),
+  location_name text,
+  source text not null default 'gps' check (source in ('gps','adjustment')),
+  note text,
+  created_at timestamptz not null default now()
+);
+create index if not exists punch_org_emp_date on punch_records (org_id, employee_id, work_date);
+
+create table if not exists adjustment_requests (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references orgs(id) on delete cascade,
+  employee_id uuid not null references employees(id) on delete cascade,
+  type text not null check (type in ('in','out')),
+  requested_at timestamptz not null,
+  reason text,
+  status text not null default 'pending' check (status in ('pending','approved','rejected')),
+  reviewed_by text,
+  reviewed_at timestamptz,
+  punch_record_id uuid references punch_records(id),
+  created_at timestamptz not null default now()
+);
+create index if not exists adjust_org_status on adjustment_requests (org_id, status);
+
+create table if not exists holidays (
+  org_id uuid not null references orgs(id) on delete cascade,
+  day date not null,
+  kind text not null check (kind in ('national','workday_override')),
+  name text,
+  primary key (org_id, day)
+);
+
+alter table employees enable row level security;
+alter table punch_locations enable row level security;
+alter table punch_records enable row level security;
+alter table adjustment_requests enable row level security;
+alter table holidays enable row level security;
+
+-- ── 薪資引擎（migration 014 回寫）────────────────────────────
+-- 詳細註解見 supabase/migrations/014_salary.sql
+create table if not exists salary_rule_sets (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references orgs(id) on delete cascade,
+  version int not null,
+  rules jsonb not null,
+  script text,
+  script_enabled boolean not null default false,
+  created_at timestamptz not null default now(),
+  created_by text,
+  unique (org_id, version)
+);
+
+create table if not exists payroll_snapshots (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references orgs(id) on delete cascade,
+  employee_id uuid not null references employees(id) on delete cascade,
+  month date not null,
+  rule_set_id uuid not null references salary_rule_sets(id),
+  monthly_salary numeric not null,
+  input jsonb not null,
+  result jsonb not null,
+  finalized_by text,
+  finalized_at timestamptz not null default now(),
+  unique (org_id, employee_id, month)
+);
+
+alter table salary_rule_sets enable row level security;
+alter table payroll_snapshots enable row level security;
