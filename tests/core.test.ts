@@ -6,7 +6,7 @@ import { parseLineExport, inExtractWindow } from '../src/core/importer';
 import { fmtDate, isRevised, needsReview } from '../src/core/date';
 import { isLowInfo, mimeOfKind } from '../src/core/ingest';
 import { rankHits } from '../src/core/query';
-import { parseOps, type RefMaps } from '../src/core/extract';
+import { parseOps, dropDupes, type RefMaps, type ParsedOp } from '../src/core/extract';
 import {
   monthGrid,
   addDays,
@@ -141,6 +141,26 @@ test('parseOps：非預期輸出回空陣列', () => {
   assert.deepEqual(parseOps(null, refs), []);
   assert.deepEqual(parseOps('文字', refs), []);
   assert.deepEqual(parseOps({ operations: '不是陣列' }, refs), []);
+});
+
+test('dropDupes：擋掉重建既有項目與同批自我重複，連日同名排班放行', () => {
+  const existing = ['N|獎金發放通知', 'T|留意新進人員阿泉工作狀況', 'E|綠博工作|2026-04-12'];
+  const ev = (title: string, date: string): ParsedOp =>
+    ({ op: 'create_event', title, date, time: null, location: null, note: null, sourceIds: [] });
+  const ops: ParsedOp[] = [
+    { op: 'create_note', title: '獎金發放通知', kind: 'announcement', body: null, sourceIds: [] }, // 既有 → 丟
+    { op: 'create_task', title: '留意新進人員阿泉  工作狀況', assignee: null, due: null, note: null, sourceIds: [] }, // 空白差異也算同一件 → 丟
+    ev('綠博工作', '2026-04-12'), // 既有同日 → 丟
+    ev('綠博工作', '2026-04-13'), // 連日排班 → 放行
+    ev('新竹願景館 演出', '2026-08-20'),
+    ev('新竹願景館 演出', '2026-08-20'), // 同批重複 → 丟
+    { op: 'update_note', id: 'uuid-n1', body: '補充', sourceIds: [] }, // update 不受影響
+  ];
+  const kept = dropDupes(ops, existing);
+  assert.deepEqual(
+    kept.map((o) => ('title' in o ? o.title : o.op)),
+    ['綠博工作', '新竹願景館 演出', 'update_note'],
+  );
 });
 
 test('monthGrid：月首偏移、天數、補位', () => {

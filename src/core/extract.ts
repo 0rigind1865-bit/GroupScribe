@@ -151,6 +151,33 @@ export function parseOps(raw: unknown, refs: RefMaps): ParsedOp[] {
   return out;
 }
 
+// 去重：LLM 會把【先前對話】脈絡裡早已抽過的項目再建一次——prompt 寫了「不要從這裡建立新項目」
+// 也擋不住（實測同一則「今天有轉獎金」被重建成三筆公告，來源訊息 id 一模一樣）。
+// webhook 每收幾則訊息就抽一小批，脈絡窗口高度重疊，於是同一件事被重複建立好幾遍。
+// 對策放在寫入前這一層：既有項目（＋本批已建的）出現同樣的 key 就丟棄該 create。
+// key 帶關鍵日期，所以「連續四天的同名排班」不會被誤殺，同一天的兩筆才算重複。
+const normTitle = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+
+export function dupeKey(op: ParsedOp): string | null {
+  if (op.op === 'create_event') return `E|${normTitle(op.title)}|${op.date}`;
+  if (op.op === 'create_task') return `T|${normTitle(op.title)}`;
+  if (op.op === 'create_note') return `N|${normTitle(op.title)}`;
+  return null; // update 是針對既有項目，本來就不會重複建立
+}
+
+// 純函式，可測：回傳過濾後的操作。existingKeys 由既有清單建（見 extractBatch）。
+// ponytail: 只比對餵進 prompt 的既有項目（MAX_EXISTING=60 內），漏網的再升級成逐筆 DB 查詢
+export function dropDupes(ops: ParsedOp[], existingKeys: Iterable<string>): ParsedOp[] {
+  const seen = new Set(existingKeys);
+  return ops.filter((op) => {
+    const k = dupeKey(op);
+    if (!k) return true;
+    if (seen.has(k)) return false;
+    seen.add(k); // 同一批 LLM 輸出裡的自我重複一併擋掉
+    return true;
+  });
+}
+
 // 並發鎖：抽取中再觸發直接跳過，訊息留給下一輪（天然合批）；失敗不寫游標，下次自動補抽
 const running = new Set<string>();
 
@@ -159,10 +186,11 @@ export interface ExtractStats {
   created: number;
   updated: number;
   skipped: number; // 已過期而直接忽略的項目數（匯入歷史記錄時避免灌進大量過期資料）
+  deduped: number; // 與既有項目重複而丟棄的項目數
 }
 
 export async function extractGroup(groupId: string): Promise<ExtractStats> {
-  const totals = { processed: 0, created: 0, updated: 0, skipped: 0 };
+  const totals = { processed: 0, created: 0, updated: 0, skipped: 0, deduped: 0 };
   if (running.has(groupId)) return totals;
   running.add(groupId);
   try {
@@ -172,6 +200,7 @@ export async function extractGroup(groupId: string): Promise<ExtractStats> {
       totals.created += r.created;
       totals.updated += r.updated;
       totals.skipped += r.skipped;
+      totals.deduped += r.deduped;
       if (r.processed < BATCH) break; // 抽完了
     }
     if (totals.processed > 0) refreshProfileIfStale(groupId); // fire-and-forget，不擋抽取回傳
@@ -219,7 +248,7 @@ const leaseSupported = () => Date.now() - leaseDegradedAt > LEASE_RECHECK_MS;
 
 async function extractBatch(groupId: string): Promise<ExtractStats> {
   const db = getDb();
-  const res = { processed: 0, created: 0, updated: 0, skipped: 0 };
+  const res = { processed: 0, created: 0, updated: 0, skipped: 0, deduped: 0 };
 
   // 1. 未抽取訊息：不再於此過濾 is_low_info 與 type——確認語與已解析媒體都可能帶決定性資訊，
   //    過濾放到「要不要進 prompt」那層（見下方 promptRows），DB 層一律認領以免隊頭堵塞。
@@ -378,22 +407,26 @@ async function extractBatch(groupId: string): Promise<ExtractStats> {
     refs.msgs.set(code, m.id);
     return msgLine(m, code);
   });
+  const existingKeys = new Set<string>(); // 去重用（見 dropDupes）
   const eventLines = (exEvents ?? []).map((e, i) => {
     const code = `E${i + 1}`;
     refs.events.set(code, e.id);
     eventById.set(e.id, e);
+    existingKeys.add(`E|${normTitle(e.title)}|${String(e.starts_at).slice(0, 10)}`);
     return `${code}｜${mark(e.needs_confirmation)}｜${e.title}｜${e.starts_at}｜${e.start_time ? String(e.start_time).slice(0, 5) : '時間未定'}｜${e.location ?? '地點未定'}`;
   });
   const taskLines = (exTasks ?? []).map((t, i) => {
     const code = `T${i + 1}`;
     refs.tasks.set(code, t.id);
     taskById.set(t.id, t);
+    existingKeys.add(`T|${normTitle(t.title)}`);
     return `${code}｜${mark(t.needs_confirmation)}｜${t.title}｜負責人：${t.assignee ?? '未定'}｜期限：${t.due_at ?? '未定'}`;
   });
   const noteLines = (exNotes ?? []).map((n, i) => {
     const code = `N${i + 1}`;
     refs.notes.set(code, n.id);
     noteById.set(n.id, n);
+    existingKeys.add(`N|${normTitle(n.title)}`);
     return `${code}｜${mark(n.needs_confirmation)}｜${n.kind === 'decision' ? '決議' : '公告'}｜${n.title}`;
   });
 
@@ -463,14 +496,17 @@ kind 只能是 announcement（公告）或 decision（決議）。沒有可抽�
   const msgTime = new Map<string, number>();
   for (const m of [...context, ...pending]) msgTime.set(m.id, new Date(m.created_at).getTime());
   const staleCut = Date.now() - 30 * 86_400_000;
-  const ops = allOps.filter((op) => {
+  const fresh = allOps.filter((op) => {
     if (op.op === 'create_event' && op.date < today) return false;
     if (op.op === 'create_task' && op.due && op.due < today) return false;
     if (op.op === 'create_task' && !op.due && op.sourceIds.length
         && op.sourceIds.every((id) => (msgTime.get(id) ?? Infinity) < staleCut)) return false;
     return true;
   });
-  res.skipped = allOps.length - ops.length;
+  res.skipped = allOps.length - fresh.length;
+  const ops = dropDupes(fresh, existingKeys);
+  res.deduped = fresh.length - ops.length;
+  if (res.deduped) console.log('丟棄與既有項目重複的抽取', groupId, res.deduped);
 
   // 6. 套用（單筆失敗不影響其他筆）
   for (const op of ops) {

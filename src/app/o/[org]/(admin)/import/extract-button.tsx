@@ -6,7 +6,7 @@ import { useRef, useState } from 'react';
 
 // 抽取按鈕＋即時進度：POST /api/extract 期間每 2 秒輪詢 GET /api/extract 的未提取數畫進度條。
 // 完成後接著自動更新「群組理解」（產業/術語/案子摘要，注入後續抽取與回答的 prompt）。
-type Stats = { processed: number; created: number; updated: number; skipped: number };
+type Stats = { processed: number; created: number; updated: number; skipped: number; deduped: number };
 
 export function ExtractButton({ groupId, pending }: { groupId: string; pending: number }) {
   // 多租戶：從 pathname 取 org 前綴（/o/[org]/...），連結補回前綴
@@ -95,7 +95,8 @@ export function ExtractButton({ groupId, pending }: { groupId: string; pending: 
       ) : (
         <p>
           <strong>✅ 抽取完成：</strong>處理 {stats?.processed ?? 0} 則，新增 {stats?.created ?? 0} 筆、更新{' '}
-          {stats?.updated ?? 0} 筆{stats?.skipped ? `、略過過期 ${stats.skipped} 筆` : ''}。
+          {stats?.updated ?? 0} 筆{stats?.skipped ? `、略過過期 ${stats.skipped} 筆` : ''}
+          {stats?.deduped ? `、略過重複 ${stats.deduped} 筆` : ''}。
           {!profileOk && <span className="text-amber-700">（群組理解更新失敗——可能尚未執行 migration 004）</span>}
         </p>
       )}
