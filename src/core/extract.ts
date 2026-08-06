@@ -156,7 +156,7 @@ export function parseOps(raw: unknown, refs: RefMaps): ParsedOp[] {
 // webhook 每收幾則訊息就抽一小批，脈絡窗口高度重疊，於是同一件事被重複建立好幾遍。
 // 對策放在寫入前這一層：既有項目（＋本批已建的）出現同樣的 key 就丟棄該 create。
 // key 帶關鍵日期，所以「連續四天的同名排班」不會被誤殺，同一天的兩筆才算重複。
-const normTitle = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+export const normTitle = (s: string) => s.replace(/\s+/g, '').toLowerCase();
 
 export function dupeKey(op: ParsedOp): string | null {
   if (op.op === 'create_event') return `E|${normTitle(op.title)}|${op.date}`;
