@@ -38,10 +38,17 @@ export default async function InboxPage({
 }) {
   const { org: slug } = await params;
   if (!dbConfigured()) return <SetupNotice />;
-  const { group } = await searchParams;
+  const { group: groupParam } = await searchParams;
   const db = getDb();
 
-  const filt = (q: any) => (group ? q.eq('group_id', group) : q);
+  const org = await orgBySlug(slug);
+  if (!org) notFound();
+  const { data: groupRows } = await db.from('groups_view').select('group_id, name').eq('org_id', org.id);
+  const nameOf = new Map((groupRows ?? []).map((g: any) => [g.group_id, g.name ?? g.group_id]));
+  // ?group= 不在本 org 就當沒帶；沒帶則跨群聚合綁本 org 全部群（商業計劃 2.1 節 A3）
+  const ids = (groupRows ?? []).map((g: any) => g.group_id as string);
+  const group = groupParam && ids.includes(groupParam) ? groupParam : undefined;
+  const filt = (q: any) => (group ? q.eq('group_id', group) : q.in('group_id', ids));
   const [ev, tk, nt] = await Promise.all([
     filt(db.from('events').select('*', { count: 'exact' }).eq('needs_confirmation', true).neq('status', 'ignored'))
       .order('created_at', { ascending: false }).limit(LIMIT),
@@ -63,14 +70,9 @@ export default async function InboxPage({
   // 來源訊息一次撈齊（每卡最多引 2 則）
   const srcIds = [...new Set(rows.flatMap((r) => r.item.source_message_ids ?? []))];
   const { data: msgs } = srcIds.length
-    ? await db.from('messages').select('id, sender_name, sender_id, text, created_at').in('id', srcIds)
+    ? await db.from('messages').select('id, sender_name, sender_id, text, created_at').in('id', srcIds).in('group_id', ids)
     : { data: [] as any[] };
   const msgOf = new Map((msgs ?? []).map((m: any) => [m.id, m]));
-
-  const org = await orgBySlug(slug);
-  if (!org) notFound();
-  const { data: groupRows } = await db.from('groups_view').select('group_id, name').eq('org_id', org.id);
-  const nameOf = new Map((groupRows ?? []).map((g: any) => [g.group_id, g.name ?? g.group_id]));
 
   // 同時段照片：確認時看得到「講的是這張圖」，判斷更準。跨群時逐群查（單群只查一次）
   const photos = new Map<string, any[]>();

@@ -25,7 +25,10 @@ export default async function GroupsPage({
   const org = await orgBySlug(slug);
   if (!org) notFound();
   const { data: groups } = await db.from('groups_view').select('*').eq('org_id', org.id).order('last_at', { ascending: false });
-  const { data: profRows, error: profErr } = await db.from('groups').select('group_id, profile, profile_updated_at');
+  const { data: profRows, error: profErr } = await db
+    .from('groups')
+    .select('group_id, profile, profile_updated_at')
+    .in('group_id', (groups ?? []).map((g: any) => g.group_id)); // 只讀本 org 的（A3）
   if (profErr) console.error('讀取群組理解失敗（migration 004 跑了嗎？）', profErr);
   const profileOf = new Map((profRows ?? []).map((r: any) => [r.group_id, r]));
 

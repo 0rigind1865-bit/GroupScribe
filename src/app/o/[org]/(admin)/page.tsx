@@ -43,15 +43,19 @@ export default async function Today({
   const { org: slug } = await params;
   const org = await orgBySlug(slug);
   if (!org) notFound();
-  const { group, q } = await searchParams;
+  const { group: groupParam, q } = await searchParams;
   const db = getDb();
 
   const today = todayISO();
   const in7 = addDays(today, 7);
-  const only = (qb: any) => (group ? qb.eq('group_id', group) : qb);
+  // 群組清單先撈：?group= 不在本 org 就當沒帶（別家的 group id 貼進網址也查不到），
+  // 沒帶則跨群聚合綁本 org 全部群（商業計劃 2.1 節 A3）
+  const { data: groups } = await db.from('groups_view').select('group_id, name').eq('org_id', org.id).order('last_at', { ascending: false });
+  const ids = (groups ?? []).map((g: any) => g.group_id as string);
+  const group = groupParam && ids.includes(groupParam) ? groupParam : undefined;
+  const only = (qb: any) => (group ? qb.eq('group_id', group) : qb.in('group_id', ids));
 
-  const [{ data: groups }, { data: upcoming }, { data: dueTasks }, ev, tk, nt] = await Promise.all([
-    db.from('groups_view').select('group_id, name').eq('org_id', org.id).order('last_at', { ascending: false }),
+  const [{ data: upcoming }, { data: dueTasks }, ev, tk, nt] = await Promise.all([
     only(db.from('events').select('id, group_id, title, starts_at, start_time, location').neq('status', 'ignored'))
       .gte('starts_at', today).lte('starts_at', in7).order('starts_at').order('start_time', { nullsFirst: true }),
     only(db.from('tasks').select('id, group_id, title, due_at, assignee').eq('status', 'open'))
@@ -72,7 +76,8 @@ export default async function Today({
     only(db.from('tasks').select('id', { count: 'exact', head: true }).eq('status', 'open')).or(
       'assignee.is.null,assignee.eq.,assignee.eq.未定,assignee.eq.待定,assignee.eq.無',
     ),
-    db.from('media_assets').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    db.from('media_assets').select('id, messages!inner(group_id)', { count: 'exact', head: true }).eq('status', 'pending')
+      .in('messages.group_id', group ? [group] : ids), // media_assets 無 group_id，經 messages 反查
   ]);
   const attention: { n: number; label: string; href: string; hint: string }[] = [
     { n: pendingCount, label: '待你確認', href: oh(slug, '/inbox'), hint: 'AI 整理的內容等你把關' },

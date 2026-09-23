@@ -74,7 +74,10 @@ export default async function FilesPage({
           .order('created_at', { referencedTable: 'messages', ascending: false })
       ).data ?? [];
     // project 欄位另查：007 未跑只是這個查詢失敗，主清單不受影響
-    const { data: projRows, error: projErr } = await db.from('media_assets').select('id, project');
+    const { data: projRows, error: projErr } = await db
+      .from('media_assets')
+      .select('id, project')
+      .in('id', assets.map((a) => a.id)); // 只讀本群的（A3）
     if (!projErr) {
       projectReady = true;
       const projOf = new Map((projRows ?? []).map((r: any) => [r.id, r.project]));

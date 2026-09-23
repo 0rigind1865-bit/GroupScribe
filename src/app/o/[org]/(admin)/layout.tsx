@@ -24,11 +24,12 @@ export default async function AdminLayout({
   if (!org) notFound();
 
   const db = getDb();
-  const [groups, ev, tk, nt] = await Promise.all([
-    orgGroups(org.id),
-    db.from('events').select('id', { count: 'exact', head: true }).eq('needs_confirmation', true).neq('status', 'ignored'),
-    db.from('tasks').select('id', { count: 'exact', head: true }).eq('needs_confirmation', true).eq('status', 'open'),
-    db.from('notes').select('id', { count: 'exact', head: true }).eq('needs_confirmation', true).eq('status', 'active'),
+  const groups = await orgGroups(org.id);
+  const ids = groups.map((g) => g.group_id); // 跨群聚合一律綁本 org 的群（商業計劃 2.1 節 A3）
+  const [ev, tk, nt] = await Promise.all([
+    db.from('events').select('id', { count: 'exact', head: true }).in('group_id', ids).eq('needs_confirmation', true).neq('status', 'ignored'),
+    db.from('tasks').select('id', { count: 'exact', head: true }).in('group_id', ids).eq('needs_confirmation', true).eq('status', 'open'),
+    db.from('notes').select('id', { count: 'exact', head: true }).in('group_id', ids).eq('needs_confirmation', true).eq('status', 'active'),
   ]);
   const counts = { pending: (ev.count ?? 0) + (tk.count ?? 0) + (nt.count ?? 0) };
 
