@@ -3,16 +3,21 @@ import { getDb, MEDIA_BUCKET } from '@/db';
 import { redirectTo } from '@/http';
 import { getConnector } from '@/core/config';
 import { analyzeAsset, mimeOfKind } from '@/core/ingest';
+import { gsAccess } from '@/org/orgs';
 
 export const maxDuration = 300;
 
 // 補救閥：重跑 pending 媒體解析＋回補群組名稱
 export async function POST(req: NextRequest) {
+  const form = (req.headers.get('content-type') ?? '').includes('form') ? await req.formData() : null;
+  const access = await gsAccess(req, form);
+  if (!access) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const db = getDb();
   const { data: assets, error } = await db
     .from('media_assets')
     .select('id, kind, storage_path, messages!inner(group_id, sender_name, created_at)')
     .eq('status', 'pending')
+    .in('messages.group_id', access.groupIds) // 只處理本 org 的媒體
     .limit(20);
   if (error) throw error;
 
@@ -39,7 +44,7 @@ export async function POST(req: NextRequest) {
   // 只處理「從未嘗試過」（groups 無列）者；已嘗試（含 404）不重打，避免對 bot 不在的群無限重試。
   let groupsNamed = 0;
   let groupsMarked = 0;
-  const { data: viewRows } = await db.from('groups_view').select('group_id, name, left_at');
+  const { data: viewRows } = await db.from('groups_view').select('group_id, name, left_at').eq('org_id', access.org.id);
   const unnamed = (viewRows ?? []).filter((g: any) => !g.name && !g.left_at);
   if (unnamed.length) {
     const { data: triedRows } = await db
@@ -64,7 +69,6 @@ export async function POST(req: NextRequest) {
   }
 
   // 從設定頁的表單按下來的：導回設定頁，別丟一頁 JSON 給人看（curl 呼叫維持 JSON）
-  if ((req.headers.get('content-type') ?? '').includes('form'))
-    return redirectTo(`/settings?processed=${done}`);
+  if (form) return redirectTo(`${access.base}/settings?processed=${done}`);
   return NextResponse.json({ pending: (assets ?? []).length, done, groups_named: groupsNamed, groups_marked: groupsMarked });
 }

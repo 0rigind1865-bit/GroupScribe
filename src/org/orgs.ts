@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import type { NextRequest } from 'next/server';
 import { getDb } from '@/db';
 import { verifyAdminSession } from '@/core/auth';
 import { liffUser } from '@/core/liff';
@@ -77,4 +78,42 @@ export async function assertGroupInOrg(orgId: string, groupId: string): Promise<
 export async function orgSettings(orgId: string): Promise<Record<string, unknown>> {
   const { data } = await getDb().from('org_settings').select('*').eq('org_id', orgId).maybeSingle();
   return data ?? {};
+}
+
+// ── 群組助理 API 的門禁（商業計劃 2.1 節 A2）──
+// 考勤模組的三重把關（orgAdminAccess → 查詢綁 org_id）照抄到群組助理：
+// 群組助理的資料表以 group_id 為鍵，所以「綁 org」＝「綁該 org 的 groupIds」。
+
+export type GsAccess = OrgAccess & {
+  slug: string;
+  base: string; // `/o/<slug>`，redirect 一律以此為前綴，別再寫死 /groups 這種舊路徑
+  groupIds: string[];
+  inOrg: (groupId: string) => boolean;
+};
+
+/** org slug 的來源：表單 name=org 優先；沒帶就取 Referer 的 /o/<slug>（同源表單與 fetch 都會送） */
+export function orgSlugFrom(form: FormData | null, referer: string | null): string {
+  const explicit = form ? String(form.get('org') ?? '').trim() : '';
+  if (explicit) return explicit;
+  const m = referer?.match(/^https?:\/\/[^/]+\/o\/([a-z0-9][a-z0-9-]{1,30})(?:[/?#]|$)/);
+  return m?.[1] ?? '';
+}
+
+/** 群組助理 API 的唯一授權入口；回 null 由呼叫端 403 */
+export async function gsAccess(req: NextRequest, form: FormData | null): Promise<GsAccess | null> {
+  const slug = orgSlugFrom(form, req.headers.get('referer'));
+  if (!slug) return null;
+  const access = await orgAdminAccess(slug);
+  if (!access) return null;
+  const groupIds = (await orgGroups(access.org.id)).map((g) => g.group_id);
+  const set = new Set(groupIds);
+  return { ...access, slug, base: `/o/${slug}`, groupIds, inOrg: (gid) => set.has(gid) };
+}
+
+/** 認領群組：沒有 groups 列就建在此 org（匯入的新群），已有列則不改歸屬；回傳是否屬於此 org */
+export async function claimGroup(orgId: string, groupId: string): Promise<boolean> {
+  await getDb()
+    .from('groups')
+    .upsert({ group_id: groupId, org_id: orgId, updated_at: new Date().toISOString() }, { onConflict: 'group_id', ignoreDuplicates: true });
+  return assertGroupInOrg(orgId, groupId);
 }

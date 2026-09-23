@@ -1,14 +1,16 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { redirectTo } from '@/http';
 import { getDb, MEDIA_BUCKET } from '@/db';
+import { gsAccess } from '@/org/orgs';
 
 // 一鍵刪除群組全部資料（規劃書第 10 節「可刪除」）
 export async function POST(req: NextRequest) {
   const form = await req.formData();
+  const access = await gsAccess(req, form);
+  if (!access) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const groupId = String(form.get('group_id') ?? '').trim();
-  if (!groupId || form.get('confirm') !== 'on') {
-    return redirectTo('/groups');
-  }
+  const back = `${access.base}/groups`;
+  if (!groupId || form.get('confirm') !== 'on' || !access.inOrg(groupId)) return redirectTo(back);
   const db = getDb();
   await db.from('embeddings').delete().eq('group_id', groupId);
   await db.from('events').delete().eq('group_id', groupId);
@@ -24,5 +26,5 @@ export async function POST(req: NextRequest) {
     if (!files?.length) break;
     await db.storage.from(MEDIA_BUCKET).remove(files.map((f) => `${groupId}/${f.name}`));
   }
-  return redirectTo('/groups');
+  return redirectTo(back);
 }

@@ -1,22 +1,27 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { getEmbedding } from '@/core/config';
 import { indexBatch, indexText } from '@/core/indexer';
 import { label } from '@/core/ingest';
+import { gsAccess } from '@/org/orgs';
 
 export const maxDuration = 300;
 
 // 換 embedding 模型後一鍵全量重建（規劃書 6.2）。原始文字都在庫裡，全刪重建是冪等的。
-export async function POST() {
+// 範圍＝本 org 的群組：別家的向量不動（以前是刪全庫）。
+export async function POST(req: NextRequest) {
+  const access = await gsAccess(req, null);
+  if (!access) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const db = getDb();
   const emb = getEmbedding();
-  await db.from('embeddings').delete().neq('model_id', ''); // model_id 非空 ＝ 全部
+  await db.from('embeddings').delete().in('group_id', access.groupIds);
 
   let messages = 0;
   for (let from = 0; ; from += 200) {
     const { data: rows, error } = await db
       .from('messages')
       .select('id, group_id, text, sender_name, created_at')
+      .in('group_id', access.groupIds)
       .eq('type', 'text')
       .eq('is_low_info', false)
       .not('text', 'is', null)
@@ -51,6 +56,7 @@ export async function POST() {
     const { data: rows, error } = await db
       .from('media_assets')
       .select('id, ocr_text, vision_summary, category, messages!inner(group_id, sender_name, created_at)')
+      .in('messages.group_id', access.groupIds)
       .eq('status', 'done')
       .order('id')
       .range(from, from + 199);
