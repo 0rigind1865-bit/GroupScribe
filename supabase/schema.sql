@@ -287,6 +287,7 @@ create table if not exists org_settings (
   ai_daily_free_calls int,
   last_webhook_at timestamptz,
   attend_join_code text,
+  modules text[] not null default '{gs}',   -- 開哪些工作區：gs / attend（migration 015）
   updated_at timestamptz not null default now()
 );
 

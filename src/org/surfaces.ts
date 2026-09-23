@@ -3,6 +3,7 @@ import { getDb } from '@/db';
 import { liffUser } from '@/core/liff';
 import { myEmployees } from '@/attend/auth';
 import { isPlatformOwner } from './orgs';
+import { enabledModuleIds } from './module-ids';
 
 // 全站「你能去哪些地方」的單一判定點。
 //
@@ -55,19 +56,23 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
     if (data?.length || activeEmp) list.push({ id: 'groups', label: '我的群組', href: '/g', rank: 2 });
   }
 
-  // 3. org 管理員 → 考勤管理（平台擁有者用 main，其餘查 org_members）
+  // 3. org 管理員 → 依 org_settings.modules 給管理面向（平台擁有者用 main 且全開；其餘查 org_members）
+  //    ponytail: 只取第一個 org；同一人管多個 org 時切換器只列一個，有需求再展開
   let adminSlug: string | null = null;
+  let mods = new Set<string>(['gs', 'attend']);
   if (owner) {
     adminSlug = process.env.DEFAULT_ORG_SLUG ?? 'main';
   } else if (uid) {
-    const { data } = await db.from('org_members').select('orgs(slug)').eq('line_user_id', uid).limit(1);
-    adminSlug = (data?.[0] as { orgs?: { slug?: string } } | undefined)?.orgs?.slug ?? null;
+    const { data } = await db.from('org_members').select('orgs(slug, org_settings(modules))').eq('line_user_id', uid).limit(1);
+    const o = (data?.[0] as { orgs?: { slug?: string; org_settings?: { modules?: unknown } | null } } | undefined)?.orgs;
+    adminSlug = o?.slug ?? null;
+    mods = new Set<string>(enabledModuleIds(o?.org_settings?.modules));
   }
   if (adminSlug) {
     // 群組管理排在考勤管理前面：平台擁有者（用密碼登入、沒有 LINE 身分）的主場是群組助理，
     // 落在考勤對他是錯的。只有考勤權限的 org 管理員不受影響——他只有一個面向。
-    if (owner) list.push({ id: 'gs', label: '群組管理', href: `/o/${adminSlug}`, rank: 3 });
-    list.push({ id: 'attend', label: '考勤管理', href: `/o/${adminSlug}/attend`, rank: 4 });
+    if (mods.has('gs')) list.push({ id: 'gs', label: '群組管理', href: `/o/${adminSlug}`, rank: 3 });
+    if (mods.has('attend')) list.push({ id: 'attend', label: '考勤管理', href: `/o/${adminSlug}/attend`, rank: 4 });
   }
 
   list.sort((a, b) => a.rank - b.rank);

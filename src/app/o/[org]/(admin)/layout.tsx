@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from 'react';
 import { getDb } from '@/db';
 import { orgBySlug, orgGroups } from '@/org/orgs';
+import { visibleModules } from '@/org/modules';
 import { notFound } from 'next/navigation';
 import { GroupSwitcher, type GroupOption } from '@/app/ui/group-switcher';
 import { ShellHeader } from '../shell-header';
@@ -12,6 +13,7 @@ export const dynamic = 'force-dynamic';
 // 權限已由上一層 o/[org]/layout.tsx 把關；路由表在 ../routes.tsx。
 //
 // 群組清單依 org 過濾；?group= 指到別 org 的群組時 scopedGroup 會自動退回合法群組。
+// 模組開關：org 層 layout 只驗「是不是成員」，這裡再驗「群組助理有沒有開給這個 org」。
 export default async function AdminLayout({
   children,
   params,
@@ -22,6 +24,8 @@ export default async function AdminLayout({
   const { org: slug } = await params;
   const org = await orgBySlug(slug);
   if (!org) notFound();
+  const access = await visibleModules(slug);
+  if (!access?.modules.some((m) => m.id === 'gs')) notFound();
 
   const db = getDb();
   const groups = await orgGroups(org.id);

@@ -6,9 +6,9 @@ import { NextRequest, NextResponse } from 'next/server';
 //
 // 多租戶（migration 012）後的分工：
 //   gs_auth（平台擁有者密碼 session）→ 全站放行（含 /o/[org]/(admin) 管理頁）
-//   gs_liff（LINE 身分）→ 只放行 /o/[org]/attend 考勤管理頁；
-//     org 成員資格屬 DB 查驗，在 server component 層做（middleware 只驗簽章與效期，
-//     與 /g + isGroupMember 的分層同構）
+//   gs_liff（LINE 身分）→ 同樣放行（商業計劃 2.1 節 A1：群組助理開放給 org 管理員）；
+//     org 成員資格與模組開關屬 DB 查驗，在 server component 層（visibleModules）與
+//     API 門禁（gsAccess）做——middleware 只驗簽章與效期，與 /g + isGroupMember 的分層同構
 //   舊路徑（/calendar、/tasks…）→ 302 到 /o/main/...，保住既有書籤與 LIFF admin 入口
 async function importHmacKey(secret: string): Promise<CryptoKey> {
   return crypto.subtle.importKey(
@@ -100,20 +100,9 @@ export async function middleware(req: NextRequest) {
 
   if (await validAdmin(req.cookies.get('gs_auth')?.value)) return NextResponse.next();
 
-  // 考勤管理頁：LINE 身分（org 成員資格由 /o/[org]/attend/layout.tsx 查 org_members 決定）
-  const liffOk = await validLiff(req.cookies.get('gs_liff')?.value);
-  if (/^\/o\/[^/]+\/attend(\/|$)/.test(pathname) && liffOk) return NextResponse.next();
-
-  // gs_liff 有效但踩到同一個 org 的非考勤路徑：他能進的只有考勤模組，直接送過去。
-  // 丟一張他永遠填不出來的密碼表單是最糟的表現方式——牆本身是對的（群組助理＝
-  // 平台擁有者專屬），但要讓人知道「這裡不是你的地方」而不是「你密碼打錯了」。
-  // 無迴圈：/o/x/attend 在上一條就放行；非該 org 成員由 layout 回 404 而不是再導一次。
-  const orgHit = pathname.match(/^\/o\/([^/]+)/);
-  if (orgHit && liffOk) {
-    const proto = req.headers.get('x-forwarded-proto') ?? 'http';
-    const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host;
-    return NextResponse.redirect(`${proto}://${host}/o/${orgHit[1]}/attend`, 302);
-  }
+  // LINE 身分：放行到 server 層——org 成員資格與模組開關由 layout（visibleModules）
+  // 與 API（gsAccess）查 DB 決定，非成員／未開的模組回 404，不洩漏 org 是否存在
+  if (await validLiff(req.cookies.get('gs_liff')?.value)) return NextResponse.next();
 
   // 根路徑一律放行：它自己會依身分落地（未登入時顯示 LIFF 開機畫面，
   // 而不是一張員工永遠填不出來的密碼表單）。

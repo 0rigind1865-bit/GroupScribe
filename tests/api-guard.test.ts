@@ -74,3 +74,17 @@ test('orgSlugFrom：Referer 不是 org 頁或缺席 → 空字串（呼叫端 40
   assert.equal(orgSlugFrom(null, 'https://x.test/o/'), '');
   assert.equal(orgSlugFrom(null, 'https://x.test/o/Bad_Slug/tasks'), ''); // 不符 orgs.slug 的 check
 });
+
+// ── enabledModuleIds：org_settings.modules → 開啟的模組（A1）──
+import { enabledModuleIds } from '../src/org/module-ids';
+
+test('enabledModuleIds：null（沒有 org_settings 列）＝只有考勤，維持開放前的狀態', () => {
+  assert.deepEqual(enabledModuleIds(null), ['attend']);
+  assert.deepEqual(enabledModuleIds(undefined), ['attend']);
+});
+
+test('enabledModuleIds：依欄位開模組，順序固定為 gs → attend，未知值忽略', () => {
+  assert.deepEqual(enabledModuleIds(['gs']), ['gs']);
+  assert.deepEqual(enabledModuleIds(['attend', 'gs']), ['gs', 'attend']);
+  assert.deepEqual(enabledModuleIds(['bogus']), []);
+});

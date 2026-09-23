@@ -257,7 +257,8 @@ src/
   休息日/例假日計算（舊制 dayType 缺陷使週末被算成平日，**修正後加班費會比舊系統高**）；
   GPS 可被瀏覽器偽造是已知天花板，擋誤按不擋有心人
 
-租戶 onboarding（v1 手動）：`orgs` 插一列 → `org_members` 加管理員 LINE userId →
+租戶 onboarding（v1 手動）：`orgs` 插一列 → `org_settings` 插一列並設 `modules`（`'{gs}'` 群組助理、
+`'{attend}'` 考勤、`'{gs,attend}'` 兩者；沒有列＝只開考勤）→ `org_members` 加管理員 LINE userId →
 管理員登入 `/api/auth/line` → 員工管理頁產加入碼發給員工。
 台灣假日初始資料：`npx tsx scripts/seed-holidays.ts <org-slug>`（資料請對照人事行政總處公告核對）。
 
@@ -267,7 +268,7 @@ src/
 
 ## 目前的限制（誠實揭露）
 
-- ~~單一組織~~ → 已多租戶化（orgs 層，`/o/[slug]/...`）；GroupScribe 管理頁的 per-org 寫入授權仍為平台擁有者專屬，等第二個 GroupScribe 租戶出現再開放
+- ~~單一組織~~ → 已多租戶化（orgs 層，`/o/[slug]/...`）；群組助理已開放給 org 管理員（`org_settings.modules` 含 `gs`），API 與跨群頁面一律綁本 org 群組（`gsAccess`＋守門測試），但**尚未在第二個真實租戶上驗證**
 - **驗證規模有限**：目前在一個真實群組（約一萬則訊息）長期運轉，尚未在多群組環境大量驗證
 - **txt 匯入無法去重**（LINE 匯出檔沒有訊息 ID），重匯前先刪除該群組資料
 - **匯入的歷史訊息只抽取近 30 天**——更早的只進索引供問答，不會變成今天的待辦
