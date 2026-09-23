@@ -133,7 +133,7 @@
 | B6 | 任一租戶訂閱者 > 10 人，或 `/message/quota/consumption` 實測逼近方案免費則數 | per-org 推播計數（src/core/digest.ts:21-70），方案上限。**真實約束是「方案免費則數 ÷ 每月推播天數」而非單價（K7 附帶）**：輕／中用量超額不能加購只能升級；平台 OA 升高用量 2026-11-01 起 NT$1,400／6,000 則、加購前 5 萬則每則 0.2 元（https://tw.linebiz.com/column/LINEOA-2026-Price-Plan/ ，2026-09-23 查閱） | 1 |
 | B8 | 任一客戶要求，或第 5 個客戶 | 租戶匯出（JSON＋媒體 zip）與租戶級刪除；`suspended` 的 leaveGroup 排程 | 2.5 |
 | B9 | **總訊息量破 10 萬則或 groups_view 查詢 >200ms**（K3 修正：原「百萬則」改為專案自己的痛點，docs/plan.md:397） | `groups` 加 `message_count/last_at` trigger 取代 groups_view 全表聚合（012_orgs.sql:69-75）；`embeddings` 加 `(source_id, chunk_idx)` 唯一鍵 | 1 |
-| B10 | 第 5 個客戶，或首家要求發票 | 收款：綠界／藍新「定期定額」＋電子發票（Stripe 台灣不可直接申請，https://stripe.com/global ，2026-09-23 查閱；費率未查證） | 2 |
+| B10 | 第 5 個客戶，或首家要求線上刷卡 | **收款走 PAYUNi 統一金流（使用者 2026-09-23 定案）**：個人會員即可申請、免設定費年費、信用卡＋LINE Pay＋ATM＋超商一次到位。訂閱扣款做法：PAYUNi 沒有內建「定期定額」，但有「信用卡 Token（約定）」API（`credit_bind_query` / `credit_bind_cancel`，https://github.com/payuni/PHP_SDK ，2026-09-23 查閱），所以由我們自己的 cron 每月用 Token 走信用卡幕後 API 扣款，`org_settings.paid_until` 順延；扣款失敗 3 次→`suspended`。已知數字：國內卡 2.8%（合作通道 2.4%）、LINE Pay 處理費 0.2%、撥款 T+7、個人會員信用卡月額度初始 20 萬（可逐步調到 100 萬；達 8 成先填調額申請書）（https://site-now.app/payuni-review/ ；https://help.teachify.com/zh-tw/article/teachify-payuni-ezvjgt/ ）。**未查證**：個人會員能否開通 Token 約定功能（可能需審核或商業會員），申請時第一句就問；發票仍不能由 PAYUNi 代開（個人無統編），見分岔 1 | migration 016、src/app/api/billing/**、cron | 2 |
 | B11 | 第 3 個客戶 | `ADMIN_PASSWORD` 降 break-glass（`isPlatformOwner()` 不再對任意 org 回 owner，src/org/orgs.ts:32-34,55）；登入節流改表 | 1 |
 | B12 | 第 3 個客戶 | 鎖落 DB：`pg_try_advisory_xact_lock(hashtext(group_id))`＋既有 `claimed_at` 租約（src/core/extract.ts:245-260）；`media_assets` 加 `attempts/claimed_at`（src/core/ingest.ts:214-236） | 1.5 |
 | B13 | 第 3 個客戶 | LINE channel secret 雙值驗簽與 token 輪替流程 | 0.5 |
@@ -213,7 +213,7 @@
 
 **K7 成立（high）**：reply 不計費、push 按送達人數計、免費額度歸官方帳號（https://developers.line.biz/en/docs/messaging-api/pricing/ 、https://tw.linebiz.com/column/LINEOA-2026-Price-Plan/ ，皆 2026-09-23 查閱；程式碼 src/connectors/line.ts:99-103,150-166、src/core/ingest.ts:300-311、src/core/digest.ts:33-54）。附帶：reply token 約一分鐘有效（**未逐字查證**），若 LLM 回答逾時須改走 push 才產生費用——@回答要維持快速或改回「稍後私訊」。
 
-**收款**：前 10 家銀行轉帳＋收據，不寫付款程式。**法人化客觀觸發線**：個人透過網路銷售勞務當月銷售額達 NT$5 萬須於次月底前辦稅籍登記（https://www.etax.nat.gov.tw/etwmain/tax-info/network-transaction-taxtation-area/press/PEwQK1V 、https://law-out.mof.gov.tw/LawContent.aspx?id=GL010768 ）——以 2,190 計約 23 家、690 計約 72 家；「打平」階段尚未觸發，但也開不出統一發票。**未查證**：稅籍登記後的小規模營業人能否自願申請使用統一發票、以及成本——向所轄國稅局電話詢問，零成本。
+**收款**：前 3 家銀行轉帳＋收據，不寫付款程式；第 4 家起接 PAYUNi（B10）——先用它的「整合式支付頁」收單月／單年，Token 約定扣款等個人會員確認可開通再上。PAYUNi 個人會員月額度 20 萬，以 2,190 計約 90 家內不會卡住。**法人化客觀觸發線**：個人透過網路銷售勞務當月銷售額達 NT$5 萬須於次月底前辦稅籍登記（https://www.etax.nat.gov.tw/etwmain/tax-info/network-transaction-taxtation-area/press/PEwQK1V 、https://law-out.mof.gov.tw/LawContent.aspx?id=GL010768 ）——以 2,190 計約 23 家、690 計約 72 家；「打平」階段尚未觸發，但也開不出統一發票。**未查證**：稅籍登記後的小規模營業人能否自願申請使用統一發票、以及成本——向所轄國稅局電話詢問，零成本。
 
 **AGPL 與託管**（Plausible 模式，https://plausible.io/blog/open-source-saas ，2022-06-22）：自架版功能完整、免費、不閹割；託管賣營運價值；第三條收入線「自架＋年度支援」等有 IT 的客戶出現再開；CLA＋商標保留雙授權與品牌。
 
@@ -288,7 +288,7 @@
 | 單一 `ADMIN_PASSWORD`／`ADMIN_LINE_USER_ID` 後門（src/core/auth.ts:8-14、liff.ts:52-59） | 高 | G2 拆鑰＋A6 移除自動種子；B11 降 break-glass | — |
 | LINE 平台自帶群組 AI（K8 成立，medium） | 高 | 台灣 2026 計畫只列「AI 對話幫手（OA）」與「旅遊助手」（https://www.linecorp.com/en/pr/news/global/20251028/ 、https://www.lycorp.co.jp/en/story/20260218/taiwan_converge2025.html ），未提 Agent i；日本 Agent i 是「群內、公開、使用者逐一 opt-in」形態，無管理者跨群視圖／審核佇列／引文；差異化放這三件事 | **每季查一次 LINE 台灣官方 blog／新聞稿**；一旦台灣一般群組推出摘要／待辦即啟動「重心移到跨群管理與營運模組」 |
 | AI 成本高於推導（K5 未查證） | 中 | 第 0 節第 6 項零成本算比例；A8 封頂＋B7 合批＋B5→ per-org 預算皆在階段一；付費 Tier 強制 | 單租戶月 AI ≤ 方案上限×1.2 |
-| 付費意願與發票（K4 修正） | 中 | 前 5 家示範量 WTP 與發票需求；Starter 690 起；發票需求 ≥3 家即啟動稅籍登記／B10 | 示範後兩題的統計 |
+| 付費意願與發票（K4 修正） | 中 | 前 5 家示範量 WTP 與發票需求；Starter 690 起；發票需求 ≥3 家即啟動稅籍登記／B10 | 示範後兩題的統計；線上收款走 PAYUNi 個人會員，不等法人化 | 示範後兩題的統計；PAYUNi 開通與 Token 功能是否核准 |
 | 混合群第三方個資：租戶匯出／跨群總覽含外包、客戶的訊息 | 中 | docs/plan.md B.1 群組是 consent 邊界；G7 明寫「本群由認領組織管理、可匯出」；匯出範圍＝該 org 認領群組的群層資料；未認領群零落地（A5） | 匯出請求數 |
 | webhook 漏收不可回補 | 高 | G4 先落地再回 200＋webhookEventId 冪等；redelivery 開啟 | 漏收＝0 |
 | 家用 NAS 單點 | 中 | 第一筆入帳當週搬 VPS（B1）；Beta 合約無 SLA | 月可用率 ≥99.5% |
@@ -329,7 +329,7 @@
 
 | # | 分岔 | 選項 A | 選項 B | 建議 |
 |---|---|---|---|---|
-| 1 | **法人化／稅籍登記與收款時機**（K4 修正：台灣 B2B 買方索取統一發票是常態；個人身分只能開收據；當月網路銷售勞務達 NT$5 萬須辦稅籍登記） | 現在辦行號／稅籍登記：可開發票、日後 Certified Provider 有法人身分；固定成本先發生 | 前 3 家以收據處理並事先說明，**示範第一句就問「要不要發票」**；≥2 家要求或當月達 NT$5 萬即辦 | **B**——付費意願是第一個要驗證的假設；但把「發票」從被動翻案條件改成主動量測。**未查證**：小規模營業人能否自願使用統一發票，先打電話問國稅局 |
+| 1 | **法人化／稅籍登記與收款時機**（K4 修正：台灣 B2B 買方索取統一發票是常態；個人身分只能開收據；當月網路銷售勞務達 NT$5 萬須辦稅籍登記） | 現在辦行號／稅籍登記：可開發票、日後 Certified Provider 有法人身分；固定成本先發生 | 前 3 家以收據處理並事先說明，**示範第一句就問「要不要發票」**；≥2 家要求或當月達 NT$5 萬即辦 | **B**——付費意願是第一個要驗證的假設；但把「發票」從被動翻案條件改成主動量測。**未查證**：小規模營業人能否自願使用統一發票，先打電話問國稅局。**注意：PAYUNi 個人會員只解決「怎麼收錢」，不解決「發票」——兩件事分開看** |
 | 2 | **bot 品牌名與告知文署名**（一旦定了不能改） | 顯示名維持「GroupScribe」，告知文可由租戶署名 | 改中性中文名（如「群組小記」） | **A**（與開源社群一致；中文暱稱放告知文第一句），但這是品牌決定 |
 
 其餘分岔本計劃已定：形態 A 為 Beta 預設、LINE 書面答覆為收費閘門；第一個月就收錢（設計夥伴半價 6 個月）；第一筆入帳當週搬 VPS；Free＝1 群永久免費、抽取每月封頂、無推薦解鎖；認領必須在群內可見、先認領者得；未認領群零落地、7 天退群；考勤作為加購不進主訊息；RLS 等階段三且用 per-org JWT。
