@@ -36,7 +36,7 @@ export default async function LocationsPage({
 
   return (
     <main className="mx-auto max-w-4xl p-5">
-      <h1 className="mb-4 text-2xl font-bold">打卡地點</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight">打卡地點</h1>
       {ok && <Banner>地點已新增 ✓</Banner>}
       {err && <Banner tone="err">{ERR[err] ?? err}</Banner>}
 
@@ -86,10 +86,10 @@ export default async function LocationsPage({
             <form action="/api/attend/location" method="post" className="ml-auto flex gap-2">
               <input type="hidden" name="org" value={slug} />
               <input type="hidden" name="id" value={l.id} />
-              <button className="btn px-2 py-1 text-xs" name="action" value="toggle">
+              <button className="btn btn-sm" name="action" value="toggle">
                 {l.enabled ? '停用' : '啟用'}
               </button>
-              <button className="btn-danger px-2 py-1 text-xs" name="action" value="delete">刪除</button>
+              <button className="btn-danger btn-sm" name="action" value="delete">刪除</button>
             </form>
           </div>
         ))}

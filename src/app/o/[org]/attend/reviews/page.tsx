@@ -44,7 +44,7 @@ export default async function ReviewsPage({
 
   return (
     <main className="mx-auto max-w-4xl p-5">
-      <h1 className="mb-4 text-2xl font-bold">補卡審核</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight">補卡審核</h1>
       {ok === 'approved' && <Banner>已核准，打卡紀錄已生成 ✓</Banner>}
       {ok === 'rejected' && <Banner tone="neutral">已拒絕。</Banner>}
       {err && <Banner tone="err">操作失敗或申請已被處理，請重新整理。</Banner>}

@@ -31,19 +31,20 @@ export function StatGrid({
   return (
     <div className={`grid gap-3 ${grid}`}>
       {shown.map((i) => {
+        // Origin UI 的 stat 卡：標籤在上、數字在下靠左、tabular-nums 對齊——掃一列數字時眼睛不用跳
         const inner = (
           <>
-            <span className={`block text-2xl font-bold ${TONE_TEXT[i.tone ?? 'neutral']}`}>{i.n}</span>
-            <span className="text-xs text-gray-500">{i.label}</span>
+            <span className="block text-xs font-medium text-gray-500">{i.label}</span>
+            <span className={`mt-1 block text-2xl font-semibold tracking-tight tabular-nums ${TONE_TEXT[i.tone ?? 'neutral']}`}>{i.n}</span>
             {i.hint && <span className="mt-0.5 block text-xs text-gray-400">{i.hint}</span>}
           </>
         );
         return i.href ? (
-          <a key={i.label} href={i.href} className="card text-center hover:bg-gray-50">
+          <a key={i.label} href={i.href} className="card hover:bg-gray-50">
             {inner}
           </a>
         ) : (
-          <div key={i.label} className="card text-center">
+          <div key={i.label} className="card">
             {inner}
           </div>
         );

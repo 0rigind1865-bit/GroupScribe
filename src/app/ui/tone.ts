@@ -24,6 +24,14 @@ export const TONE_BANNER: Record<Tone, string> = {
   neutral: 'bg-gray-100 text-gray-700',
 };
 
+/** 橫幅（Alert）的描邊：Origin UI 的 alert 是淡底＋同色系細框 */
+export const TONE_BORDER: Record<Tone, string> = {
+  ok: 'border-emerald-200',
+  warn: 'border-amber-200',
+  err: 'border-red-200',
+  neutral: 'border-gray-200',
+};
+
 /** 數字強調用（統計卡） */
 export const TONE_TEXT: Record<Tone, string> = {
   ok: 'text-emerald-700',

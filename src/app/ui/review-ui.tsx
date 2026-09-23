@@ -27,7 +27,7 @@ export function PendingBadge({ item, compact = false }: { item: any; compact?: b
   const revised = isRevised(item);
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 font-bold text-amber-900 ${
+      className={`inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-900 ${
         compact ? 'text-[10px]' : 'text-xs'
       }`}
     >

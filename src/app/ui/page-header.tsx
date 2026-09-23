@@ -19,7 +19,7 @@ export function PageHeader({
         <a
           href={back}
           aria-label="返回"
-          className="grid h-9 w-9 flex-none place-items-center rounded-full border border-gray-300 text-gray-600 hover:bg-gray-50"
+          className="btn h-9 w-9 flex-none px-0 text-gray-600"
         >
           <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M15 18l-6-6 6-6" />
@@ -27,7 +27,7 @@ export function PageHeader({
         </a>
       )}
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-xl font-bold">{title}</h1>
+        <h1 className="truncate text-xl font-semibold tracking-tight">{title}</h1>
         {desc && <p className="truncate text-xs text-gray-500">{desc}</p>}
       </div>
       {right && <div className="flex flex-none items-center gap-2">{right}</div>}

@@ -41,7 +41,7 @@ export default async function GroupsPage({
 
   return (
     <main className="mx-auto max-w-3xl p-4 md:p-5">
-      <h1 className="mb-3 text-2xl font-bold">群組管理</h1>
+      <h1 className="mb-3 text-2xl font-semibold tracking-tight">群組管理</h1>
 
       {profile_error === 'quota' ? (
         <p className="card mb-3 border-red-200 bg-red-50 text-sm text-red-700">
@@ -97,14 +97,14 @@ export default async function GroupsPage({
                     <a className="font-semibold text-emerald-700 hover:underline" href={`/o/${slug}/?group=${encodeURIComponent(g.group_id)}`}>
                       {g.name ?? g.group_id}
                     </a>
-                    {g.left_at && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-500">bot 已離開</span>}
+                    {g.left_at && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">bot 已離開</span>}
                     <span className="text-sm text-gray-500">
                       {g.message_count} 則｜最後活動 {fmt(g.last_at)}
                     </span>
                     <form action="/api/group/update" method="post" className="ml-auto flex items-center gap-1 text-sm">
                       <input type="hidden" name="group_id" value={g.group_id} />
                       <input className="input w-28 py-1 text-xs" name="category" list="cats" defaultValue={g.category ?? ''} placeholder="分類" />
-                      <button className="btn px-2 py-1 text-xs">儲存</button>
+                      <button className="btn btn-sm">儲存</button>
                     </form>
                     <form action="/api/group/delete" method="post" className="flex items-center gap-2 text-sm">
                       <input type="hidden" name="group_id" value={g.group_id} />
@@ -127,11 +127,11 @@ export default async function GroupsPage({
                           defaultValue={p?.profile ?? ''}
                           placeholder="AI 從此群紀錄歸納的背景，會注入抽取與回答的 prompt；可手動修正補充"
                         />
-                        <button className="btn px-2 py-1 text-xs">儲存</button>
+                        <button className="btn btn-sm">儲存</button>
                       </form>
                       <form action="/api/profile" method="post" className="mt-1">
                         <input type="hidden" name="group_id" value={g.group_id} />
-                        <button className="btn px-2 py-1 text-xs">用 AI 重新產生（讀最近 300 則訊息）</button>
+                        <button className="btn btn-sm">用 AI 重新產生（讀最近 300 則訊息）</button>
                       </form>
                     </details>
                   </div>

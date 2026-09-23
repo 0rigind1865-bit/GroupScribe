@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
-import { ConfirmIcon, DoneIcon, PendingBadge } from '@/app/ui/review-ui';
+import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
+import { TaskCircle } from '@/app/ui/item-marker';
 import { fmtDate, isOverdue } from '@/core/date';
 import { orgBySlug } from '@/org/orgs';
 import { scopedGroup } from '../group-scope';
@@ -7,7 +8,7 @@ import { dbConfigured, getDb } from '@/db';
 import { relatedItems, type RelatedItem } from '@/core/links';
 import { SetupNotice } from '../setup-notice';
 import { RelatedItems } from '../related-items';
-import { BatchBar, BatchBox } from '../batch-bar';
+import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
 
@@ -19,12 +20,15 @@ function fmt(d: string) {
 
 function TaskRow({ t, back }: { t: any; back: string }) {
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded border-l-4 border-sky-400 bg-white px-3 py-2 text-sm shadow-sm">
+    <li className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-xs">
       <BatchBox id={t.id} />
+      {t.status === 'open' && (
+        <TaskCircle formAction="/api/tasks/update" id={t.id} back={back} title={t.title} overdue={!!t.due_at && isOverdue(t.due_at)} />
+      )}
       <span className={t.status === 'done' ? 'text-gray-400 line-through' : ''}>{t.title}</span>
       {/* 待確認的兩種來源要分開講：新抽的 vs AI 依新對話改過的 */}
       <PendingBadge item={t} />
-      {t.assignee && <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{t.assignee}</span>}
+      {t.assignee && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{t.assignee}</span>}
       {t.due_at &&
         (t.status === 'open' && isOverdue(t.due_at) ? (
           // 與「今天」頁同一套判斷與紅字（principles.md：一致性）
@@ -32,40 +36,31 @@ function TaskRow({ t, back }: { t: any; back: string }) {
         ) : (
           <span className="text-xs text-gray-500">期限 {fmtDate(t.due_at)}</span>
         ))}
+      {/* 一列只留兩個動作（U3）：左邊的圈＝完成、右邊「編輯」；待確認多一顆「確認」、封存區多一顆「重新開啟」。
+          「忽略」降到編輯卡裡——它是低頻且不可逆度較高的動作，不該跟高頻動作並排。 */}
       <span className="ml-auto flex flex-wrap gap-1.5">
-        <a className="btn px-2 py-1 text-xs" href={`${back}&task=${t.id}`}>
-          編輯
-        </a>
-        <form action="/api/tasks/update" method="post" className="flex flex-wrap gap-1.5">
-          <input type="hidden" name="id" value={t.id} />
-          <input type="hidden" name="back" value={back} />
-          {t.needs_confirmation && t.status === 'open' && (
-            <button className="btn-confirm inline-flex items-center gap-1 px-2 py-1 text-xs" name="action" value="confirm">
+        {t.needs_confirmation && t.status === 'open' && (
+          <form action="/api/tasks/update" method="post">
+            <input type="hidden" name="id" value={t.id} />
+            <input type="hidden" name="back" value={back} />
+            <button className="btn-confirm btn-sm" name="action" value="confirm">
               <ConfirmIcon />
               確認
             </button>
-          )}
-          {t.status === 'open' && (
-            <button
-              className="btn-primary inline-flex items-center gap-1 px-2 py-1 text-xs"
-              name="action"
-              value="done"
-            >
-              <DoneIcon />
-              完成
-            </button>
-          )}
-          {t.status !== 'open' && (
-            <button className="btn px-2 py-1 text-xs" name="action" value="reopen">
+          </form>
+        )}
+        {t.status !== 'open' && (
+          <form action="/api/tasks/update" method="post">
+            <input type="hidden" name="id" value={t.id} />
+            <input type="hidden" name="back" value={back} />
+            <button className="btn btn-sm" name="action" value="reopen">
               重新開啟
             </button>
-          )}
-          {t.status !== 'ignored' && (
-            <button className="btn-danger px-2 py-1 text-xs" name="action" value="ignore">
-              忽略
-            </button>
-          )}
-        </form>
+          </form>
+        )}
+        <a className="btn btn-sm" href={`${back}&task=${t.id}`}>
+          編輯
+        </a>
       </span>
     </li>
   );
@@ -142,13 +137,14 @@ export default async function TasksPage({
   return (
     <main className="mx-auto max-w-4xl p-5">
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <h1 className="text-2xl font-bold">待辦</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">待辦</h1>
         {archived && (
           <span className="rounded bg-gray-100 px-2 py-0.5 text-sm text-gray-600">
             {archived === 'done' ? '已完成' : '已忽略'}
           </span>
         )}
         {group && <span className="text-gray-500">{groupName}</span>}
+        {group && tasks.length > 0 && <span className="ml-auto"><SelectMode /></span>}
       </div>
 
       {!group && <p className="text-gray-600">還沒有任何群組資料。</p>}
@@ -261,9 +257,16 @@ export default async function TasksPage({
               備註
               <input className="input mt-1 block w-full" name="note" defaultValue={detail.note ?? ''} />
             </label>
-            <button className="btn-primary" name="action" value="save">
-              儲存修正
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-primary" name="action" value="save">
+                儲存修正
+              </button>
+              {detail.status !== 'ignored' && (
+                <button className="btn-danger" name="action" value="ignore">
+                  忽略
+                </button>
+              )}
+            </div>
           </form>
           <h3 className="mt-4 mb-2 text-sm font-bold text-gray-600">來源訊息</h3>
           {sources.length ? (

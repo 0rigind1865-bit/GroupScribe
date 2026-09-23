@@ -61,7 +61,7 @@ export function TaskCircle({
 export function TimeChip({ time }: { time?: string | null }) {
   return (
     <span
-      className={`w-14 flex-none rounded px-1 py-1 text-center text-xs leading-tight font-bold tabular-nums ${
+      className={`w-14 flex-none rounded-md px-1 py-1 text-center text-xs leading-tight font-semibold tabular-nums ${
         time ? 'bg-emerald-100 text-emerald-900' : 'bg-gray-100 text-gray-500'
       }`}
     >

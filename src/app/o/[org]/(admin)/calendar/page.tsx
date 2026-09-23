@@ -6,7 +6,7 @@ import { relatedItems, type RelatedItem } from '@/core/links';
 import { SetupNotice } from '../setup-notice';
 import { RelatedItems } from '../related-items';
 import { addDays, agendaRange, hourRange, monthGrid, parseHour, splitTimed, weekDays, type AgendaPreset } from '@/core/grid';
-import { BatchBar, BatchBox } from '../batch-bar';
+import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
 
@@ -316,19 +316,12 @@ export default async function CalendarPage({
   return (
     <main className="mx-auto max-w-5xl p-5">
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h1 className="text-2xl font-bold">月曆</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">月曆</h1>
         {group && <span className="text-gray-500">{groupName}</span>}
         {/* 視圖切換器：手機四等分、桌機 inline */}
-        <div className="grid w-full grid-cols-4 gap-1 md:ml-auto md:flex md:w-auto">
+        <div className="segmented grid w-full grid-cols-4 md:ml-auto md:inline-flex md:w-auto">
           {VIEWS.map(([v, zh]) => (
-            <a
-              key={v}
-              href={`${base}&view=${v}&date=${dateIso}`}
-              aria-current={v === view ? 'page' : undefined}
-              className={`rounded border px-3 py-1.5 text-center text-sm ${
-                v === view ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white hover:bg-gray-50'
-              }`}
-            >
+            <a key={v} href={`${base}&view=${v}&date=${dateIso}`} aria-current={v === view ? 'page' : undefined}>
               {zh}
             </a>
           ))}
@@ -338,20 +331,13 @@ export default async function CalendarPage({
       <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
         {view === 'agenda' ? (
           <>
-            {RANGES.map(([r, zh]) => (
-              <a
-                key={r}
-                href={`${base}&view=agenda&range=${r}`}
-                aria-current={r === range ? 'page' : undefined}
-                className={`rounded border px-3 py-1.5 ${
-                  r === range
-                    ? 'border-emerald-600 bg-emerald-600 text-white'
-                    : 'border-gray-300 bg-white hover:bg-gray-50'
-                }`}
-              >
-                {zh}
-              </a>
-            ))}
+            <div className="segmented">
+              {RANGES.map(([r, zh]) => (
+                <a key={r} href={`${base}&view=agenda&range=${r}`} aria-current={r === range ? 'page' : undefined}>
+                  {zh}
+                </a>
+              ))}
+            </div>
             <span className="text-gray-500">{agendaLabel}</span>
           </>
         ) : (
@@ -472,14 +458,17 @@ export default async function CalendarPage({
       {group && view === 'agenda' && (
         <div className="space-y-3">
           {agendaGroups.length > 0 && (
-            <BatchBar
-              kind="event"
-              back={`${base}&view=agenda&range=${range}`}
-              actions={[
-                { action: 'confirm', label: '確認' },
-                { action: 'ignore', label: '忽略', danger: true },
-              ]}
-            />
+            <>
+              <div className="mb-2 flex justify-end"><SelectMode /></div>
+              <BatchBar
+                kind="event"
+                back={`${base}&view=agenda&range=${range}`}
+                actions={[
+                  { action: 'confirm', label: '確認' },
+                  { action: 'ignore', label: '忽略', danger: true },
+                ]}
+              />
+            </>
           )}
           {agendaGroups.map((g) => (
             <div key={g.month}>

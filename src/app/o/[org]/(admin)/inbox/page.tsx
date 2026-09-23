@@ -6,7 +6,7 @@ import { dbConfigured, getDb } from '@/db';
 import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
 import { SetupNotice } from '../setup-notice';
-import { BatchBar, BatchBox } from '../batch-bar';
+import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
 import { fmtDate } from '@/core/date';
 
 export const dynamic = 'force-dynamic';
@@ -88,9 +88,10 @@ export default async function InboxPage({
   return (
     <main className="mx-auto max-w-2xl p-5">
       <div className="mb-1 flex items-baseline gap-3">
-        <h1 className="text-2xl font-bold">收件匣</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">收件匣</h1>
         {group && <span className="text-gray-500">{nameOf.get(group) ?? group}</span>}
         {total > 0 && <span className="ml-auto text-sm text-gray-500">還剩 {total} 筆</span>}
+        {rows.length > 0 && <SelectMode />}
       </div>
       <p className="mb-4 text-sm text-gray-500">
         AI 從對話整理出來的項目先到這裡，經你把關才算數。確認過的內容 AI 之後不會亂改。
@@ -143,7 +144,7 @@ export default async function InboxPage({
               )}
               <div className="flex items-start gap-2.5">
                 <BatchBox id={`${kind}:${item.id}`} />
-                <span className={`mt-0.5 flex-none rounded px-1.5 py-0.5 text-xs font-bold text-white ${s.chip}`}>
+                <span className={`mt-0.5 flex-none rounded-full px-2 py-0.5 text-xs font-medium text-white ${s.chip}`}>
                   {s.label}
                 </span>
                 <div className="min-w-0">

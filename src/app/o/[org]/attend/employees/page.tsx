@@ -44,7 +44,7 @@ export default async function EmployeesPage({
 
   return (
     <main className="mx-auto max-w-4xl p-5">
-      <h1 className="mb-4 text-2xl font-bold">員工管理</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight">員工管理</h1>
       {err && <Banner tone="err">操作失敗，請重試。</Banner>}
 
       {/* 加入邀請：員工端的打卡入口只對「已是員工」的人顯示（見 src/app/g/page.tsx 檔頭），

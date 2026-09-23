@@ -238,6 +238,24 @@ src/
 - **context 參數跟著換頁走**：群組助理帶 `?group=`、考勤帶 `?emp=`（用 URL 不用 cookie —— 可分享、狀態看得見）
 - **共用元件在 `src/app/ui/`**：Banner / Badge / MonthGrid / Empty / StatGrid / PageHeader，
   以及狀態語意色 `tone.ts`（ok/warn/err/neutral 四個，跨模組不衝突）
+- **視覺尺度採 [Origin UI](https://github.com/origin-space/originui)（shadcn 慣例）**：圓角基準 10px、控制項高 36px、
+  3px 淡色焦點環、徽章膠囊、字重 medium——全部收在 `globals.css` 的 `@theme` 與 `@layer components`，改一處全站跟著變。
+  元件命名與行為對照 [Component Gallery](https://component.gallery/components/)：
+
+  | 本專案 | Component Gallery 名（別名） | 行為約定 |
+  |---|---|---|
+  | `.btn` / `.btn-primary` / `.btn-danger` / `.btn-confirm`、`.btn-sm` | Button | 送出後轉圈並鎖住（root layout 3 行 JS）；focus-visible 才顯示焦點環 |
+  | `Banner` / `Flash` | Alert（Banner, Notification, Callout） | ok/neutral 為 `role=status`、warn/err 為 `role=alert` |
+  | `Badge` / `OutlineBadge` / `PendingBadge` | Badge（Tag, Label, Chip） | 非互動；身分用描邊、狀態用淡底 |
+  | `Empty` | Empty state | 主文＋副文＋一顆下一步；篩不到（filtered）不給引導 |
+  | `StatGrid` | Card（stat） | 待處理類 hideZero；量測類永遠顯示 |
+  | `.segmented`（月曆視圖／議程範圍） | Segmented control（Toggle button group） | `aria-current=page` 標選中，MPA 連結 |
+  | `SurfaceSwitcher` | Segmented control | 少於兩個面向整條不渲染 |
+  | `FloatingNav` / BottomNav | Navigation（Tabs） | 五格、badge、拖曳與整頁滑動換頁 |
+  | `GroupSwitcher` / `EmployeeSwitcher` | Select | 切換時只保留 view 參數、丟棄 entity 參數 |
+  | `BatchBar` ＋ `BatchBox` | Toolbar（Button group）＋ Checkbox | 勾選後才浮出；全選在列內 |
+  | `Loading` / `.spinner` | Spinner（Loader） | `role=status`；表單送出時按鈕內縮小版 |
+  | `PageHeader` | Header ＋ Link（返回） | 返回是硬編碼路徑，不用 history.back |
 - **三支守門測試**把紀律變成 CI：`routes`（連結必帶 org 前綴）、`colors`（深色 remap 齊全、
   indigo/teal 不復活）、`i18n`（五語系 key 一致、參數不漏）
 

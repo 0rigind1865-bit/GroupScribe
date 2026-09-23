@@ -47,7 +47,7 @@ export default async function RulesPage({
 
   return (
     <main className="mx-auto max-w-4xl p-5">
-      <h1 className="mb-1 text-2xl font-bold">薪資規則</h1>
+      <h1 className="mb-1 text-2xl font-semibold tracking-tight">薪資規則</h1>
       <p className="mb-4 text-sm text-gray-500">
         目前版本：v{ruleSet.version}
         {ruleSet.version === 0 && '（預設勞基法模板，尚未自訂）'}｜每次存檔會建立新版本；已結算月份不受影響。

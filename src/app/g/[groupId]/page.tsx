@@ -93,7 +93,7 @@ export default async function MemberView({
   if (!(await isGroupMember(groupId, uid)))
     return (
       <main className="mx-auto max-w-md p-6">
-        <h1 className="mb-2 text-xl font-bold">沒有這個群組的權限</h1>
+        <h1 className="mb-2 text-xl font-semibold tracking-tight">沒有這個群組的權限</h1>
         <p className="text-sm text-gray-500">
           只有這個 LINE 群組的成員能看它的整理。<a className="text-emerald-700 underline" href="/g">回你的群組</a>
         </p>
@@ -319,18 +319,27 @@ export default async function MemberView({
             )}
           </div>
         )}
+        {/* U4：只有待確認（或已完成要重開）的卡才有動作列。平常的卡只留一個低調的「修正」——
+            每張卡都掛一顆按鈕，是在對「已經確認過的東西」重複索求注意力。 */}
+        {!item.needs_confirmation && !(kind === 'task' && item.status === 'done') ? (
+          <div className="mt-1 text-right">
+            <a className="text-xs text-gray-400 underline" href={`${here}&edit=${key}`}>
+              修正
+            </a>
+          </div>
+        ) : (
         <div className="mt-2 flex items-center gap-2 border-t border-gray-100 pt-2">
           <PendingBadge item={item} compact />
           <div className="ml-auto flex gap-1.5">
             {/* 用詞與管理版一致（編輯／完成／重新開啟／確認），同一個人在兩版之間不必重新認 */}
-            <a className="btn px-2.5 py-1 text-xs" href={`${here}&edit=${key}`}>
+            <a className="btn btn-sm" href={`${here}&edit=${key}`}>
               編輯
             </a>
             {/* 「完成」已經是卡片左邊那個可勾的圈，這裡只留反向動作，免得同一件事兩個入口 */}
             {kind === 'task' && item.status === 'done' && (
               <form action="/api/liff/item" method="post">
                 {hidden(kind, item.id)}
-                <button className="btn px-2.5 py-1 text-xs" name="action" value="reopen">
+                <button className="btn btn-sm" name="action" value="reopen">
                   重新開啟
                 </button>
               </form>
@@ -338,7 +347,7 @@ export default async function MemberView({
             {item.needs_confirmation && (
               <form action="/api/liff/item" method="post">
                 {hidden(kind, item.id)}
-                <button className="btn-confirm inline-flex items-center gap-1 px-2.5 py-1 text-xs" name="action" value="confirm">
+                <button className="btn-confirm btn-sm" name="action" value="confirm">
                   <ConfirmIcon />
                   確認
                 </button>
@@ -346,6 +355,7 @@ export default async function MemberView({
             )}
           </div>
         </div>
+        )}
       </>
     );
   }
@@ -546,7 +556,7 @@ export default async function MemberView({
               <a className="btn px-3" href={`${base}?tab=calendar&month=${prevYm}`}>←</a>
               <strong className="flex-1 text-center">{yy} 年 {mm} 月</strong>
               <a className="btn px-3" href={`${base}?tab=calendar&month=${nextYm}`}>→</a>
-              <a className="btn px-2 text-xs" href={`${base}?tab=calendar`}>本月</a>
+              <a className="btn btn-sm" href={`${base}?tab=calendar`}>本月</a>
             </div>
             <div className="card grid grid-cols-7 gap-px p-1">
               {['日', '一', '二', '三', '四', '五', '六'].map((d) => (

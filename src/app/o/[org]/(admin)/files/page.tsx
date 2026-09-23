@@ -4,7 +4,7 @@ import { oh } from '@/org/href';
 import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
 import { SetupNotice } from '../setup-notice';
-import { BatchBar, BatchBox } from '../batch-bar';
+import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
 
 export const dynamic = 'force-dynamic';
 
@@ -190,7 +190,7 @@ export default async function FilesPage({
   return (
     <main className="mx-auto max-w-5xl p-5">
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <h1 className="text-2xl font-bold">檔案</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">檔案</h1>
         {group && <span className="text-gray-500">{groupName}</span>}
       </div>
 
@@ -286,12 +286,15 @@ export default async function FilesPage({
           </details>
 
           {assets.length > 0 && (
-            <BatchBar
-              kind="file"
-              back={qs({})}
-              actions={[]}
-              projects={projectReady ? projects.filter((p) => p !== '未分類') : undefined}
-            />
+            <>
+              <div className="mb-2 flex justify-end"><SelectMode /></div>
+              <BatchBar
+                kind="file"
+                back={qs({})}
+                actions={[]}
+                projects={projectReady ? projects.filter((p) => p !== '未分類') : undefined}
+              />
+            </>
           )}
 
           {projectReady && unclassified > 0 && (

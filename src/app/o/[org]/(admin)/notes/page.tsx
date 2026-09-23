@@ -6,7 +6,7 @@ import { dbConfigured, getDb } from '@/db';
 import { relatedItems, type RelatedItem } from '@/core/links';
 import { SetupNotice } from '../setup-notice';
 import { RelatedItems } from '../related-items';
-import { BatchBar, BatchBox } from '../batch-bar';
+import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
 
@@ -33,29 +33,29 @@ function NoteRow({ n, back }: { n: any; back: string }) {
       <span>{n.title}</span>
       <PendingBadge item={n} />
       <span className="ml-auto flex flex-wrap gap-1.5">
-        <a className="btn px-2 py-1 text-xs" href={`${back}&note=${n.id}`}>
+        <a className="btn btn-sm" href={`${back}&note=${n.id}`}>
           編輯
         </a>
         <form action="/api/notes/update" method="post" className="flex flex-wrap gap-1.5">
           <input type="hidden" name="id" value={n.id} />
           <input type="hidden" name="back" value={back} />
           {n.needs_confirmation && n.status === 'active' && (
-            <button className="btn-confirm inline-flex items-center gap-1 px-2 py-1 text-xs" name="action" value="confirm">
+            <button className="btn-confirm btn-sm" name="action" value="confirm">
               <ConfirmIcon />
               確認
             </button>
           )}
           {n.status === 'active' && (
-            <button className="btn px-2 py-1 text-xs" name="action" value={n.pinned ? 'unpin' : 'pin'}>
+            <button className="btn btn-sm" name="action" value={n.pinned ? 'unpin' : 'pin'}>
               {n.pinned ? '取消置頂' : '置頂'}
             </button>
           )}
           {n.status === 'active' ? (
-            <button className="btn-danger px-2 py-1 text-xs" name="action" value="ignore">
+            <button className="btn-danger btn-sm" name="action" value="ignore">
               忽略
             </button>
           ) : (
-            <button className="btn px-2 py-1 text-xs" name="action" value="restore">
+            <button className="btn btn-sm" name="action" value="restore">
               復原
             </button>
           )}
@@ -134,7 +134,7 @@ export default async function NotesPage({
   return (
     <main className="mx-auto max-w-4xl p-5">
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <h1 className="text-2xl font-bold">公告 / 決議</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">公告 / 決議</h1>
         {archived && <span className="rounded bg-gray-100 px-2 py-0.5 text-sm text-gray-600">已忽略</span>}
         {group && <span className="text-gray-500">{groupName}</span>}
       </div>
@@ -142,15 +142,18 @@ export default async function NotesPage({
       {!group && <p className="text-gray-600">還沒有任何群組資料。</p>}
 
       {group && notes.length > 0 && (
-        <BatchBar
-          kind="note"
-          back={back}
-          actions={[
-            { action: 'confirm', label: '確認' },
-            { action: 'ignore', label: '忽略', danger: true },
-            { action: 'restore', label: '復原' },
-          ]}
-        />
+        <>
+          <div className="mb-2 flex justify-end"><SelectMode /></div>
+          <BatchBar
+            kind="note"
+            back={back}
+            actions={[
+              { action: 'confirm', label: '確認' },
+              { action: 'ignore', label: '忽略', danger: true },
+              { action: 'restore', label: '復原' },
+            ]}
+          />
+        </>
       )}
 
       {group && archived && (

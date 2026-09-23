@@ -49,7 +49,7 @@ export function BatchBar({
               <option key={p} value={p} />
             ))}
           </datalist>
-          <button name="action" value="project" className="btn px-2 py-1 text-xs">
+          <button name="action" value="project" className="btn btn-sm">
             指定專案
           </button>
         </>
@@ -60,12 +60,22 @@ export function BatchBar({
           <label className="flex items-center gap-1 text-xs text-gray-600">
             <input type="checkbox" name="confirm_delete" /> 確認
           </label>
-          <button name="action" value="delete" className="btn-danger px-2 py-1 text-xs">
+          <button name="action" value="delete" className="btn-danger btn-sm">
             刪除
           </button>
         </>
       )}
     </form>
+  );
+}
+
+/** 頁首的「選取」開關：按下去各列才出現勾選框（globals.css 的 #select-mode 規則）。零 JS。 */
+export function SelectMode() {
+  return (
+    <label className="btn btn-sm cursor-pointer select-none">
+      <input id="select-mode" type="checkbox" className="sr-only" />
+      選取
+    </label>
   );
 }
 

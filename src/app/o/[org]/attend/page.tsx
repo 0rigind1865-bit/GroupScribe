@@ -37,7 +37,7 @@ export default async function AttendOverview({ params }: { params: Promise<{ org
 
   return (
     <main className="mx-auto max-w-4xl p-5">
-      <h1 className="mb-4 text-2xl font-bold">考勤總覽（{month}）</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight">考勤總覽（{month}）</h1>
 
       {/* 待處理區：只渲染 n > 0 的格（principles.md 規則二——「顯示 0 的統計卡」是呈現層噪音，
           一個永遠寫著 0 的格子每天消耗一次判斷卻從不需要行動）。

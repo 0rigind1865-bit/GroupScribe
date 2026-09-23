@@ -30,9 +30,11 @@ export default async function LiffHome() {
       <div className="mb-3">
         <SurfaceSwitcher current="groups" />
       </div>
-      <h1 className="mb-1 text-xl font-bold">你的群組</h1>
+      <h1 className="mb-1 text-xl font-semibold tracking-tight">你的群組</h1>
       <p className="mb-4 text-sm text-gray-500">
-        {mine.length ? '選一個群組看整理好的行程、待辦與公告。' : '在有 GroupScribe 的 LINE 群組裡發過訊息，這裡就會出現該群的整理。'}
+        {mine.length
+          ? '選一個群組看整理好的行程、待辦與公告。'
+          : '你是 GroupScribe 所在群組的成員，這裡就會出現該群的整理。看不到群組？bot 可能還沒被加進群，或你已退出該群。'}
       </p>
 
       <div className="space-y-2">

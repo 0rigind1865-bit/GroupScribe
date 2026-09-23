@@ -1,13 +1,23 @@
 import { TONE_SOFT, type Tone } from './tone';
 
-// 狀態徽章。取代 7 份各自手刻的 `rounded px-1.5 py-0.5 text-xs font-bold bg-*`。
+// Badge（Component Gallery 同名；別名 Tag / Label / Chip）：非互動、只標狀態或身分。
+// 形態採 Origin UI badge.tsx：膠囊（rounded-full）、px-2、text-xs、medium 字重。
+// 取代 7 份各自手刻的 `rounded px-1.5 py-0.5 text-xs font-bold bg-*`。
 export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: React.ReactNode }) {
-  return <span className={`rounded px-1.5 py-0.5 text-xs font-bold ${TONE_SOFT[tone]}`}>{children}</span>;
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${TONE_SOFT[tone]}`}>
+      {children}
+    </span>
+  );
 }
 
-/** 身分標籤（管理員等）：描邊而非填色——身分不是狀態，不該跟狀態搶顏色配額 */
+/** 身分標籤（管理員等）：描邊而非填色——身分不是狀態，不該跟狀態搶顏色配額（Origin badge variant=outline） */
 export function OutlineBadge({ children }: { children: React.ReactNode }) {
-  return <span className="rounded border border-gray-300 px-1.5 py-0.5 text-xs font-bold text-gray-600">{children}</span>;
+  return (
+    <span className="inline-flex items-center rounded-full border border-gray-300 px-2 py-0.5 text-xs font-medium text-gray-600">
+      {children}
+    </span>
+  );
 }
 
 // 打卡方向：上班 ↘ 進、下班 ↗ 出。
@@ -17,7 +27,7 @@ export function OutlineBadge({ children }: { children: React.ReactNode }) {
 // 跨模組語意翻轉的來源。改中性底 + 方向圖示後，顏色配額全部留給狀態。
 export function PunchBadge({ type, label }: { type: 'in' | 'out'; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-xs font-bold text-gray-700">
+    <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-700">
       <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5">
         {type === 'in' ? <path d="M12 5v14M5 12l7 7 7-7" /> : <path d="M12 19V5M5 12l7-7 7 7" />}
       </svg>

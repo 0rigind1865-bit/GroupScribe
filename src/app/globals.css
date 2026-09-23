@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+/* ── 視覺尺度：採 Origin UI（現為 coss.com/ui，shadcn 慣例）的數值 ──
+   圓角基準 10px（rounded-md 8 / lg 10 / xl 14）、控制項高 36px、焦點環 3px 淡色、
+   徽章為膠囊、字重 medium 為主。只改 @theme 與 @layer components，全站跟著變——
+   頁面裡 80 處裸 rounded 也由 --radius 一次跟上，不逐頁改。 */
+@theme {
+  --radius: 0.5rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.125rem;
+}
+
 /* ── 視覺 token（UI 提案階段 A）──
    深色模式策略：全站 Tailwind 色彩 utility 在深色下整表 remap（未分層規則勝過 Tailwind 的 layer，
    不必逐頁加 dark: 變體）。淺色維持原樣零風險；深色跟隨系統（LIFF 在 LINE 深色主題不刺眼）。 */
@@ -17,25 +30,62 @@ html {
 /* 共用元件樣式：頁面 markup 保持乾淨 */
 @layer components {
   .card {
-    @apply rounded-lg border border-gray-200 bg-white p-4 shadow-sm;
+    @apply rounded-xl border border-gray-200 bg-white p-4 shadow-sm;
+  }
+  /* Button（Component Gallery 同名）：四個 variant 共用一組骨架——高 36、圓角 8、medium 字重、
+     3px 焦點環、disabled 半透明（Origin UI button.tsx 的 base class）。手機 44px 觸控目標見下方 media。 */
+  .btn,
+  .btn-primary,
+  .btn-danger,
+  .btn-confirm {
+    @apply inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-3 text-sm font-medium whitespace-nowrap transition-[color,background-color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50;
   }
   .btn {
-    @apply cursor-pointer rounded border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50;
+    @apply border-gray-300 bg-white shadow-xs hover:bg-gray-50 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30;
   }
   .btn-primary {
-    @apply cursor-pointer rounded border border-emerald-600 bg-emerald-600 px-3 py-1.5 text-sm text-white hover:bg-emerald-700;
+    @apply border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus-visible:ring-emerald-500/40;
   }
   .btn-danger {
-    @apply cursor-pointer rounded border border-red-300 bg-white px-3 py-1.5 text-sm text-red-700 hover:bg-red-50;
+    @apply border-red-300 bg-white text-red-700 shadow-xs hover:bg-red-50 focus-visible:border-red-500 focus-visible:ring-red-500/30;
+  }
+  /* size=sm（Origin：h-8 px-3 text-xs）：列內動作鈕用 */
+  .btn-sm {
+    @apply h-8 px-2.5 text-xs;
   }
   /* 「確認」＝核可 AI 的判斷（對資料的判斷）；「完成」＝這件事做完了（對工作的狀態）。
      兩者語意完全不同卻長得一樣，是最容易按錯的一對。用琥珀＝AI 待確認的既有狀態色，
      跟綠色的「完成」在色彩層就分開（見 principles.md：別讓我想）。 */
   .btn-confirm {
-    @apply cursor-pointer rounded border border-amber-300 bg-amber-50 px-3 py-1.5 text-sm font-bold text-amber-900 hover:bg-amber-100;
+    @apply border-amber-300 bg-amber-50 font-semibold text-amber-900 shadow-xs hover:bg-amber-100 focus-visible:border-amber-500 focus-visible:ring-amber-500/30;
   }
+  /* Text input / Select / Textarea：高 36、圓角 8、淡陰影、3px 焦點環（Origin UI input.tsx） */
   .input {
-    @apply rounded border border-gray-300 bg-white px-3 py-1.5 text-sm;
+    @apply min-h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-gray-400 focus-visible:border-emerald-500 focus-visible:ring-[3px] focus-visible:ring-emerald-500/30 disabled:opacity-50;
+  }
+  input.input,
+  select.input {
+    @apply h-9;
+  }
+  /* Label（Origin UI label.tsx）：表單欄位名 */
+  .label {
+    @apply text-sm leading-4 font-medium;
+  }
+  /* Segmented control（Component Gallery 名；別名 toggle button group）：
+     月曆的月／週／日／議程與議程範圍用。選中格白底浮起，與面向切換器同一語言。 */
+  .segmented {
+    @apply inline-flex rounded-lg bg-gray-100 p-0.5 text-sm;
+  }
+  .segmented > a,
+  .segmented > button {
+    @apply rounded-md px-3 py-1.5 text-center font-medium whitespace-nowrap text-gray-600 hover:text-gray-900;
+  }
+  .segmented > [aria-current='page'] {
+    @apply bg-white text-gray-900 shadow-xs;
+  }
+  input[type='checkbox'],
+  input[type='radio'] {
+    accent-color: var(--color-emerald-600);
   }
 
   /* 載入指示：單一元素純 CSS 環（參考 css-loaders.com 的 spinner，MIT），
@@ -197,6 +247,19 @@ html {
 #batch {
   display: none;
 }
+/* 選取模式（U3/U5）：每列的勾選框平常不佔版面，按頁首的「選取」才出現。
+   仍是純 CSS——#select-mode 是一顆隱形 checkbox，:has() 讀它的狀態。 */
+.batch-box {
+  display: none;
+}
+body:has(#select-mode:checked) .batch-box {
+  display: inline-block;
+}
+label:has(#select-mode:checked) {
+  background: rgb(209 250 229);
+  border-color: rgb(52 211 153);
+  color: rgb(6 78 59);
+}
 body:has(.batch-box:checked) #batch {
   display: flex;
   position: fixed;
@@ -231,6 +294,8 @@ body:has(.batch-box:checked) #batch {
   .floating-nav.has-ind a[aria-current="page"] { background: transparent; }
   .nav-ind { background: #1d3b30; }
   .btn:hover { background: #232b27; }
+  .segmented { background: #232b27; }
+  .segmented > [aria-current='page'] { background: #1a211e; color: #e8edea; }
   .btn-danger { background: #1a211e; border-color: #542626; }
   .btn-danger:hover { background: #2b1d1d; }
   .btn-confirm { background: #33270f; border-color: #5c4718; color: #fcd34d; }

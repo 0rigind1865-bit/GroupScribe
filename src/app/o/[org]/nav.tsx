@@ -86,8 +86,8 @@ export function TopNav({ moduleId, counts = {} }: { moduleId: ModuleId; counts?:
             key={i.key}
             href={href(i.path)}
             aria-current={isActive(i.path) ? 'page' : undefined}
-            className={`relative rounded px-2.5 py-1 whitespace-nowrap ${
-              isActive(i.path) ? 'bg-emerald-100 font-bold text-emerald-900' : 'text-gray-600 hover:bg-gray-100'
+            className={`relative rounded-md px-2.5 py-1 font-medium whitespace-nowrap ${
+              isActive(i.path) ? 'bg-emerald-100 text-emerald-900' : 'text-gray-600 hover:bg-gray-100'
             }`}
           >
             {i.label}

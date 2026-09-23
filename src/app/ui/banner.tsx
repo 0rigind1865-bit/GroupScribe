@@ -1,8 +1,17 @@
-import { TONE_BANNER, type Tone } from './tone';
+import { TONE_BANNER, TONE_BORDER, type Tone } from './tone';
 
-// 操作結果橫幅。取代散在 16 個頁面的手刻 `mb-3 rounded bg-*-50 p-2 text-sm text-*`。
+// Alert（Component Gallery 名；別名 Banner / Notification / Callout）：操作結果橫幅。
+// 行為：ok/neutral 是 role=status（禮貌播報），warn/err 是 role=alert（螢幕閱讀器立即唸出）。
+// 形態採 Origin UI alert：淡底＋同色系細框、圓角 10。取代散在 16 個頁面的手刻橫幅。
 export function Banner({ tone = 'ok', children }: { tone?: Tone; children: React.ReactNode }) {
-  return <p className={`mb-3 rounded p-2 text-sm ${TONE_BANNER[tone]}`}>{children}</p>;
+  return (
+    <p
+      role={tone === 'err' || tone === 'warn' ? 'alert' : 'status'}
+      className={`mb-3 rounded-lg border px-3 py-2 text-sm ${TONE_BANNER[tone]} ${TONE_BORDER[tone]}`}
+    >
+      {children}
+    </p>
+  );
 }
 
 export type FlashDict = Record<string, { tone: Tone; text: string }>;

@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 // 群組管理（分類/群組理解/刪除）已移到 /groups，此頁專心回答「今天要幹嘛」。
 
 function fmt(d: string) {
-  return new Date(d).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
+  return new Date(d).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false });
 }
 const dayNum = (iso: string) => new Date(`${iso}T12:00:00Z`).getUTCDate();
 const dayWeek = (iso: string) =>
@@ -37,13 +37,14 @@ export default async function Today({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ group?: string; q?: string }>;
+  searchParams: Promise<{ group?: string; q?: string; view?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await params;
   const org = await orgBySlug(slug);
   if (!org) notFound();
-  const { group: groupParam, q } = await searchParams;
+  const { group: groupParam, q, view } = await searchParams;
+  const timeline = view === 'timeline' || !!q; // 原始訊息表格降到深一層視圖（U2）；有搜尋詞時當然要顯示結果
   const db = getDb();
 
   const today = todayISO();
@@ -116,7 +117,7 @@ export default async function Today({
   const days = [...byDay.keys()].sort();
 
   let messages: any[] = [];
-  if (group) {
+  if (group && timeline) {
     let query = db
       .from('messages')
       .select('id, sender_id, sender_name, type, text, created_at, is_low_info, media_assets(vision_summary, category, status)')
@@ -141,14 +142,31 @@ export default async function Today({
 
   return (
     <main className="mx-auto max-w-3xl p-4 md:p-5">
-      <h1 className="mb-3 text-2xl font-bold">今天</h1>
+      <h1 className="mb-3 text-2xl font-semibold tracking-tight">今天</h1>
 
       {!groups?.length ? (
-        <div className="card text-sm text-gray-500">
-          <p className="mb-1 font-bold text-gray-700">還沒有任何資料</p>
-          <p>
-            把 bot 加進 LINE 群組，或到{' '}
-            <a className="text-emerald-700 underline" href={`/o/${slug}/import`}>匯入聊天記錄</a> 上傳既有的 txt。
+        // 上手卡（U1）：第一次進來的人需要的是「接下來做什麼」，不是一句「還沒有資料」。
+        // 三步都是他自己能做的事；第三步回到這一頁，資料一進來這張卡就自動讓位。
+        <div className="card">
+          <p className="mb-3 font-semibold">三步開始</p>
+          <ol className="space-y-3 text-sm">
+            <li className="flex gap-3">
+              <span className="grid h-6 w-6 flex-none place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white">1</span>
+              <span>把 <strong>GroupScribe</strong> 官方帳號加進你的 LINE 工作群（跟加朋友一樣，從群組「邀請」）。它會發一次告知，之後就安靜記錄。</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="grid h-6 w-6 flex-none place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white">2</span>
+              <span>照常在群裡講話。有日期、有人名、有交辦的句子（例如「小林週三前把報價單給我」）會被整理成待辦與行程。</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="grid h-6 w-6 flex-none place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white">3</span>
+              <span>回到這裡，到「收件匣」把關 AI 整理的結果。確認過的才算數。</span>
+            </li>
+          </ol>
+          <p className="mt-4 text-xs text-gray-500">
+            已經有一段時間的聊天記錄？先{' '}
+            <a className="text-emerald-700 underline" href={`/o/${slug}/import`}>匯入 LINE 匯出的 txt</a>，
+            近 30 天的內容會直接整理出來。
           </p>
         </div>
       ) : (
@@ -233,14 +251,23 @@ export default async function Today({
         </>
       )}
 
+      {/* 原始訊息是「證據」不是「訊號」（principles.md 規則二）：主畫面只留搜尋框與一個低調入口，
+          表格降到 ?view=timeline。搜尋結果本身就是要看訊息，所以有 q 時直接顯示。 */}
       {group && (
+        <form method="get" className="mt-8 mb-3 flex flex-wrap items-center gap-2">
+          <input type="hidden" name="group" value={group} />
+          <input className="input w-64" name="q" placeholder="搜尋這個群的原始訊息" defaultValue={q ?? ''} />
+          <button className="btn">搜尋</button>
+          {!timeline && (
+            <a className="text-sm text-gray-500 underline" href={`/o/${slug}/?group=${encodeURIComponent(group)}&view=timeline`}>
+              最近 100 則原始訊息 →
+            </a>
+          )}
+        </form>
+      )}
+      {group && timeline && (
         <>
-          <h2 className="mt-8 mb-3 text-xl font-bold">時間軸（最近 100 則）</h2>
-          <form method="get" className="mb-3 flex gap-2">
-            <input type="hidden" name="group" value={group} />
-            <input className="input w-64" name="q" placeholder="關鍵字搜尋" defaultValue={q ?? ''} />
-            <button className="btn">搜尋</button>
-          </form>
+          <h2 className="mb-3 text-xl font-semibold tracking-tight">{q ? `搜尋「${q}」` : '原始訊息（最近 100 則）'}</h2>
           <div className="card overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>

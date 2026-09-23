@@ -126,7 +126,7 @@ export default async function SettingsPage({
 
   return (
     <main className="mx-auto max-w-2xl p-5">
-      <h1 className="mb-4 text-2xl font-bold">設定</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight">設定</h1>
       {saved && <p className="card mb-4 border-emerald-200 bg-emerald-50 text-sm">已儲存。</p>}
       {processed && (
         <p className="card mb-4 border-emerald-200 bg-emerald-50 text-sm">
@@ -290,7 +290,7 @@ export default async function SettingsPage({
                 min="0.5"
                 defaultValue={budget}
               />
-              <button className="btn px-2 py-1 text-xs">儲存預算</button>
+              <button className="btn btn-sm">儲存預算</button>
             </form>
             <p className="text-xs text-gray-400">
               這是應用自己的記帳（模型 {model}；Google 沒有提供查詢額度的 API）——Google 端的權威數字請看{' '}

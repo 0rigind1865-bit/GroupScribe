@@ -56,7 +56,7 @@ export default async function AttendCalendar({
   if (!emp) {
     return (
       <main className="mx-auto max-w-4xl p-5">
-        <h1 className="mb-4 text-2xl font-bold">月曆與薪資</h1>
+        <h1 className="mb-4 text-2xl font-semibold tracking-tight">月曆與薪資</h1>
         <p className="text-gray-500">還沒有已啟用的員工。</p>
       </main>
     );

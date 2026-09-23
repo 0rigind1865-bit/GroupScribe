@@ -16,7 +16,7 @@ export function MoreList({
 }) {
   return (
     <main className="mx-auto max-w-3xl p-5">
-      <h1 className="mb-4 text-2xl font-bold">更多</h1>
+      <h1 className="mb-4 text-2xl font-semibold tracking-tight">更多</h1>
       <div className="space-y-2">
         {moreItems(module).map((i) => (
           <a
