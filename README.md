@@ -275,9 +275,17 @@ src/
   休息日/例假日計算（舊制 dayType 缺陷使週末被算成平日，**修正後加班費會比舊系統高**）；
   GPS 可被瀏覽器偽造是已知天花板，擋誤按不擋有心人
 
-租戶 onboarding（v1 手動）：`orgs` 插一列 → `org_settings` 插一列並設 `modules`（`'{gs}'` 群組助理、
-`'{attend}'` 考勤、`'{gs,attend}'` 兩者；沒有列＝只開考勤）→ `org_members` 加管理員 LINE userId →
-管理員登入 `/api/auth/line` → 員工管理頁產加入碼發給員工。
+**新客戶怎麼開始（形態 A：共用一個 GroupScribe 官方帳號）**
+
+1. 平台擁有者跑 `npx tsx scripts/new-org.ts <slug> <名稱> <管理員 LINE userId> [gs|attend|gs,attend]`
+   （建 org、設模組開關、加 owner；冪等）
+2. 客戶把 GroupScribe 官方帳號**邀進**他們的 LINE 工作群（是邀進群，不是加好友）
+3. bot 回一則「請管理員認領」＋連結；認領前不記錄任何訊息、不抽取、不索引，7 天沒人認領自動退群
+4. 客戶管理員點連結 → LINE 登入 → 按「認領這個群」→ 從那一刻開始記錄（先認領者得）
+5. 管理員之後從 `/api/auth/line` 登入，落在 `/o/<slug>`；考勤模組再到員工管理頁產加入碼
+
+平台擁有者也可在 `/o/unclaimed/groups`（或任一 org 的群組頁）用「移轉」下拉手動歸戶。
+認領連結需要公開網址：`.env.local` 設 `APP_BASE_URL=https://<你的網域>`。
 台灣假日初始資料：`npx tsx scripts/seed-holidays.ts <org-slug>`（資料請對照人事行政總處公告核對）。
 
 新增環境變數：`LINE_LOGIN_CHANNEL_SECRET`（Login channel 的 secret，管理員 LINE Login 用）。

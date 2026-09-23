@@ -65,7 +65,13 @@ export async function GET(req: NextRequest) {
   const slug = (memberships?.[0] as { orgs?: { slug?: string } } | undefined)?.orgs?.slug;
 
   const cookie = sessionCookieValue(user.userId);
-  const res = redirectTo(slug ? `/o/${slug}/attend` : '/login?error=noorg');
+  // 有指定回跳（認領頁）就回去；否則落到第一個 org。沒有任何 org 但有回跳頁的人（例如還沒被加成管理員）
+  // 也先回去，由那一頁把「你不是任何組織的管理員」講清楚
+  const nextRaw = req.cookies.get('gs_next')?.value;
+  const next = nextRaw ? decodeURIComponent(nextRaw) : '';
+  // 有 org 就交給 / 依模組與面向落地（src/app/page.tsx），不再寫死考勤——只開群組助理的 org 會 404
+  const res = redirectTo(/^\/(?!\/)/.test(next) ? next : slug ? '/' : '/login?error=noorg');
+  res.headers.append('Set-Cookie', 'gs_next=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure');
   res.headers.append(
     'Set-Cookie',
     `${cookie.name}=${cookie.value}; Path=/; Max-Age=${cookie.maxAge}; HttpOnly; SameSite=Lax; Secure`,

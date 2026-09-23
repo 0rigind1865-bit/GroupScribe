@@ -120,5 +120,6 @@ export const config = {
   // /api/digest 給 NAS cron 打，自行以 ?key=ADMIN_PASSWORD 把關
   // g/(?!a/|a$)：/g 成員版整段跳過，但 /g/a...（LIFF endpoint 設在 /g 時的員工端深連結）
   // 要進來走上面的 rewrite。群組 id 以 a 開頭的 /g/abc 仍會被排除（負向前瞻只認 a/ 與 a 結尾）。
-  matcher: ['/((?!api/webhook|api/login|api/liff|api/digest|api/attend|api/auth|login|g/(?!a/|a$)|g$|a/|a$|_next|favicon.ico).*)'],
+  // /claim 為認領頁：從群組連結點進來的人還沒有 cookie，由頁面自己導去 LINE Login
+  matcher: ['/((?!api/webhook|api/login|api/liff|api/digest|api/attend|api/auth|login|claim/|g/(?!a/|a$)|g$|a/|a$|_next|favicon.ico).*)'],
 };

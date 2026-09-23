@@ -259,12 +259,15 @@ create table if not exists orgs (
 );
 insert into orgs (slug, name) values ('main', '預設組織') on conflict (slug) do nothing;
 
+-- 新群的預設歸戶＝未認領（migration 016）：認領前不落地、不抽取；認領後 groups.org_id 才是真相
+insert into orgs (slug, name) values ('unclaimed', '未認領') on conflict (slug) do nothing;
 create or replace function default_org_id() returns uuid stable
 language sql set search_path = public as $$
-  select id from orgs where slug = 'main'
+  select id from orgs where slug = 'unclaimed'
 $$;
 
 alter table groups   add column if not exists org_id uuid references orgs(id) default default_org_id();
+alter table groups   add column if not exists claimed_at timestamptz;   -- 認領時間（migration 016）
 alter table channels add column if not exists org_id uuid references orgs(id) default default_org_id();
 create index if not exists groups_org on groups (org_id);
 

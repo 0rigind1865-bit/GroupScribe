@@ -50,5 +50,7 @@ export interface MessagingConnector {
   // 回傳 'blocked' 表示對方封鎖或未加好友（呼叫端應停用該訂閱），'error' 為暫時性失敗
   push?(userId: string, text: string): Promise<'ok' | 'blocked' | 'error'>;
   resolveSenderName?(groupId: string, userId: string): Promise<string | undefined>;
+  /** 主動離開群組（未認領 7 天自動退群用）；回 true 表示已不在群內（含本來就不在） */
+  leaveGroup?(groupId: string): Promise<boolean>;
   resolveGroupSummary?(groupId: string): Promise<{ name?: string; pictureUrl?: string } | undefined>;
 }

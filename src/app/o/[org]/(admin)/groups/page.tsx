@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
-import { orgBySlug } from '@/org/orgs';
+import { isPlatformOwner, orgBySlug } from '@/org/orgs';
+import { Banner } from '@/app/ui/banner';
 import { dbConfigured, getDb } from '@/db';
 import { SetupNotice } from '../setup-notice';
 
@@ -15,11 +16,11 @@ export default async function GroupsPage({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ group?: string; profile_error?: string; save_error?: string }>;
+  searchParams: Promise<{ group?: string; profile_error?: string; save_error?: string; claimed?: string }>;
 }) {
   const { org: slug } = await params;
   if (!dbConfigured()) return <SetupNotice />;
-  const { profile_error, save_error } = await searchParams;
+  const { profile_error, save_error, claimed } = await searchParams;
   const db = getDb();
 
   const org = await orgBySlug(slug);
@@ -31,6 +32,9 @@ export default async function GroupsPage({
     .in('group_id', (groups ?? []).map((g: any) => g.group_id)); // 只讀本 org 的（A3）
   if (profErr) console.error('讀取群組理解失敗（migration 004 跑了嗎？）', profErr);
   const profileOf = new Map((profRows ?? []).map((r: any) => [r.group_id, r]));
+  // 平台擁有者才有「移轉」：把群搬到任一 org（A5 歸戶介面；客戶自己走群內的認領連結）
+  const platform = await isPlatformOwner();
+  const allOrgs = platform ? ((await db.from('orgs').select('slug, name').order('name')).data ?? []) : [];
 
   const categories = [...new Set((groups ?? []).map((g: any) => g.category).filter(Boolean))] as string[];
   const byCat = new Map<string, any[]>();
@@ -59,6 +63,10 @@ export default async function GroupsPage({
           群組理解儲存/產生失敗（詳見伺服器 log：<code>docker logs groupscribe</code>）。
         </p>
       ) : null}
+      {claimed && <Banner tone="ok">群組已歸入本組織，從現在開始記錄。</Banner>}
+      {platform && slug === 'unclaimed' && (
+        <Banner tone="warn">這裡是「未認領」：bot 被邀進但還沒有公司認領的群。認領前不記錄任何訊息，7 天後自動退群。</Banner>
+      )}
       {save_error && (
         <p className="card mb-3 border-red-200 bg-red-50 text-sm text-red-700">
           儲存失敗（資料庫暫時性錯誤的可能性較大），請稍後再試。
@@ -106,6 +114,20 @@ export default async function GroupsPage({
                       <input className="input w-28 py-1 text-xs" name="category" list="cats" defaultValue={g.category ?? ''} placeholder="分類" />
                       <button className="btn btn-sm">儲存</button>
                     </form>
+                    {platform && (
+                      <form action="/api/group/claim" method="post" className="flex items-center gap-1 text-sm">
+                        <input type="hidden" name="group_id" value={g.group_id} />
+                        <input type="hidden" name="back" value={`/o/${slug}/groups`} />
+                        <select className="input w-32 text-xs" name="org" defaultValue={slug} aria-label="所屬組織">
+                          {allOrgs.map((o: any) => (
+                            <option key={o.slug} value={o.slug}>
+                              {o.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button className="btn btn-sm">移轉</button>
+                      </form>
+                    )}
                     <form action="/api/group/delete" method="post" className="flex items-center gap-2 text-sm">
                       <input type="hidden" name="group_id" value={g.group_id} />
                       <label className="flex items-center gap-1 text-gray-600">

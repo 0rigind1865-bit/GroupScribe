@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runDailyDigest } from '@/core/digest';
+import { leaveStaleUnclaimed } from '@/core/ingest';
 
 export const maxDuration = 300;
 
@@ -13,7 +14,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '未授權' }, { status: 401 });
   }
   try {
-    return NextResponse.json(await runDailyDigest());
+    const digest = await runDailyDigest();
+    // 未認領 7 天的群自動退出（A5）；同一支 cron 順手做，不另開排程
+    const left_unclaimed = await leaveStaleUnclaimed().catch((e) => (console.error('退出未認領群失敗', e), 0));
+    return NextResponse.json({ ...digest, left_unclaimed });
   } catch (e) {
     console.error('每日摘要失敗', e);
     return NextResponse.json({ error: String((e as Error).message ?? e) }, { status: 500 });

@@ -59,6 +59,14 @@ export function adminCookieValue(): string | null {
   return process.env.ADMIN_PASSWORD ? adminSessionValue() : null;
 }
 
+// 認領連結（A5）：token = HMAC(groupId)。只有看得到群內 bot 訊息的人拿得到——「認領必須在群內可見」。
+export const claimToken = (groupId: string) => sign(`claim:${groupId}`).slice(0, 32);
+export function verifyClaimToken(groupId: string, t: string | undefined): boolean {
+  if (!t || t.length !== 32) return false;
+  const expect = claimToken(groupId);
+  return timingSafeEqual(Buffer.from(t), Buffer.from(expect));
+}
+
 export function sessionCookieValue(userId: string): { name: string; value: string; maxAge: number } {
   const exp = Math.floor(Date.now() / 1000) + TTL;
   const payload = `${userId}.${exp}`;

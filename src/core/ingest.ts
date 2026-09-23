@@ -2,7 +2,63 @@ import { getDb, MEDIA_BUCKET } from '@/db';
 import { getConnector, getVision } from './config';
 import { indexText } from './indexer';
 import { answer } from './query';
+import { claimToken } from './liff';
 import type { NormalizedEvent, NormalizedMessage } from './types';
+
+// ── 未認領歸戶（商業計劃 A5）──
+// 共用一個 bot：新群預設歸 'unclaimed' org（migration 016）。認領前不落地訊息、不抽取、不索引，
+// 被 @ 只回認領連結。orgs 表沒有 'unclaimed'（migration 016 未跑）時整段停用，維持舊行為。
+let unclaimedId: string | null | undefined; // undefined＝尚未查
+async function unclaimedOrgId(): Promise<string | null> {
+  if (unclaimedId !== undefined) return unclaimedId;
+  const { data } = await getDb().from('orgs').select('id').eq('slug', 'unclaimed').maybeSingle();
+  return (unclaimedId = data?.id ?? null);
+}
+// ponytail: in-memory 60 秒快取；認領端點會呼叫 forgetGroupOrg 立即失效（單容器前提）
+const orgCache = new Map<string, { claimed: boolean; at: number }>();
+const ORG_TTL = 60_000;
+export async function isUnclaimed(groupId: string): Promise<boolean> {
+  const uid = await unclaimedOrgId();
+  if (!uid) return false;
+  const hit = orgCache.get(groupId);
+  if (hit && Date.now() - hit.at < ORG_TTL) return !hit.claimed;
+  const { data } = await getDb().from('groups').select('org_id').eq('group_id', groupId).maybeSingle();
+  const claimed = !!data && data.org_id !== uid; // 無列＝還沒 upsert 過＝未認領
+  orgCache.set(groupId, { claimed, at: Date.now() });
+  return !claimed;
+}
+export const forgetGroupOrg = (groupId: string) => orgCache.delete(groupId);
+
+// 認領說明：reply 免費；連結需要公開網址（APP_BASE_URL）
+export function claimNotice(groupId: string): string {
+  const base = process.env.APP_BASE_URL?.replace(/\/$/, '');
+  const link = base ? `${base}/claim/${encodeURIComponent(groupId)}?t=${claimToken(groupId)}` : null;
+  return `我是 GroupScribe 群組工作助理 📋
+這個群還沒有所屬的公司。在管理員認領之前，我不會記錄任何訊息。
+
+請本群所屬公司的管理員點下面連結認領（需用 LINE 登入）：
+${link ?? '（系統尚未設定公開網址，請聯絡平台管理者）'}
+
+7 天內沒有人認領，我會自動離開群組。`;
+}
+
+// 未認領超過 N 天自動退群（每日 cron 由 /api/digest 順手呼叫）：陌生群不燒費、不留資料
+export async function leaveStaleUnclaimed(days = 7): Promise<number> {
+  const uid = await unclaimedOrgId();
+  const connector = getConnector();
+  if (!uid || !connector.leaveGroup) return 0;
+  const db = getDb();
+  const cutoff = new Date(Date.now() - days * 86_400_000).toISOString();
+  const { data } = await db.from('groups').select('group_id').eq('org_id', uid).is('left_at', null).lt('updated_at', cutoff);
+  let n = 0;
+  for (const g of data ?? []) {
+    if (!(await connector.leaveGroup(g.group_id))) continue;
+    const now = new Date().toISOString();
+    await db.from('groups').update({ left_at: now, updated_at: now }).eq('group_id', g.group_id);
+    n++;
+  }
+  return n;
+}
 
 const NOTICE_VERSION = 'v1';
 // LIFF 成員入口網址；未設定 LIFF_ID 時回 null，所有引用處自然省略該行
@@ -138,11 +194,18 @@ async function handleJoin(groupId: string, replyToken: string | undefined, chann
   const enabled = cfg?.join_notice_enabled ?? true;
   const noticeText = (cfg?.join_notice_text ?? '').trim() || DEFAULT_NOTICE;
 
-  // 不論告知開關都記錄群組（重新加入 → 清除離開標記、補名稱）
+  // 不論告知開關都記錄群組（重新加入 → 清除離開標記、補名稱）。新列的 org_id 走欄位預設＝未認領
   await db.from('groups').upsert({ group_id: groupId, left_at: null, updated_at: new Date().toISOString() });
   groupNamed.delete(groupId);
   groupTriedAt.delete(groupId);
+  forgetGroupOrg(groupId);
   await ensureGroupProfile(groupId);
+
+  // 未認領：只回認領連結，不發告知、不記 consent（認領後由管理員決定何時開始）
+  if (await isUnclaimed(groupId)) {
+    if (replyToken) await getConnector().reply(replyToken, claimNotice(groupId));
+    return;
+  }
 
   // 只有開啟時才發告知＋記 consent（關閉＝沒告知，就不該留「已告知」記錄）
   if (enabled) {
@@ -272,6 +335,11 @@ export async function retryPendingMedia(groupId: string): Promise<number> {
 async function handleMessage(m: NormalizedMessage, channelId: string) {
   const db = getDb();
   const connector = getConnector();
+  // 未認領的群：零落地（不存訊息、不抓媒體、不索引）；被 @ 才回認領連結
+  if (await isUnclaimed(m.groupId)) {
+    if (m.mentionsBot && m.replyToken) await connector.reply(m.replyToken, claimNotice(m.groupId));
+    return;
+  }
   await ensureGroupProfile(m.groupId).catch((e) => console.error('群組名稱更新失敗', e));
   const senderName = m.senderId ? await connector.resolveSenderName?.(m.groupId, m.senderId) : undefined;
 

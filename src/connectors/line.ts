@@ -119,6 +119,15 @@ export const lineConnector: MessagingConnector = {
     return res.status === 403 ? 'blocked' : 'error';
   },
 
+  async leaveGroup(groupId) {
+    const res = await fetch(`${API}/group/${encodeURIComponent(groupId)}/leave`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${token()}` },
+    });
+    if (!res.ok && res.status !== 404) console.error('LINE 離開群組失敗', groupId, res.status, await res.text());
+    return res.ok || res.status === 404; // 404＝本來就不在群
+  },
+
   async resolveGroupSummary(groupId) {
     const cached = summaryCache.get(groupId);
     if (cached) return cached;

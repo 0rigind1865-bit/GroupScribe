@@ -28,5 +28,10 @@ export async function GET(req: NextRequest) {
     'Set-Cookie',
     `gs_oauth_state=${state}; Path=/; Max-Age=600; HttpOnly; SameSite=Lax; Secure`,
   );
+  // 登入後回跳（認領頁用）：只接受站內相對路徑，擋 //evil 這種開放跳轉
+  const next = req.nextUrl.searchParams.get('next') ?? '';
+  if (/^\/(?!\/)[\w\-./?=&%]*$/.test(next)) {
+    res.headers.append('Set-Cookie', `gs_next=${encodeURIComponent(next)}; Path=/; Max-Age=600; HttpOnly; SameSite=Lax; Secure`);
+  }
   return res;
 }
