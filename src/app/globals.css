@@ -38,6 +38,47 @@ html {
     @apply rounded border border-gray-300 bg-white px-3 py-1.5 text-sm;
   }
 
+  /* 載入指示：單一元素純 CSS 環（參考 css-loaders.com 的 spinner，MIT），
+     顏色跟 currentColor 走所以深淺色都不用另 remap；不裝 loading.dev 之類套件。 */
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .spinner {
+    display: inline-block;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 2.5px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 9999px;
+    animation: spin 0.7s linear infinite;
+  }
+  /* 表單送出後按鈕變「轉圈」：layout.tsx 的 3 行 script 在 submit 時加 .is-submitting */
+  form.is-submitting button[type='submit'],
+  form.is-submitting button:not([type]) {
+    pointer-events: none;
+    opacity: 0.6;
+  }
+  form.is-submitting button.is-clicked::before {
+    content: '';
+    display: inline-block;
+    width: 0.875rem;
+    height: 0.875rem;
+    margin-right: 0.375rem;
+    vertical-align: -2px;
+    border: 2px solid currentColor;
+    border-right-color: transparent;
+    border-radius: 9999px;
+    animation: spin 0.7s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner,
+    .is-clicked::before {
+      animation-duration: 1.6s;
+    }
+  }
+
   /* ── 底部導覽：懸浮膠囊 ──
      原本是齊底滿版列，safe-area 有留、但背景仍鋪到螢幕最底——iPhone 的主畫面指示器
      就畫在那條背景上，視覺上壓在一起。膠囊整條浮在 inset 之上，指示器底下是頁面背景，
