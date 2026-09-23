@@ -6,6 +6,7 @@ import { dbConfigured, getDb } from '@/db';
 import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
 import { SetupNotice } from '../setup-notice';
+import { BatchBar, BatchBox } from '../batch-bar';
 import { fmtDate } from '@/core/date';
 
 export const dynamic = 'force-dynamic';
@@ -102,6 +103,17 @@ export default async function InboxPage({
         </div>
       )}
 
+      {/* 勾選後底部浮出批次列（與待辦/月曆頁同一套）：全選 → 確認，一次把關一批 */}
+      {rows.length > 0 && (
+        <BatchBar
+          kind="inbox"
+          back={back}
+          actions={[
+            { action: 'confirm', label: '確認' },
+            { action: 'ignore', label: '忽略', danger: true },
+          ]}
+        />
+      )}
       <div className="space-y-3">
         {rows.map(({ kind, item }) => {
           const s = KIND_STYLE[kind];
@@ -130,6 +142,7 @@ export default async function InboxPage({
                 <p className="text-xs text-gray-400">（來源訊息已被收回或刪除）</p>
               )}
               <div className="flex items-start gap-2.5">
+                <BatchBox id={`${kind}:${item.id}`} />
                 <span className={`mt-0.5 flex-none rounded px-1.5 py-0.5 text-xs font-bold text-white ${s.chip}`}>
                   {s.label}
                 </span>

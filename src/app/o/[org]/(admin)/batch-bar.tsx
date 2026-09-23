@@ -13,7 +13,7 @@ export function BatchBar({
   actions,
   projects,
 }: {
-  kind: 'task' | 'event' | 'note' | 'file';
+  kind: 'task' | 'event' | 'note' | 'file' | 'inbox'; // inbox：三表混排，ids 帶 `kind:id` 前綴
   back: string;
   actions: BatchAction[];
   projects?: string[]; // 檔案頁：指定專案的 datalist 候選

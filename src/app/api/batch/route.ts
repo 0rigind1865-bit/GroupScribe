@@ -3,7 +3,7 @@ import { redirectTo } from '@/http';
 import { getDb, MEDIA_BUCKET } from '@/db';
 import { gsAccess } from '@/org/orgs';
 
-// 批次操作：kind=task|event|note|file，ids 多值。
+// 批次操作：kind=task|event|note|file|inbox，ids 多值（inbox 的 ids 為 `kind:id`，三表混排）。
 // task/event/note：confirm（清待確認）/ ignore / restore / done（僅 task）——與單筆 update 路由同一套欄位慣例。
 // file：project（指定專案）/ delete（需勾確認；連 Storage 原檔一併刪除）。
 export async function POST(req: NextRequest) {
@@ -19,9 +19,22 @@ export async function POST(req: NextRequest) {
 
   const db = getDb();
   const now = new Date().toISOString();
-  const table = ({ task: 'tasks', event: 'events', note: 'notes' } as Record<string, string>)[kind];
+  const TABLE: Record<string, string> = { task: 'tasks', event: 'events', note: 'notes' };
+  const table = TABLE[kind];
 
-  if (table) {
+  if (kind === 'inbox' && (action === 'confirm' || action === 'ignore')) {
+    // 收件匣全選：依前綴拆回三表，各下一次 update（同樣綁 group_id ∈ 本 org）
+    const byKind = new Map<string, string[]>();
+    for (const raw of ids) {
+      const [k, id] = raw.split(':');
+      if (TABLE[k] && id) byKind.set(k, [...(byKind.get(k) ?? []), id]);
+    }
+    const patch = action === 'confirm' ? { needs_confirmation: false } : { status: 'ignored' };
+    for (const [k, list] of byKind) {
+      const { error } = await db.from(TABLE[k]).update({ ...patch, updated_at: now }).in('id', list).in('group_id', access.groupIds);
+      if (error) console.error('收件匣批次操作失敗', k, action, error);
+    }
+  } else if (table) {
     const patch: Record<string, unknown> | null =
       action === 'confirm'
         ? { needs_confirmation: false }
