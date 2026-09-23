@@ -291,6 +291,9 @@ create table if not exists org_settings (
   last_webhook_at timestamptz,
   attend_join_code text,
   modules text[] not null default '{gs}',   -- 開哪些工作區：gs / attend（migration 015）
+  plan text not null default 'free',        -- free / starter / team / internal（migration 017）
+  max_groups int not null default 1,        -- 可認領的群組數上限（migration 017）
+  paid_until date,                          -- 付費方案有效日（migration 017；PAYUNi 結帳寫入）
   updated_at timestamptz not null default now()
 );
 

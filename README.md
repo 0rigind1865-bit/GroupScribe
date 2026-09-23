@@ -275,14 +275,16 @@ src/
   休息日/例假日計算（舊制 dayType 缺陷使週末被算成平日，**修正後加班費會比舊系統高**）；
   GPS 可被瀏覽器偽造是已知天花板，擋誤按不擋有心人
 
-**新客戶怎麼開始（形態 A：共用一個 GroupScribe 官方帳號）**
+**新客戶怎麼開始（形態 A：共用一個 GroupScribe 官方帳號；全程自助，平台擁有者不必介入）**
 
-1. 平台擁有者跑 `npx tsx scripts/new-org.ts <slug> <名稱> <管理員 LINE userId> [gs|attend|gs,attend]`
-   （建 org、設模組開關、加 owner；冪等）
+1. 客戶到 `/start` 用 LINE 登入、輸入組織名稱 → 免費方案（1 個群）立即建好，自己就是 owner
+   （平台擁有者要代建可用 `npx tsx scripts/new-org.ts <slug> <名稱> <管理員 LINE userId> [gs|attend|gs,attend]`）
 2. 客戶把 GroupScribe 官方帳號**邀進**他們的 LINE 工作群（是邀進群，不是加好友）
 3. bot 回一則「請管理員認領」＋連結；認領前不記錄任何訊息、不抽取、不索引，7 天沒人認領自動退群
 4. 客戶管理員點連結 → LINE 登入 → 按「認領這個群」→ 從那一刻開始記錄（先認領者得）
-5. 管理員之後從 `/api/auth/line` 登入，落在 `/o/<slug>`；考勤模組再到員工管理頁產加入碼
+5. 管理員之後從 `/login`「用 LINE 登入」進後台；考勤模組再到員工管理頁產加入碼
+6. 方案上限（`org_settings.max_groups`，free＝1 群）：認領第 2 個群會導到 `/o/<slug>/upgrade`。
+   線上付款（PAYUNi）尚未串接，升級目前由平台擁有者手動改 `org_settings.plan / max_groups / paid_until`
 
 平台擁有者也可在 `/o/unclaimed/groups`（或任一 org 的群組頁）用「移轉」下拉手動歸戶。
 認領連結需要公開網址：`.env.local` 設 `APP_BASE_URL=https://<你的網域>`。

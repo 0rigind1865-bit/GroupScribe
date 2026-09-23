@@ -40,6 +40,19 @@ export default async function ClaimPage({
     orgs = (data ?? []).map((r: any) => r.orgs).filter(Boolean);
   }
   const groupName = cur?.name ?? groupId;
+  // 剩餘額度（只有單一 org 時顯示；多 org 由端點擋）
+  let quota: { used: number; max: number } | null = null;
+  if (!owner && orgs.length === 1) {
+    const { data: o } = await db.from('orgs').select('id').eq('slug', orgs[0].slug).maybeSingle();
+    if (o) {
+      const [{ data: st }, { count }] = await Promise.all([
+        db.from('org_settings').select('max_groups').eq('org_id', o.id).maybeSingle(),
+        db.from('groups').select('group_id', { count: 'exact', head: true }).eq('org_id', o.id).is('left_at', null),
+      ]);
+      quota = { used: count ?? 0, max: st?.max_groups ?? 1 };
+    }
+  }
+  const full = !!quota && quota.used >= quota.max;
 
   return (
     <main className="mx-auto max-w-md p-6">
@@ -61,9 +74,21 @@ export default async function ClaimPage({
             )}
           </>
         ) : !orgs.length ? (
-          <p className="text-sm text-gray-700">
-            你的 LINE 帳號還不是任何組織的管理員。請聯絡平台管理者，把你加為管理員後再點一次這個連結。
-          </p>
+          <>
+            <p className="text-sm text-gray-700">你的 LINE 帳號還沒有組織。免費建立一個，回來再點一次這個連結就能認領。</p>
+            <a className="btn-primary w-full" href={`/start?next=${encodeURIComponent(`/claim/${encodeURIComponent(groupId)}?t=${t}`)}`}>
+              建立我的組織（免費）
+            </a>
+          </>
+        ) : full ? (
+          <>
+            <p className="text-sm text-gray-700">
+              <strong>{orgs[0].name}</strong> 的方案已用滿（{quota!.used} / {quota!.max} 個群）。升級後就能認領這個群。
+            </p>
+            <a className="btn-primary w-full" href={`/o/${orgs[0].slug}/upgrade`}>
+              看方案
+            </a>
+          </>
         ) : (
           <form action="/api/group/claim" method="post" className="space-y-3">
             <input type="hidden" name="group_id" value={groupId} />
@@ -88,6 +113,7 @@ export default async function ClaimPage({
               </label>
             )}
             <button className="btn-primary w-full">認領這個群</button>
+            {quota && <p className="text-xs text-gray-500">目前方案：{quota.used} / {quota.max} 個群</p>}
             <p className="text-xs text-gray-500">認領前 bot 不會記錄任何訊息；認領後群裡的人可以在 LINE 裡看到整理結果。</p>
           </form>
         )}

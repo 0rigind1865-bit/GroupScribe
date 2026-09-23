@@ -28,6 +28,12 @@ export async function POST(req: NextRequest) {
   if (!platform) {
     if (access.slug === 'unclaimed') return NextResponse.json({ error: '不能認領到未認領' }, { status: 403 });
     if (cur && unc && cur.org_id !== unc.id) return NextResponse.json({ error: '這個群已被認領' }, { status: 409 });
+    // 方案上限（migration 017）：free＝1 群；滿了導去升級頁
+    const [{ data: st }, { count }] = await Promise.all([
+      db.from('org_settings').select('max_groups').eq('org_id', access.org.id).maybeSingle(),
+      db.from('groups').select('group_id', { count: 'exact', head: true }).eq('org_id', access.org.id).is('left_at', null),
+    ]);
+    if ((count ?? 0) >= (st?.max_groups ?? 1)) return redirectTo(`${access.base}/upgrade?limit=1`);
   }
 
   const now = new Date().toISOString();

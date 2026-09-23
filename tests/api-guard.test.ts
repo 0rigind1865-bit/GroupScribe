@@ -15,7 +15,8 @@ const API = join(ROOT, 'src/app/api');
 // 不走 gsAccess 的白名單（各有自己的把關）：
 //   webhook＝LINE 簽章、login＝密碼、liff＝LINE ID token、auth＝LINE Login 流程、
 //   digest＝cron ?key、attend＝考勤模組自己的 orgAdminAccess 三重把關
-const WHITELIST = ['webhook/', 'login/', 'liff/', 'auth/', 'digest/', 'attend/'];
+//   org/create＝自助註冊（還沒有 org 可綁，自己驗 liffUser）
+const WHITELIST = ['webhook/', 'login/', 'liff/', 'auth/', 'digest/', 'attend/', 'org/'];
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

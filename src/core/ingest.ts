@@ -39,6 +39,8 @@ export function claimNotice(groupId: string): string {
 請本群所屬公司的管理員點下面連結認領（需用 LINE 登入）：
 ${link ?? '（系統尚未設定公開網址，請聯絡平台管理者）'}
 
+還沒有 GroupScribe 帳號？用 LINE 免費建立：${base ? `${base}/start` : '（請聯絡平台管理者）'}
+
 7 天內沒有人認領，我會自動離開群組。`;
 }
 

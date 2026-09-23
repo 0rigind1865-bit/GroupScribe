@@ -32,8 +32,11 @@ export default async function Root() {
       <p className="text-sm text-gray-500">
         這個 LINE 帳號還沒有可用的功能。
         <br />
-        要打卡請向管理員索取加入連結；要看群組整理請先在有本服務的群組裡發言。
+        要打卡請向管理員索取加入連結；要看群組整理請先加入有本服務的群組。
       </p>
+      <a className="btn-primary mt-4" href="/start">
+        我是管理者，免費建立組織
+      </a>
     </main>
   );
 }
