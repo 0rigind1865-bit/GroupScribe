@@ -26,7 +26,10 @@ export async function ShellHeader({
   return (
     <header className="sticky top-0 z-30 border-b border-gray-200 bg-white px-4 py-2 md:py-3">
       <div className="mx-auto flex max-w-5xl items-center gap-3 md:gap-5">
-        <SurfaceSwitcher current={mod.id} />
+        {/* 手機頂欄讓給群組／員工 context；面向切換在「更多」頁（U6） */}
+        <div className="hidden md:block">
+          <SurfaceSwitcher current={mod.id} />
+        </div>
         <TopNav moduleId={mod.id} counts={counts} />
         {context && <div className="ml-auto min-w-0 flex-1 md:flex-none">{context}</div>}
       </div>

@@ -4,7 +4,23 @@
     {
       "name": "groupscribe",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3000,
+      "autoPort": true
+    },
+    {
+      "name": "groupscribe-preview",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "ADMIN_PASSWORD=preview-only-local",
+        "DEMO_MODE=1",
+        "npm",
+        "run",
+        "dev"
+      ],
       "port": 3000,
       "autoPort": true
     }
