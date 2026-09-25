@@ -1,4 +1,6 @@
-# GroupScribe — 群組工作助理
+# GroupScribe — 群組工作助理「群記」
+
+<p align="center"><img src="docs/brand/logo.svg" alt="群記 GroupScribe" width="360"></p>
 
 **你的團隊已經在 LINE 群組裡把事情講完了。它負責記住。**
 

@@ -36,7 +36,7 @@ export const forgetGroupOrg = (groupId: string) => orgCache.delete(groupId);
 export function claimNotice(groupId: string): string {
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '');
   const link = base ? `${base}/claim/${encodeURIComponent(groupId)}?t=${claimToken(groupId)}` : null;
-  return `我是 GroupScribe 群組工作助理 📋
+  return `我是群記 🦉，GroupScribe 的群組工作助理。
 這個群還沒有所屬的公司。在管理員認領之前，我不會記錄任何訊息。
 
 請本群所屬公司的管理員點下面連結認領（需用 LINE 登入）：
@@ -71,7 +71,7 @@ export const liffUrl = (): string | null =>
   process.env.LIFF_ID ? `https://liff.line.me/${process.env.LIFF_ID}` : null;
 
 // 進群告知的內建預設；實際發送內容以 app_settings.join_notice_text 為準（可在 /settings 編輯）
-export const DEFAULT_NOTICE = `大家好，我是群組工作助理 📋
+export const DEFAULT_NOTICE = `大家好，我是群記 🦉（GroupScribe 群組工作助理）
 我會在背景記錄本群組的訊息（文字、圖片、PDF），整理成可搜尋的工作紀錄。
 
 【怎麼用】
