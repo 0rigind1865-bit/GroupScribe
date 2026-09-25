@@ -164,7 +164,7 @@ html {
       opacity 0.3s ease;
   }
   html.demo-lock [data-cta] {
-    transform: translateY(110%);
+    transform: translateY(calc(100% + 2rem)); /* 懸浮膠囊離底有距離，要多推一點才完全藏起來 */
     opacity: 0;
     pointer-events: none;
   }

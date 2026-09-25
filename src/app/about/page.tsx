@@ -51,9 +51,13 @@ export default function AboutPage() {
 
       <LegalFooter />
 
-      {/* 手機底部固定 CTA；桌機不需要（整頁一眼看得完） */}
-      <div data-cta className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/90 p-3 backdrop-blur md:hidden">
-        <a className="btn-primary h-11 w-full text-base" href="/start">
+      {/* 手機底部懸浮膠囊 CTA（與後台的懸浮導覽同一語言）；桌機不需要（整頁一眼看得完）。
+          外層不吃點擊，膠囊兩側透出的頁面照樣點得到。 */}
+      <div
+        data-cta
+        className="pointer-events-none fixed inset-x-0 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-20 flex justify-center px-6 md:hidden"
+      >
+        <a className="btn-primary pointer-events-auto h-12 w-full max-w-xs rounded-full text-base shadow-lg" href="/start">
           免費開始 · 1 個群免費
         </a>
       </div>

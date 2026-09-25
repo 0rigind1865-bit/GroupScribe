@@ -27,7 +27,8 @@ export function BrandBar({ right }: { right?: React.ReactNode }) {
 
 export function DemoSection({ title = '點一下，看它怎麼整理' }: { title?: string }) {
   return (
-    <section id="demo" className="reveal scroll-mt-4">
+    // 不加 .reveal：它的 transform 會讓示範裡 fixed 定位的「跳過」按鈕跑出畫面（示範本身已有進場動畫）
+    <section id="demo" className="scroll-mt-4">
       <h2 className="mb-3 text-lg font-semibold tracking-tight">{title}</h2>
       <IntroDemo />
     </section>

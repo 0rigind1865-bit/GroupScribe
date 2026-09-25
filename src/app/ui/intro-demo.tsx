@@ -235,13 +235,20 @@ export function IntroDemo() {
 
   return (
     <div ref={box} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-      {/* 跳過：播放中全程可見（鎖捲動的出口） */}
+      {/* 跳過：播放中全程可見（鎖捲動的出口），放在拇指最好按的右下角。
+          鎖住時固定在螢幕右下（示範框可能比螢幕高，框的右下角會在畫面外；底部 CTA 此時已讓開）；
+          重播不鎖時改放在示範框右下，免得使用者滑去別段它還浮在那裡。
+          綠色實心：深色模式下黑色按鈕會跟背景融在一起。 */}
       {phase !== 'idle' && phase !== 'done' && (
+        // 注意：祖先不能有 transform（例如 .reveal 捲動浮入），否則 fixed 會以祖先為準、跑出畫面——
+        // 所以 DemoSection 刻意不加 .reveal（見 intro.tsx）
         <button
           onClick={skip}
-          className="absolute top-12 right-2 z-20 rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold text-white shadow-md"
+          className={`${
+            locked ? 'fixed right-4 bottom-[calc(1.25rem+env(safe-area-inset-bottom))]' : 'absolute right-3 bottom-3'
+          } msg-in z-40 rounded-full bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg`}
         >
-          {locked ? '跳過 ↓' : '跳過'}
+          {locked ? '跳過動畫 ↓' : '跳過'}
         </button>
       )}
       {/* 進度條：對話 → AI 提取 → 人員確認 → 歸位 */}
