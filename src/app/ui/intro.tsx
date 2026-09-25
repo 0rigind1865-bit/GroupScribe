@@ -1,5 +1,5 @@
 import { IntroDemo } from './intro-demo';
-import { AskMock, CalendarMock, FilesMock, InboxMock, MemberMock, PayrollMock, PunchMock, TasksMock, TodayMock } from './intro-mocks';
+import { AskMock, FilesMock, PayrollMock, PunchMock, Shot } from './intro-mocks';
 
 // 官方網站（/about）與認領頁（/claim）共用的介紹區塊。純靜態，唯一的互動在 IntroDemo。
 // 捲動動畫全部是 CSS（globals.css 的 .reveal / .flow-line，animation-timeline: view()）：
@@ -89,10 +89,11 @@ export { FlowSection } from './intro-flow';
 
 // ── 功能巡禮：每個功能一段文字配一支小手機 ──
 const FEATURES = [
-  { t: '今天', d: '打開就知道今天要做什麼：跨好幾個群的行程與到期待辦排在同一條時間線，逾期的標紅，要你處理的放最上面。', mock: <TodayMock /> },
-  { t: '收件匣', d: 'AI 整理的東西先到這裡排隊。每張卡片上面是原話、下面是整理結果：對就確認，錯就修改，不是就忽略——它會記住，不再犯。', mock: <InboxMock /> },
-  { t: '月曆', d: '月、週、日、議程四種看法。有時間的行程自動排進時間軸；綠點是已確認、琥珀是待確認，一眼分得出。', mock: <CalendarMock /> },
-  { t: '待辦', d: '每件事都有負責人與期限。點圈圈就完成，逾期自動提醒；群成員也能在 LINE 裡自己按完成。', mock: <TasksMock /> },
+  { t: '今天', d: '打開就知道今天要做什麼：跨好幾個群的行程與到期待辦排在同一條時間線，逾期的標紅，要你處理的放最上面。', mock: <Shot src="/shots/site-today.webp" alt="今天頁：待確認提醒與日期時間線" /> },
+  { t: '收件匣', d: 'AI 整理的東西先到這裡排隊。每張卡片上面是原話、下面是整理結果：對就確認，錯就修改，不是就忽略——它會記住，不再犯。', mock: <Shot src="/shots/site-inbox.webp" alt="收件匣：每張卡附上原話與確認按鈕" /> },
+  { t: '月曆', d: '月、週、日、議程四種看法。有時間的行程自動排進時間軸，遠期的行程用議程一次看完；綠色已確認、琥珀待確認。', mock: <Shot src="/shots/site-calendar.webp" alt="月曆的議程看法" /> },
+  { t: '待辦', d: '每件事都有負責人與期限。待確認的獨立一區；點圈圈就完成，群成員也能在 LINE 裡自己按完成。', mock: <Shot src="/shots/site-tasks.webp" alt="待辦頁：待確認區與進行中清單" /> },
+  { t: '公告／決議', d: '「以後估價單一律副本給會計」這種拍板的規則，自動整理成公告，不會沉進訊息海裡。', mock: <Shot src="/shots/site-notes.webp" alt="公告與決議頁" /> },
   { t: '檔案', d: '群裡傳的報價單、照片、PDF、語音都自動辨識文字，依專案歸類。之後搜「估價單」就找得到。', mock: <FilesMock /> },
   { t: '@群記 問答', d: '忘了？在群裡 @群記 問就好。它會回答，並告訴你是誰、哪天、在哪一則說的；查不到就直說查不到。', mock: <AskMock /> },
 ];
@@ -103,7 +104,7 @@ export function FeaturesSection() {
       <div className="reveal">
         <Eyebrow>管理後台</Eyebrow>
         <h2 className="mb-1 text-lg font-semibold tracking-tight">整理好的東西，都在這裡</h2>
-        <p className="mb-6 text-sm text-gray-600">手機、電腦都能用。另外還有公告／決議、群組管理、聊天記錄匯入。</p>
+        <p className="mb-6 text-sm text-gray-600">手機、電腦都能用。下面是真實畫面（示範資料）。另外還有群組管理、聊天記錄匯入。</p>
       </div>
       <div className="space-y-12">
         {FEATURES.map((f, i) => (
@@ -130,7 +131,7 @@ export function MemberSection() {
           在 LINE 裡點一下就看得到自己群的行程、待辦、公告和檔案，「我的待辦」放最上面。最清楚狀況的人可以順手確認或修正 AI 整理的內容，也可以自己打開每天早上的私訊提醒。
         </p>
       </div>
-      <MemberMock />
+      <Shot src="/shots/site-member.webp" alt="成員在 LINE 裡看到的畫面：待確認提醒與我的待辦" />
     </section>
   );
 }

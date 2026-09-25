@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { SCENES } from './intro-flow-scenes';
 
 // 「整理到哪裡」捲動敘事（scrollytelling）：這段釘在畫面上，往下滑一次亮一步——
-// 進度線長到那一步、圓點跳起來發光、說明這時才展開；走過的步驟打勾。
+// 進度線長到那一步、圓點跳起來發光、上方換成這一步的小畫面、說明只展開目前這一步；走過的步驟打勾。
 // 沒有 JS 或 prefers-reduced-motion：退回一般清單，所有說明直接顯示。
 
 const FLOW = [
@@ -108,7 +109,17 @@ export function FlowSection() {
     <section ref={sec} style={{ height: `calc(${N * PER_STEP_VH}svh + 100svh)` }}>
       <div className="sticky top-0 flex h-svh flex-col justify-center pb-16">
         {head}
-        <ol ref={list} className="relative space-y-4 pl-10">
+        <div className="mb-4 h-44 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50">
+          {(() => {
+            const Scene = SCENES[Math.max(0, active)];
+            return (
+              <div key={active} className={`h-full transition-opacity duration-300 ${active < 0 ? 'opacity-40' : ''}`}>
+                <Scene />
+              </div>
+            );
+          })()}
+        </div>
+        <ol ref={list} className="relative space-y-3 pl-10">
           <span aria-hidden className="absolute top-3.5 bottom-3.5 left-[15px] w-1 rounded-full bg-gray-200" />
           <span
             aria-hidden
@@ -143,9 +154,9 @@ export function FlowSection() {
                     {s.tag}
                   </span>
                 </p>
-                {/* 說明：滑到這一步才展開（grid-rows 0fr→1fr 做高度動畫） */}
+                {/* 說明：只展開目前這一步，走過的收回成一行（grid-rows 0fr→1fr 做高度動畫） */}
                 <div
-                  className={`grid transition-all duration-500 ease-out ${reached ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+                  className={`grid transition-all duration-500 ease-out ${on ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
                 >
                   <p className={`overflow-hidden text-sm leading-relaxed text-gray-600 ${on ? 'translate-y-0' : ''}`}>{s.d}</p>
                 </div>
@@ -153,7 +164,7 @@ export function FlowSection() {
             );
           })}
         </ol>
-        <p className={`mt-6 text-center text-xs text-gray-500 transition-opacity duration-500 ${active < N - 1 ? 'opacity-100' : 'opacity-0'}`}>
+        <p className={`mt-4 text-center text-xs text-gray-500 transition-opacity duration-500 ${active < N - 1 ? 'opacity-100' : 'opacity-0'}`}>
           <span className="inline-block animate-bounce">↓</span> 繼續往下滑
         </p>
       </div>

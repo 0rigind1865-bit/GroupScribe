@@ -10,6 +10,12 @@ npx tsx scripts/seed-demo.ts --drop   # 4. 截完清除，免得混進正式資�
 ```
 
 只重截其中幾張：`npx tsx scripts/shots.ts today`（比對檔名子字串）。
+
+**官方網站（/about）的後台截圖**另外一組，存在 `public/shots/*.webp`（2x、webp，一張幾十 KB）：
+`npx tsx scripts/shots.ts --site`。介面改版後重跑這行，官網就跟著更新。
+示範群組住在獨立的「示範公司」組織（`/o/demo`），截圖不會帶到正式組織的群組或徽章數字。
+dev server 用 launch.json 的 `groupscribe-preview` 起時，管理密碼是測試用的：
+`ADMIN_PASSWORD=preview-only-local npx tsx scripts/shots.ts --site`。
 dev server 不在 3000/3001 時用 `PORT=54119 npx tsx scripts/shots.ts`。
 
 ## 現有

@@ -16,6 +16,7 @@ for (const line of fs.readFileSync('.env.local', 'utf8').split('\n')) {
 }
 
 const GROUP_ID = 'DEMO-GROUP';
+const DEMO_ORG = 'demo'; // 截圖網址 /o/demo/...
 const GROUP_NAME = '日新 · 專案群';
 
 // 相對今天算日期，截圖時「今天」頁永遠有內容
@@ -73,10 +74,25 @@ async function main() {
   await db.from('embeddings').delete().eq('group_id', GROUP_ID);
   await db.from('messages').delete().eq('group_id', GROUP_ID);
   await db.from('groups').delete().eq('group_id', GROUP_ID);
-  if (drop) return console.log(`已清除 ${GROUP_ID}`);
+  if (drop) {
+    await db.from('orgs').delete().eq('slug', DEMO_ORG); // org_settings 由 FK cascade 帶走
+    return console.log(`已清除 ${GROUP_ID} 與 ${DEMO_ORG} 組織`);
+  }
+
+  // 獨立的示範組織：截圖（scripts/shots.ts）只截得到假資料，也不會被新群預設的「未認領」吃掉
+  const { data: org, error: orgErr } = await db
+    .from('orgs')
+    .upsert({ slug: DEMO_ORG, name: '示範公司' }, { onConflict: 'slug' })
+    .select('id')
+    .single();
+  if (orgErr || !org) throw orgErr ?? new Error('建立示範組織失敗');
+  await db
+    .from('org_settings')
+    .upsert({ org_id: org.id, modules: ['gs'], plan: 'internal', max_groups: 999, updated_at: new Date().toISOString() }, { onConflict: 'org_id' });
 
   await db.from('groups').upsert({
     group_id: GROUP_ID,
+    org_id: org.id,
     name: GROUP_NAME,
     category: '示範',
     updated_at: new Date().toISOString(),

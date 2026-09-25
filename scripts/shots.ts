@@ -4,8 +4,12 @@
 // headless 預設跟隨系統深色、而且截不到捲動後的位置。改用 CDP，三件事一起解決。
 // 零依賴：Node 內建 WebSocket + fetch。
 //
-//   npx tsx scripts/shots.ts            # 全部
+//   npx tsx scripts/shots.ts            # README 五張
 //   npx tsx scripts/shots.ts today      # 只截檔名含 today 的
+//   npx tsx scripts/shots.ts --site     # 官方網站（/about）用的後台截圖 → public/shots/*.webp
+//
+// dev server 用別的管理密碼跑時（例如 launch.json 的 groupscribe-preview）：
+//   ADMIN_PASSWORD=preview-only-local npx tsx scripts/shots.ts --site
 //
 // 前置：`npx tsx scripts/seed-demo.ts` 建示範資料、`npm run dev` 起站（DEMO_MODE=1 才進得去成員版）。
 
@@ -17,23 +21,34 @@ import { join } from 'node:path';
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const PORT = 9222;
-const OUT = 'docs/screenshots';
+const SITE = process.argv.includes('--site');
+const OUT = SITE ? 'public/shots' : 'docs/screenshots';
 
 // iPhone 14 的邏輯尺寸；mobile=true 才會套到手機版斷點與底部 Tab 列。
 // 高度就是一個真實螢幕——不做整頁長圖：README 要的是「一眼看完」，
 // 而且 fixed 的底部 Tab 列在整頁截圖裡會卡在畫面中間，很醜。
 const WIDTH = 390;
 const HEIGHT = 844;
-const SCALE = 3;
+const SCALE = SITE ? 2 : 3; // 官網圖要小：2x＋webp，一張約數十 KB
 
 type Shot = { file: string; url: string; h?: number; scroll?: number };
 const SHOTS: Shot[] = [
   // 首圖：一個螢幕內要同時看得見上方抽取結果與下方時間軸來源（說明文字指的就是這組對應）
-  { file: 'today-mobile', url: '/?group=DEMO-GROUP' },
-  { file: 'inbox-mobile', url: '/inbox?group=DEMO-GROUP' },
-  { file: 'tasks-mobile', url: '/tasks?group=DEMO-GROUP' },
-  { file: 'calendar-agenda', url: '/calendar?group=DEMO-GROUP' },
+  { file: 'today-mobile', url: '/o/demo/?group=DEMO-GROUP' },
+  { file: 'inbox-mobile', url: '/o/demo/inbox?group=DEMO-GROUP' },
+  { file: 'tasks-mobile', url: '/o/demo/tasks?group=DEMO-GROUP' },
+  { file: 'calendar-agenda', url: '/o/demo/calendar?group=DEMO-GROUP' },
   { file: 'member-liff', url: '/g/DEMO-GROUP' },
+];
+
+// 官方網站用：只截一個螢幕高的上半部（說明文字已經講了其餘的）
+const SITE_SHOTS: Shot[] = [
+  { file: 'site-today', url: '/o/demo/?group=DEMO-GROUP', h: 700 },
+  { file: 'site-inbox', url: '/o/demo/inbox?group=DEMO-GROUP', h: 700 },
+  { file: 'site-calendar', url: '/o/demo/calendar?group=DEMO-GROUP&view=agenda', h: 700 },
+  { file: 'site-tasks', url: '/o/demo/tasks?group=DEMO-GROUP', h: 700 },
+  { file: 'site-notes', url: '/o/demo/notes?group=DEMO-GROUP', h: 700 },
+  { file: 'site-member', url: '/g/DEMO-GROUP', h: 700 },
 ];
 
 const env = Object.fromEntries(
@@ -46,7 +61,7 @@ const env = Object.fromEntries(
 
 // 與 core/auth.ts 同一套簽章（那支是 node:crypto，這裡不能 import 因為它讀 process.env）
 function adminCookie(): string {
-  const pw = env.ADMIN_PASSWORD;
+  const pw = process.env.ADMIN_PASSWORD ?? env.ADMIN_PASSWORD;
   if (!pw) throw new Error('.env.local 沒有 ADMIN_PASSWORD，管理後台截不到');
   const exp = Math.floor(Date.now() / 1000) + 3600;
   return `${exp}.${createHmac('sha256', pw).update(String(exp)).digest('hex')}`;
@@ -80,7 +95,8 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function main() {
   const only = process.argv[2];
-  const shots = only ? SHOTS.filter((s) => s.file.includes(only)) : SHOTS;
+  const list = SITE ? SITE_SHOTS : SHOTS;
+  const shots = only && !only.startsWith('--') ? list.filter((s) => s.file.includes(only)) : list;
   if (!shots.length) throw new Error(`沒有符合「${only}」的截圖`);
 
   const port = await findPort();
@@ -138,8 +154,8 @@ async function main() {
       await send('Runtime.evaluate', { expression: `window.scrollTo(0, ${s.scroll})` });
       await sleep(300);
     }
-    const { data } = await send('Page.captureScreenshot', { format: 'png' });
-    const path = `${OUT}/${s.file}.png`;
+    const { data } = await send('Page.captureScreenshot', SITE ? { format: 'webp', quality: 82 } : { format: 'png' });
+    const path = `${OUT}/${s.file}.${SITE ? 'webp' : 'png'}`;
     writeFileSync(path, Buffer.from(data, 'base64'));
     console.log(`✅ ${path}  ${WIDTH * SCALE}×${(s.h ?? HEIGHT) * SCALE}`);
   }
