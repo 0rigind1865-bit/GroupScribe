@@ -6,6 +6,8 @@ import { dbConfigured, getDb } from '@/db';
 import { SetupNotice } from './setup-notice';
 import { addDays } from '@/core/grid';
 import { isOverdue, todayISO } from '@/core/date';
+import { orgAiBudget } from '@/core/quota';
+import { Banner } from '@/app/ui/banner';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +68,8 @@ export default async function Today({
     only(db.from('notes').select('id', { count: 'exact', head: true }).eq('needs_confirmation', true).eq('status', 'active')),
   ]);
   const pendingCount = (ev.count ?? 0) + (tk.count ?? 0) + (nt.count ?? 0);
+  const ai = await orgAiBudget(org.id);
+  const aiExhausted = ai.cap !== null && ai.used >= ai.cap;
 
   // 管理者的主畫面該回答「有什麼需要我介入」，不是再列一次清單——清單日期軌已經給了。
   // 這四個都是「例外」：正常運作時全部為 0，整列消失（principles.md：空的時候讓版面給內容）。
@@ -143,6 +147,12 @@ export default async function Today({
   return (
     <main className="mx-auto max-w-3xl p-4 md:p-5">
       <h1 className="mb-3 text-2xl font-semibold tracking-tight">今天</h1>
+      {aiExhausted && (
+        <Banner tone="err">
+          本月 AI 額度已用完（{ai.used} / {ai.cap} 次）：訊息照常保存，但暫停自動整理。{' '}
+          <a className="underline" href={oh(slug, '/upgrade')}>看方案</a>
+        </Banner>
+      )}
 
       {!groups?.length ? (
         // 上手卡（U1）：第一次進來的人需要的是「接下來做什麼」，不是一句「還沒有資料」。

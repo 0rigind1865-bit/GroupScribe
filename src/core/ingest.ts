@@ -3,6 +3,7 @@ import { getConnector, getVision } from './config';
 import { indexText } from './indexer';
 import { answer } from './query';
 import { claimToken } from './liff';
+import { aiScope, isQuotaError } from './quota';
 import type { NormalizedEvent, NormalizedMessage } from './types';
 
 // ── 未認領歸戶（商業計劃 A5）──
@@ -86,7 +87,9 @@ export const DEFAULT_NOTICE = `大家好，我是群組工作助理 📋
 // 加好友的說明用「點頭像」而非搜尋 ID：在群組裡點 bot 頭像就有「加入好友」，不必知道帳號 ID。
 const withLiffEntry = (text: string): string => {
   const url = liffUrl();
-  if (!url) return text;
+  const base = process.env.APP_BASE_URL?.replace(/\/$/, '');
+  const legal = base ? `\n\n服務條款 ${base}/terms ・ 隱私權政策 ${base}/privacy` : '';
+  if (!url) return text + legal;
   return `${text}
 
 【看整理結果】
@@ -96,7 +99,7 @@ const withLiffEntry = (text: string): string => {
 【想每天收到提醒的人】
 ・先點我的頭像 →「加入好友」（LINE 規定：沒加好友我不能私訊你）
 ・再從上面連結打開，把「每天早上私訊我這個群的摘要」打開
-・只有你自己收得到，群組裡不會有任何訊息；沒事的日子也不會打擾`;
+・只有你自己收得到，群組裡不會有任何訊息；沒事的日子也不會打擾${legal}`;
 };
 
 // 低資訊過濾（規劃書第 1 節推論 3）：只留原始紀錄，不進解析與向量化
@@ -324,7 +327,7 @@ export async function retryPendingMedia(groupId: string): Promise<number> {
       done++;
     } catch (e) {
       const emsg = String((e as Error)?.message ?? e);
-      const quota = /429|RESOURCE_EXHAUSTED|spending cap/i.test(emsg);
+      const quota = /429|RESOURCE_EXHAUSTED|spending cap/i.test(emsg) || isQuotaError(e); // 全站配額或該 org 月額度
       // 配額用完不是這個檔的錯，不計入失敗次數，直接停手等下次
       if (!quota) mediaAttempts.set(a.id, (mediaAttempts.get(a.id) ?? 0) + 1);
       console.error('媒體解析重試失敗', a.id, quota ? '（配額用完，本輪停手）' : `（第 ${mediaAttempts.get(a.id)} 次）`, emsg);
@@ -374,6 +377,7 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
     const q = (m.question ?? '').trim();
     const a = q
       ? await answer(m.groupId, q).catch((e) => {
+          if (isQuotaError(e)) return String(e.message); // 額度用完：直接講原因，不要裝成錯誤
           console.error('問答失敗', e);
           return '查詢時發生錯誤，請稍後再試。';
         })
@@ -390,9 +394,11 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
     );
   }
 
-  // 有資訊量的文字才進索引
+  // 有資訊量的文字才進索引；額度用完只略過索引（訊息已存，/api/reindex 可事後補）
   if (m.type === 'text' && !lowInfo && m.text) {
-    await indexText(m.groupId, 'message', row.id, label(m.timestamp, senderName) + m.text, m.timestamp);
+    await indexText(m.groupId, 'message', row.id, label(m.timestamp, senderName) + m.text, m.timestamp).catch((e) => {
+      if (!isQuotaError(e)) throw e;
+    });
   }
 }
 
@@ -421,6 +427,7 @@ export async function analyzeAsset(
   at: Date,
   senderName?: string | null,
 ) {
+  return aiScope(groupId, async () => {
   const r = await getVision().analyze(data, mime);
   // 先建索引再標 done：順序反過來的話，索引失敗（例如 embedding 撞配額）會留下
   // 「status=done 但查不到內容」的黑洞——不列入積壓數、也永遠不會被重試。
@@ -436,4 +443,5 @@ export async function analyzeAsset(
       processed_at: new Date().toISOString(),
     })
     .eq('id', assetId);
+  });
 }

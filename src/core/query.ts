@@ -1,4 +1,5 @@
 import { getDb } from '@/db';
+import { aiScope } from './quota';
 import { getEmbedding, getLLM } from './config';
 import { getProfile } from './profile';
 
@@ -67,7 +68,12 @@ async function confirmedFacts(groupId: string, todayIso: string): Promise<string
   return lines.join('\n');
 }
 
+// 費用煞車：進門先查該 org 本月額度（core/quota.ts）
 export async function answer(groupId: string, question: string): Promise<string> {
+  return aiScope(groupId, () => answerInner(groupId, question));
+}
+
+async function answerInner(groupId: string, question: string): Promise<string> {
   const emb = getEmbedding();
   const todayIso = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
   const [qv] = await emb.embed([question]);

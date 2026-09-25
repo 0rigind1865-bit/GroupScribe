@@ -1,4 +1,5 @@
 import { getDb } from '@/db';
+import { aiScope } from './quota';
 import { getLLM } from './config';
 
 // 群組理解檔案：從群組自己的紀錄歸納背景（產業/術語/成員/案子），存 groups.profile。
@@ -8,7 +9,12 @@ import { getLLM } from './config';
 const SAMPLE = 300; // 對話樣本則數（最近的非低資訊訊息）
 const MAX_ITEMS = 30; // 各類已整理項目上限
 
+// 費用煞車：進門先查該 org 本月額度（core/quota.ts）
 export async function profileGroup(groupId: string): Promise<string> {
+  return aiScope(groupId, () => profileGroupInner(groupId));
+}
+
+async function profileGroupInner(groupId: string): Promise<string> {
   const db = getDb();
 
   const { data: msgs } = await db

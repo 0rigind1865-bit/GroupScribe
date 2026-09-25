@@ -1,4 +1,5 @@
 import { getDb } from '@/db';
+import { aiScope } from './quota';
 import { getLLM } from './config';
 import { getProfile } from './profile';
 
@@ -17,7 +18,12 @@ type AssetRow = {
   messages: { sender_name: string | null; created_at: string; text: string | null };
 };
 
+// 費用煞車：進門先查該 org 本月額度（core/quota.ts）
 export async function classifyFiles(groupId: string): Promise<{ classified: number; total: number }> {
+  return aiScope(groupId, () => classifyFilesInner(groupId));
+}
+
+async function classifyFilesInner(groupId: string): Promise<{ classified: number; total: number }> {
   const db = getDb();
   const res = { classified: 0, total: 0 };
 

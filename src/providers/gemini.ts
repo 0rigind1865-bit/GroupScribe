@@ -1,6 +1,7 @@
 import type { EmbeddingProvider, LLMProvider, VisionProvider } from '@/core/types';
 import { getDb } from '@/db';
 import { currentSettings, refreshSettings } from '@/core/settings';
+import { bumpOrgUsage } from '@/core/quota';
 
 // Gemini REST API（規劃書預設 Provider）。API 單純，直接 fetch，不裝 SDK。
 const BASE = 'https://generativelanguage.googleapis.com/v1beta';
@@ -56,11 +57,13 @@ async function post(path: string, body: unknown): Promise<any> {
         0,
       ) ?? 0;
     bump({ calls: 1, embed: chars });
+    bumpOrgUsage({ calls: 1, embed: chars }); // 同時記到該 org（aiScope 提供脈絡；沒有脈絡就略過）
   } else {
     const u = json.usageMetadata ?? {};
     const input = u.promptTokenCount ?? 0;
     // 2.5 系列的 thinking tokens 也算輸出計費，用 total - prompt 最保險
     bump({ calls: 1, input, output: Math.max(0, (u.totalTokenCount ?? input) - input) });
+    bumpOrgUsage({ calls: 1, input, output: Math.max(0, (u.totalTokenCount ?? input) - input) });
   }
   return json;
 }

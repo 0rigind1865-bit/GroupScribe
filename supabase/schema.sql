@@ -294,6 +294,7 @@ create table if not exists org_settings (
   plan text not null default 'free',        -- free / starter / team / internal（migration 017）
   max_groups int not null default 1,        -- 可認領的群組數上限（migration 017）
   paid_until date,                          -- 付費方案有效日（migration 017；PAYUNi 結帳寫入）
+  monthly_ai_calls int,                     -- 每月 AI 呼叫上限，null＝不限（migration 018）
   updated_at timestamptz not null default now()
 );
 
@@ -311,6 +312,28 @@ alter view groups_view set (security_invoker = on);
 alter table orgs enable row level security;
 alter table org_members enable row level security;
 alter table org_settings enable row level security;
+
+-- 每 org × 月的 AI 用量（migration 018）；記帳走 bump_org_usage RPC
+create table if not exists org_usage (
+  org_id uuid not null references orgs(id) on delete cascade,
+  month date not null,
+  calls int not null default 0,
+  input_tokens bigint not null default 0,
+  output_tokens bigint not null default 0,
+  embed_tokens bigint not null default 0,
+  primary key (org_id, month)
+);
+alter table org_usage enable row level security;
+create or replace function bump_org_usage(p_org uuid, p_month date, p_calls int, p_in bigint, p_out bigint, p_embed bigint)
+returns void language sql security definer set search_path = public as $$
+  insert into org_usage as u (org_id, month, calls, input_tokens, output_tokens, embed_tokens)
+  values (p_org, p_month, p_calls, p_in, p_out, p_embed)
+  on conflict (org_id, month) do update set
+    calls = u.calls + excluded.calls,
+    input_tokens = u.input_tokens + excluded.input_tokens,
+    output_tokens = u.output_tokens + excluded.output_tokens,
+    embed_tokens = u.embed_tokens + excluded.embed_tokens;
+$$;
 
 -- ── 考勤模組（migration 013 回寫）────────────────────────────
 -- 詳細註解見 supabase/migrations/013_attendance.sql

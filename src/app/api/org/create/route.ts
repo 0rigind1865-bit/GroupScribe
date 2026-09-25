@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message ?? '建立失敗' }, { status: 500 });
   }
   const now = new Date().toISOString();
-  await db.from('org_settings').upsert({ org_id: org.id, modules: ['gs'], plan: 'free', max_groups: 1, updated_at: now }, { onConflict: 'org_id' });
+  await db.from('org_settings').upsert({ org_id: org.id, modules: ['gs'], plan: 'free', max_groups: 1, monthly_ai_calls: 1500, updated_at: now }, { onConflict: 'org_id' });
   await db.from('org_members').upsert({ org_id: org.id, line_user_id: uid, role: 'owner' }, { onConflict: 'org_id,line_user_id' });
   return redirectTo(next || `/o/${slug}`);
 }

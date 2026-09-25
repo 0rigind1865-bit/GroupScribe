@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
     console.error('檔案專案分類失敗', groupId, e);
     const msg = String((e as Error).message ?? e);
     // 與 /api/profile 同一套誠實分類：quota=AI 配額、db=欄位未建（migration 007）、1=其他
-    const code = /429|RESOURCE_EXHAUSTED|spending cap/i.test(msg) ? 'quota' : msg.includes('migration 007') ? 'db' : '1';
+    const code = /429|RESOURCE_EXHAUSTED|spending cap|額度已用完/i.test(msg) ? 'quota' : msg.includes('migration 007') ? 'db' : '1';
     if (req.headers.get('accept')?.includes('text/html')) return redirectTo(`${back}&cerror=${code}`);
     return NextResponse.json({ error: msg }, { status: 500 });
   }

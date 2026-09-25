@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
     console.error('產生群組理解失敗', groupId, e);
     // 分類失敗原因，紅字才不會誤導：quota=AI 配額/花費上限、db=欄位未建（migration 004）、1=其他
     const msg = String((e as Error).message ?? e);
-    const code = /429|RESOURCE_EXHAUSTED|spending cap/i.test(msg) ? 'quota' : msg.includes('migration 004') ? 'db' : '1';
+    const code = /429|RESOURCE_EXHAUSTED|spending cap|額度已用完/i.test(msg) ? 'quota' : msg.includes('migration 004') ? 'db' : '1';
     return wantsHtml
       ? redirectTo(`${access.base}/groups?profile_error=${code}&group=${encodeURIComponent(groupId)}`)
       : NextResponse.json({ error: msg }, { status: 500 });

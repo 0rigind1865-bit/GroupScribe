@@ -22,6 +22,9 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
           </a>
         </p>
         {/* 平台擁有者：密碼登入（收在下面，一般客戶用不到） */}
+        <p className="mt-3 text-center text-xs text-gray-400">
+          <a className="underline" href="/terms">服務條款</a> · <a className="underline" href="/privacy">隱私權政策</a>
+        </p>
         <details className="mt-4">
           <summary className="cursor-pointer text-xs text-gray-400">平台管理者密碼登入</summary>
           <form action="/api/login" method="post" className="mt-2 flex gap-2">

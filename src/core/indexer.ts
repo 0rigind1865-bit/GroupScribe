@@ -1,5 +1,6 @@
 import { getDb } from '@/db';
 import { getEmbedding } from './config';
+import { aiScope } from './quota';
 
 const CHUNK = 1000; // ponytail: 固定長度切塊、無重疊；群組訊息幾乎都遠短於此，OCR 長文才會切
 
@@ -17,6 +18,7 @@ export async function indexText(
   text: string,
   at: Date,
 ) {
+  return aiScope(groupId, async () => {
   const emb = getEmbedding();
   const chunks = chunk(text);
   const vectors = await emb.embed(chunks);
@@ -32,6 +34,7 @@ export async function indexText(
     })),
   );
   if (error) throw error;
+  });
 }
 
 // 批次版：匯入 / 全量重建用，一次 embed 多則訊息
@@ -40,6 +43,7 @@ export async function indexBatch(
   items: { sourceType: 'message' | 'media'; sourceId: string; text: string; at: Date }[],
 ) {
   if (!items.length) return;
+  return aiScope(groupId, async () => {
   const emb = getEmbedding();
   // ponytail: 批次路徑直接截斷超長文字不切塊；一般聊天訊息碰不到這個上限
   const vectors = await emb.embed(items.map((it) => it.text.slice(0, CHUNK)));
@@ -55,4 +59,5 @@ export async function indexBatch(
     })),
   );
   if (error) throw error;
+  });
 }

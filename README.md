@@ -286,6 +286,10 @@ src/
 6. 方案上限（`org_settings.max_groups`，free＝1 群）：認領第 2 個群會導到 `/o/<slug>/upgrade`。
    線上付款（PAYUNi）尚未串接，升級目前由平台擁有者手動改 `org_settings.plan / max_groups / paid_until`
 
+每家組織每月有 AI 呼叫上限（`org_settings.monthly_ai_calls`，free 1,500／starter 6,000／team 20,000，null＝不限）：
+用完後訊息照存、暫停整理，方案頁與今天頁會顯示；用量記在 `org_usage`（migration 018）。
+服務條款與隱私權政策在 `/terms`、`/privacy`（草稿，收費前請律師審閱）。
+
 平台擁有者也可在 `/o/unclaimed/groups`（或任一 org 的群組頁）用「移轉」下拉手動歸戶。
 認領連結需要公開網址：`.env.local` 設 `APP_BASE_URL=https://<你的網域>`。
 台灣假日初始資料：`npx tsx scripts/seed-holidays.ts <org-slug>`（資料請對照人事行政總處公告核對）。

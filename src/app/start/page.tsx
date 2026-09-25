@@ -27,6 +27,9 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
             用 LINE 登入開始
           </a>
           <p className="text-xs text-gray-500">免費方案：1 個群、成員人數不限、不用綁卡。</p>
+          <p className="text-xs text-gray-500">
+            登入即表示你同意 <a className="underline" href="/terms">服務條款</a> 與 <a className="underline" href="/privacy">隱私權政策</a>。
+          </p>
         </div>
       </main>
     );
@@ -61,6 +64,9 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
             <input className="input mt-1 block w-full" name="name" required minLength={2} maxLength={40} placeholder="例如：宏達工程" autoFocus />
           </label>
           <button className="btn-primary w-full">建立（免費方案，1 個群）</button>
+          <p className="text-xs text-gray-500">
+            建立即表示你代表此組織同意 <a className="underline" href="/terms">服務條款</a> 與 <a className="underline" href="/privacy">隱私權政策</a>。
+          </p>
         </form>
         <p className="text-xs text-gray-500">建好後，把 GroupScribe 官方帳號邀進你的 LINE 群，再點群裡的認領連結。</p>
       </div>

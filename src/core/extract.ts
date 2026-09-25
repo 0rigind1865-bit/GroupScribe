@@ -1,4 +1,5 @@
 import { getDb } from '@/db';
+import { aiScope } from './quota';
 import { getLLM } from './config';
 import { label } from './ingest';
 import { getProfile, profileGroup } from './profile';
@@ -192,6 +193,8 @@ export interface ExtractStats {
 export async function extractGroup(groupId: string): Promise<ExtractStats> {
   const totals = { processed: 0, created: 0, updated: 0, skipped: 0, deduped: 0 };
   if (running.has(groupId)) return totals;
+  // 費用煞車：該 org 本月額度用完就丟 QuotaError（訊息留著，額度恢復後自然補抽）
+  return aiScope(groupId, async () => {
   running.add(groupId);
   try {
     for (;;) {
@@ -208,6 +211,7 @@ export async function extractGroup(groupId: string): Promise<ExtractStats> {
   } finally {
     running.delete(groupId);
   }
+  });
 }
 
 // 群組理解隨用隨新：抽取到新東西且檔案超過 7 天，就自動重新歸納——AI 越用越理解這個群，
