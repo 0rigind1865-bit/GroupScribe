@@ -3,7 +3,8 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// 守門測試：@群記 問答只能查「發問的這個群」的資料。
+// 守門測試：@群記 問答只能查「發問的這個群」的資料；
+// 唯一例外是 1:1 個人筆記私下問：本人的筆記＋他「現在」還在的群（LINE 群成員 API 判定）。
 //
 // 為什麼要有這個：問答的三個資料來源（向量搜尋、已確認的行程/待辦/公告、群組理解）現在都綁 group_id，
 // 所以不會問到別的群、更不會問到別家公司。但這是「程式剛好寫對」——有人改程式時拿掉條件，
@@ -43,4 +44,18 @@ test('問答用的群組理解只讀這個群', () => {
   const p = read('src/core/profile.ts');
   const fn = p.slice(p.indexOf('export async function getProfile'));
   assert.match(fn.slice(0, 300), /\.eq\(\s*['"]group_id['"]\s*,\s*groupId\s*\)/, 'getProfile 沒有 .eq(group_id, groupId)');
+});
+
+test('個人筆記私下問：範圍只從 myGroups 來，一般群只查自己', () => {
+  const q = read('src/core/query.ts');
+  const fn = q.slice(q.indexOf('async function answerScope'), q.indexOf('async function searchGroup'));
+  assert.match(fn, /if \(!isDm\(groupId\)\) return \[\{ id: groupId/, '一般群的問答範圍不再只有自己這個群');
+  assert.match(fn, /await myGroups\(/, '個人筆記的範圍不是從 myGroups 來');
+  assert.ok(!/\.from\(|rpc\(/.test(fn), 'answerScope 自己查了資料庫——範圍必須只從 myGroups 來');
+  assert.match(q, /scope\.map\(\(g\) => searchGroup\(g\.id/, '向量搜尋沒有照範圍逐群查');
+
+  const l = read('src/core/liff.ts');
+  const mg = l.slice(l.indexOf('export async function myGroups'), l.indexOf('export async function memberName'));
+  assert.match(mg, /isGroupMember\(g\.group_id, userId\)/, 'myGroups 沒有用 LINE 群成員 API 判定「現在在不在群裡」');
+  assert.match(l, /if \(isDm\(groupId\)\) return groupId === dmGroupId\(userId\)/, '別人的個人筆記可能被當成我的群');
 });

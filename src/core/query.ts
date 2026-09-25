@@ -2,6 +2,8 @@ import { getDb } from '@/db';
 import { aiScope } from './quota';
 import { getEmbedding, getLLM } from './config';
 import { getProfile } from './profile';
+import { myGroups } from './liff';
+import { isDm } from './types';
 
 // 「最新狀態」型問題：加快時間衰減，讓最近的資訊排前面（規劃書第 1 節推論 2）
 const LATEST_RE = /最新|目前|現在|報價|價格|金額|多少|數量|幾[個台組支條張筆]|日期|時間|幾點|什麼時候|進度|狀態/;
@@ -73,23 +75,46 @@ export async function answer(groupId: string, question: string): Promise<string>
   return aiScope(groupId, () => answerInner(groupId, question));
 }
 
+// 問答範圍：群組裡只查「這個群」。個人筆記（G8）私下問＝本人的筆記＋他「現在」還在的群——
+// 範圍只能從 myGroups 來（LINE 群成員 API 判定），退群或不在的群一律查不到。守門測試盯著這裡。
+async function answerScope(groupId: string): Promise<{ id: string; name: string }[]> {
+  if (!isDm(groupId)) return [{ id: groupId, name: '' }];
+  const mine = await myGroups(groupId.slice('dm:'.length));
+  return [
+    { id: groupId, name: '我的筆記' },
+    ...mine.filter((g) => g.group_id !== groupId).map((g) => ({ id: g.group_id, name: g.name ?? '未命名群組' })),
+  ];
+}
+
+// ponytail: 一群一次向量查詢；人在幾十個群時再改成 RPC 收陣列
+async function searchGroup(groupId: string, qv: number[], modelId: string) {
+  const { data, error } = await getDb().rpc('match_embeddings', {
+    query_embedding: qv,
+    p_group_id: groupId,
+    p_model_id: modelId,
+    match_count: 50,
+  });
+  if (error) throw error;
+  return (data ?? []) as { similarity: number; created_at: string; chunk_text: string }[];
+}
+
 async function answerInner(groupId: string, question: string): Promise<string> {
   const emb = getEmbedding();
   const todayIso = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
   const [qv] = await emb.embed([question]);
-  const [{ data: hits, error }, confirmed] = await Promise.all([
-    getDb().rpc('match_embeddings', {
-      query_embedding: qv,
-      p_group_id: groupId,
-      p_model_id: emb.modelId,
-      match_count: 50,
-    }),
-    confirmedFacts(groupId, todayIso),
+  const scope = await answerScope(groupId);
+  const multi = scope.length > 1;
+  // 跨群時每行開頭標〔群名〕，答案才講得出「出自哪個群」
+  const tag = (name: string, line: string) => (multi ? `〔${name}〕${line}` : line);
+  const [hitLists, factLists] = await Promise.all([
+    Promise.all(scope.map((g) => searchGroup(g.id, qv, emb.modelId).then((hs) => hs.map((h) => ({ ...h, chunk_text: tag(g.name, h.chunk_text) }))))),
+    Promise.all(scope.map((g) => confirmedFacts(g.id, todayIso).then((t) => (t ? t.split('\n').map((l) => tag(g.name, l)).join('\n') : '')))),
   ]);
-  if (error) throw error;
-  if (!hits?.length && !confirmed) return '這個群組還沒有可查詢的紀錄（可先在 Dashboard 匯入聊天記錄）。';
+  const hits = hitLists.flat();
+  const confirmed = factLists.filter(Boolean).join('\n');
+  if (!hits.length && !confirmed) return '這個群組還沒有可查詢的紀錄（可先在 Dashboard 匯入聊天記錄）。';
 
-  const top = rankHits((hits ?? []) as { similarity: number; created_at: string; chunk_text: string }[], question)
+  const top = rankHits(hits, question)
     .slice(0, 8)
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); // 給 LLM 的脈絡照時間排
 
@@ -104,7 +129,7 @@ async function answerInner(groupId: string, question: string): Promise<string> {
 5. 同一來源有多筆相關資訊時以最新一筆為準，可附註舊資訊供對照。
 6. 事實性問題：兩邊都找不到答案就直接說「紀錄中查不到」，禁止推測或編造。
 7. 對方要的是建議或做法時：根據資料與群組背景給具體可行的建議，並區分哪些出自紀錄、哪些是你的建議。
-${profile ? `\n【群組背景】（AI 從此群紀錄歸納的產業/術語/案子，僅供理解脈絡與給建議）\n${profile}\n` : ''}${confirmed ? `\n【已確認資料】（已核對的現況，每筆附最後更新日）\n${confirmed}\n` : ''}
+${multi ? '8. 資料來自好幾個群組與提問者的個人筆記：每行開頭的〔〕是出處，回答時一定要講出自哪個群（或「你的筆記」）。\n' : ''}${profile ? `\n【群組背景】（AI 從此群紀錄歸納的產業/術語/案子，僅供理解脈絡與給建議）\n${profile}\n` : ''}${confirmed ? `\n【已確認資料】（已核對的現況，每筆附最後更新日）\n${confirmed}\n` : ''}
 【對話紀錄】（原始對話，未經核對）
 ${top.length ? top.map((h) => h.chunk_text).join('\n') : '（無相關對話片段）'}
 
