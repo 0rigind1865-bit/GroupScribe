@@ -144,7 +144,26 @@ export async function getChannelId(): Promise<string> {
   return (cachedChannelId = created.id);
 }
 
+// 1:1 私訊／加好友：群記只在群組裡工作，這裡不記錄任何內容，只回引導（reply 免費）。
+// 個人筆記模式（把 1:1 當個人群）見商業計劃 G8，等有客戶開口再做。
+export function dmNotice(): string {
+  const base = process.env.APP_BASE_URL?.replace(/\/$/, '');
+  return `你好，我是群記 🦉
+我只在 LINE 群組裡工作：把我邀進你的工作群，我會安靜把對話整理成行程、待辦與公告。
+
+怎麼開始：
+1. 打開你的 LINE 群 → 邀請 → 選「群記」
+2. 我會在群裡貼一個認領連結，管理員點一下就好
+
+${base ? `還沒有帳號？免費建立：${base}/start` : ''}
+（這個 1:1 聊天室我不會記錄任何內容）`.trim();
+}
+
 export async function handleEvent(ev: NormalizedEvent, channelId: string): Promise<void> {
+  if (ev.kind === 'dm') {
+    if (ev.replyToken) await getConnector().reply(ev.replyToken, dmNotice());
+    return;
+  }
   if (ev.kind === 'join') return handleJoin(ev.groupId, ev.replyToken, channelId);
   if (ev.kind === 'leave') return handleLeave(ev.groupId);
   if (ev.kind === 'unsend') return handleUnsend(ev.groupId, ev.messageId);

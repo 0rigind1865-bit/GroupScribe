@@ -23,7 +23,9 @@ export type NormalizedEvent =
   | { kind: 'message'; message: NormalizedMessage }
   | { kind: 'join'; groupId: string; replyToken?: string }
   | { kind: 'leave'; groupId: string }
-  | { kind: 'unsend'; groupId: string; messageId: string };
+  | { kind: 'unsend'; groupId: string; messageId: string }
+  /** 1:1 聊天（加好友、私訊）：目前只回「我只在群組裡工作」＋註冊連結；個人筆記模式見商業計劃 G8 */
+  | { kind: 'dm'; userId: string; replyToken?: string };
 
 export interface LLMProvider {
   generate(prompt: string): Promise<string>;

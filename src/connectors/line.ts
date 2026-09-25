@@ -26,7 +26,13 @@ export const lineConnector: MessagingConnector = {
     const out: NormalizedEvent[] = [];
     for (const ev of (body as any)?.events ?? []) {
       const groupId: string | undefined = ev.source?.groupId;
-      if (!groupId) continue; // 只服務群組
+      if (!groupId) {
+        // 1:1（加好友 follow、私訊 message）：不記錄，只回一句引導。多人聊天室（room）與其他事件忽略。
+        if (ev.source?.type === 'user' && (ev.type === 'follow' || ev.type === 'message') && ev.replyToken) {
+          out.push({ kind: 'dm', userId: ev.source.userId, replyToken: ev.replyToken });
+        }
+        continue; // 只服務群組
+      }
       if (ev.type === 'join') {
         out.push({ kind: 'join', groupId, replyToken: ev.replyToken });
         continue;
