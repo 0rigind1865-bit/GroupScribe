@@ -306,6 +306,7 @@ create view groups_view as
          count(*)::int as message_count, max(m.created_at) as last_at
   from messages m
   left join groups g on g.group_id = m.group_id
+  where m.group_id not like 'dm:%'  -- 個人筆記只有本人看得到，不進後台清單（migration 019）
   group by m.group_id, g.name, g.picture_url, g.category, g.left_at, g.org_id;
 alter view groups_view set (security_invoker = on);
 

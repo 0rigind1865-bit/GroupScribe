@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLineExport, inExtractWindow } from '../src/core/importer';
 import { fmtDate, isRevised, needsReview } from '../src/core/date';
-import { isLowInfo, mimeOfKind } from '../src/core/ingest';
+import { isLowInfo, mimeOfKind, DM_ASK_RE } from '../src/core/ingest';
+import { lineConnector } from '../src/connectors/line';
 import { rankHits } from '../src/core/query';
 import { parseOps, dropDupes, type RefMaps, type ParsedOp } from '../src/core/extract';
 import {
@@ -244,4 +245,21 @@ test('fmtDate：期限一律 M/D（週X），跨年才補年份', () => {
   // 三個頁面曾經三種寫法（2026-08-13 / 8/13（週四）/ 08/13），統一由這支產生
   assert.equal(fmtDate('2026-08-13', '2026-07-31'), '8/13（週四）');
   assert.equal(fmtDate('2027-01-05', '2026-07-31'), '2027 1/5（週二）');
+});
+
+test('個人筆記（G8）：1:1 事件轉成 dm:<userId> 群，問句才回答', () => {
+  const src = { type: 'user', userId: 'U1' };
+  const evs = lineConnector.parseEvents({
+    events: [
+      { type: 'follow', source: src, replyToken: 'r1' },
+      { type: 'message', source: src, replyToken: 'r2', timestamp: 0, message: { id: 'm1', type: 'text', text: '明天 9 點看場地' } },
+      { type: 'unfollow', source: src },
+      { type: 'message', source: { type: 'room', roomId: 'R1', userId: 'U2' }, timestamp: 0, message: { id: 'm2', type: 'text', text: 'x' } },
+    ],
+  });
+  assert.deepEqual(evs.map((e) => e.kind), ['follow', 'message', 'leave']); // room 不服務
+  assert.equal((evs[1] as any).message.groupId, 'dm:U1');
+  assert.equal((evs[2] as any).groupId, 'dm:U1');
+  for (const q of ['上次報價多少？', '車號是?', '查 車號', '找一下合約']) assert.ok(DM_ASK_RE.test(q), q);
+  for (const t of ['明天 9 點看場地', '報價 48000', '我要查一下再說']) assert.ok(!DM_ASK_RE.test(t), t);
 });

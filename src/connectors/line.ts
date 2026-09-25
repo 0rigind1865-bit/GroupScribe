@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import type { MessagingConnector, NormalizedEvent } from '@/core/types';
+import { dmGroupId, isDm, type MessagingConnector, type NormalizedEvent } from '@/core/types';
 
 // LINE Messaging API Connector（規劃書第 4 節）。REST 很單純，直接 fetch，不裝 SDK。
 const API = 'https://api.line.me/v2/bot';
@@ -25,13 +25,18 @@ export const lineConnector: MessagingConnector = {
   parseEvents(body) {
     const out: NormalizedEvent[] = [];
     for (const ev of (body as any)?.events ?? []) {
-      const groupId: string | undefined = ev.source?.groupId;
-      if (!groupId) {
-        // 1:1（加好友 follow、私訊 message）：不記錄，只回一句引導。多人聊天室（room）與其他事件忽略。
-        if (ev.source?.type === 'user' && (ev.type === 'follow' || ev.type === 'message') && ev.replyToken) {
-          out.push({ kind: 'dm', userId: ev.source.userId, replyToken: ev.replyToken });
-        }
-        continue; // 只服務群組
+      // 1:1（source.type=user）當成 dm:<userId> 的個人筆記群；多人聊天室（room）不服務
+      const userId: string | undefined = ev.source?.userId;
+      const groupId: string | undefined =
+        ev.source?.groupId ?? (ev.source?.type === 'user' && userId ? dmGroupId(userId) : undefined);
+      if (!groupId) continue;
+      if (ev.type === 'follow') {
+        out.push({ kind: 'follow', userId: userId!, replyToken: ev.replyToken });
+        continue;
+      }
+      if (ev.type === 'unfollow') {
+        out.push({ kind: 'leave', groupId }); // 封鎖＝離開個人筆記
+        continue;
       }
       if (ev.type === 'join') {
         out.push({ kind: 'join', groupId, replyToken: ev.replyToken });
@@ -151,7 +156,9 @@ export const lineConnector: MessagingConnector = {
     const key = `${groupId}:${userId}`;
     const cached = nameCache.get(key);
     if (cached) return cached;
-    const res = await fetch(`${API}/group/${groupId}/member/${userId}`, {
+    // 1:1 沒有群成員 API，改查個人檔案（對方已加好友才拿得到，1:1 本來就是）
+    const path = isDm(groupId) ? `/profile/${userId}` : `/group/${groupId}/member/${userId}`;
+    const res = await fetch(`${API}${path}`, {
       headers: { authorization: `Bearer ${token()}` },
     });
     if (!res.ok) return undefined; // 成員退群等情況拿不到，附來源時退回顯示 userId

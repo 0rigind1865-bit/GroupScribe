@@ -24,8 +24,12 @@ export type NormalizedEvent =
   | { kind: 'join'; groupId: string; replyToken?: string }
   | { kind: 'leave'; groupId: string }
   | { kind: 'unsend'; groupId: string; messageId: string }
-  /** 1:1 聊天（加好友、私訊）：目前只回「我只在群組裡工作」＋註冊連結；個人筆記模式見商業計劃 G8 */
-  | { kind: 'dm'; userId: string; replyToken?: string };
+  /** 加好友（1:1）。1:1 的訊息／封鎖直接以 dmGroupId 當群走 message／leave（商業計劃 G8 個人筆記） */
+  | { kind: 'follow'; userId: string; replyToken?: string };
+
+// 個人筆記（G8）：1:1 聊天室＝一個 group_id 為 dm:<userId> 的群，零 schema、全部管線直接復用
+export const dmGroupId = (userId: string) => `dm:${userId}`;
+export const isDm = (groupId: string) => groupId.startsWith('dm:');
 
 export interface LLMProvider {
   generate(prompt: string): Promise<string>;

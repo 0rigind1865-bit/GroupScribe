@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { getDb } from '@/db';
 import { ADMIN_TTL, adminSessionValue } from './auth';
+import { dmGroupId, isDm } from './types';
 
 // LIFF 成員身份（計劃 B.3 v1 唯讀）：
 // 身份＝LINE ID token 伺服器端驗證（LIFF ID 的前段就是 Login channel ID）；
@@ -101,6 +102,7 @@ const MEMBER_TTL = 10 * 60_000;
 
 export async function isGroupMember(groupId: string, userId: string): Promise<boolean> {
   if (isDemoGroup(groupId)) return true; // 只放行示範群組
+  if (isDm(groupId)) return groupId === dmGroupId(userId); // 個人筆記：只有本人
   const key = `${groupId}|${userId}`;
   const hit = memberCache.get(key);
   if (hit && Date.now() - hit.at < MEMBER_TTL) return hit.ok;
@@ -144,14 +146,20 @@ export async function myGroups(
   opts: { first?: boolean } = {},
 ): Promise<{ group_id: string; name: string | null }[]> {
   const db = getDb();
-  const [{ data: rows }, { data: unc }] = await Promise.all([
+  const [{ data: rows }, { data: unc }, { data: note }] = await Promise.all([
     db.from('groups_view').select('group_id, name, org_id, left_at').order('last_at', { ascending: false }),
     db.from('orgs').select('id').eq('slug', 'unclaimed').maybeSingle(),
+    db.from('groups').select('group_id, name').eq('group_id', dmGroupId(userId)).is('left_at', null).maybeSingle(),
   ]);
-  const cand = (rows ?? []).filter((g: any) => !g.left_at && g.org_id !== unc?.id) as {
+  const cand = (rows ?? []).filter((g: any) => !g.left_at && g.org_id !== unc?.id && !isDm(g.group_id)) as {
     group_id: string;
     name: string | null;
   }[];
+  // 自己的個人筆記置頂（G8）；別人的一律不列
+  if (note) {
+    if (opts.first) return [note];
+    cand.unshift(note);
+  }
   if (opts.first) {
     const { data: spoke } = await db.from('messages').select('group_id').eq('sender_id', userId).limit(50);
     const pri = new Set((spoke ?? []).map((m: any) => m.group_id));

@@ -30,7 +30,7 @@ export default async function UpgradePage({
   const st = await orgSettings(org.id);
   const plan = String(st.plan ?? 'free');
   const max = Number(st.max_groups ?? 1);
-  const { count } = await getDb().from('groups').select('group_id', { count: 'exact', head: true }).eq('org_id', org.id).is('left_at', null);
+  const { count } = await getDb().from('groups').select('group_id', { count: 'exact', head: true }).eq('org_id', org.id).is('left_at', null).not('group_id', 'like', 'dm:%');
   const used = count ?? 0;
   const ai = await orgAiBudget(org.id, true);
 

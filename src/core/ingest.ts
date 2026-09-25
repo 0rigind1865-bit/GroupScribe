@@ -4,7 +4,7 @@ import { indexText } from './indexer';
 import { answer } from './query';
 import { claimToken } from './liff';
 import { aiScope, isQuotaError } from './quota';
-import type { NormalizedEvent, NormalizedMessage } from './types';
+import { dmGroupId, isDm, type NormalizedEvent, type NormalizedMessage } from './types';
 
 // ── 未認領歸戶（商業計劃 A5）──
 // 共用一個 bot：新群預設歸 'unclaimed' org（migration 016）。認領前不落地訊息、不抽取、不索引，
@@ -144,27 +144,72 @@ export async function getChannelId(): Promise<string> {
   return (cachedChannelId = created.id);
 }
 
-// 1:1 私訊／加好友：群記只在群組裡工作，這裡不記錄任何內容，只回引導（reply 免費）。
-// 個人筆記模式（把 1:1 當個人群）見商業計劃 G8，等有客戶開口再做。
+// 1:1 但還不屬於任何公司：不記錄任何內容，只回引導（reply 免費）。
 export function dmNotice(): string {
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '');
   return `你好，我是群記 🦉
-我只在 LINE 群組裡工作：把我邀進你的工作群，我會安靜把對話整理成行程、待辦與公告。
+我主要在 LINE 群組裡工作：把我邀進你的工作群，我會安靜把對話整理成行程、待辦與公告。
 
 怎麼開始：
 1. 打開你的 LINE 群 → 邀請 → 選「群記」
 2. 我會在群裡貼一個認領連結，管理員點一下就好
 （LINE 規定一個群只能有一個官方帳號：群裡已有其他機器人時，要先移出它）
 
+公司認領好群組之後，這個 1:1 聊天室也會變成你的個人筆記。
 ${base ? `看看群記怎麼運作：${base}/about` : ''}
-（這個 1:1 聊天室我不會記錄任何內容）`.trim();
+（在那之前，這個 1:1 聊天室我不會記錄任何內容）`.trim();
+}
+
+// ── 個人筆記（商業計劃 G8）──
+// 1:1 聊天室＝group_id「dm:<userId>」的群，歸到本人所屬的 org；不佔 max_groups、AI 用量照算。
+// 1:1 沒有沉默契約，但每句都回會像客服：問句（句尾問號、或「查／找」開頭）才回答，其餘靜默記錄。
+export const DM_ASK_RE = /[?？]\s*$|^\s*[查找]/;
+const PERSONAL_NOTICE = `你好，我是群記 🦉 這裡是你的個人筆記。
+・丟進來的文字、圖片、PDF、語音，我會安靜整理成行程、待辦與筆記
+・要查資料就用問句（例如「上次報價多少？」或「查 車號」），我才會回
+・只有你自己看得到；封鎖我即停止記錄`;
+
+const dmReady = new Set<string>(); // 本程序已確認歸好戶的個人筆記
+async function ensureDmGroup(userId: string): Promise<boolean> {
+  const gid = dmGroupId(userId);
+  if (dmReady.has(gid)) return true;
+  const db = getDb();
+  const [{ data: g }, uncId] = await Promise.all([
+    db.from('groups').select('org_id, left_at').eq('group_id', gid).maybeSingle(),
+    unclaimedOrgId(),
+  ]);
+  let orgId: string | null = g?.org_id && g.org_id !== uncId ? g.org_id : null;
+  if (!orgId) {
+    // ponytail: 屬於多個 org 時取 owner 那個（其次第一筆）；有人要選再做 LIFF 選單
+    const { data: mem } = await db.from('org_members').select('org_id, role').eq('line_user_id', userId);
+    orgId = (mem ?? []).sort((a: any, b: any) => Number(b.role === 'owner') - Number(a.role === 'owner'))[0]?.org_id ?? null;
+    if (!orgId) return false; // 不屬任何公司：不記錄
+  }
+  if (!g || g.org_id !== orgId || g.left_at) {
+    const { error } = await db
+      .from('groups')
+      .upsert({ group_id: gid, org_id: orgId, name: '我的筆記', left_at: null, updated_at: new Date().toISOString() });
+    if (error) throw error;
+    forgetGroupOrg(gid);
+  }
+  dmReady.add(gid);
+  return true;
+}
+
+// 加好友：屬於某家公司 → 開個人筆記＋隱私告知（記 consent）；否則回引導
+async function handleFollow(userId: string, replyToken: string | undefined, channelId: string) {
+  const connector = getConnector();
+  if (!(await ensureDmGroup(userId))) {
+    if (replyToken) await connector.reply(replyToken, dmNotice());
+    return;
+  }
+  await getDb().from('consent_log').insert({ group_id: dmGroupId(userId), channel_id: channelId, notice_version: NOTICE_VERSION });
+  const url = liffUrl();
+  if (replyToken) await connector.reply(replyToken, url ? `${PERSONAL_NOTICE}\n\n📋 看整理結果 👉 ${url}` : PERSONAL_NOTICE);
 }
 
 export async function handleEvent(ev: NormalizedEvent, channelId: string): Promise<void> {
-  if (ev.kind === 'dm') {
-    if (ev.replyToken) await getConnector().reply(ev.replyToken, dmNotice());
-    return;
-  }
+  if (ev.kind === 'follow') return handleFollow(ev.userId, ev.replyToken, channelId);
   if (ev.kind === 'join') return handleJoin(ev.groupId, ev.replyToken, channelId);
   if (ev.kind === 'leave') return handleLeave(ev.groupId);
   if (ev.kind === 'unsend') return handleUnsend(ev.groupId, ev.messageId);
@@ -203,6 +248,7 @@ export async function ensureGroupProfile(groupId: string): Promise<void> {
 
 // bot 被移出群組：標記 left_at（停止收集的證據；名稱回補跳過此群）
 async function handleLeave(groupId: string) {
+  dmReady.delete(groupId);
   const { error } = await getDb()
     .from('groups')
     .upsert({ group_id: groupId, left_at: new Date().toISOString(), updated_at: new Date().toISOString() });
@@ -362,6 +408,15 @@ export async function retryPendingMedia(groupId: string): Promise<number> {
 async function handleMessage(m: NormalizedMessage, channelId: string) {
   const db = getDb();
   const connector = getConnector();
+  // 個人筆記：先歸戶（不屬任何公司就只回引導、不記錄），問句才算「被 @」
+  if (isDm(m.groupId)) {
+    if (!m.senderId || !(await ensureDmGroup(m.senderId))) {
+      if (m.replyToken) await connector.reply(m.replyToken, dmNotice());
+      return;
+    }
+    const ask = m.type === 'text' && DM_ASK_RE.test(m.text ?? '');
+    m = { ...m, mentionsBot: ask, question: ask ? m.text : undefined };
+  }
   // 未認領的群：零落地（不存訊息、不抓媒體、不索引）；被 @ 才回認領連結
   if (await isUnclaimed(m.groupId)) {
     if (m.mentionsBot && m.replyToken) await connector.reply(m.replyToken, claimNotice(m.groupId));

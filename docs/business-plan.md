@@ -278,9 +278,9 @@
 
 ---
 
-### 2.4 G8 個人筆記模式（1:1 聊天）——規劃，未做
+### 2.4 G8 個人筆記模式（1:1 聊天）——已做（2026-09-25）
 
-**現況（2026-09-25 已上線最小版）**：1:1 傳訊息或加好友時，群記只回一句「我只在群組裡工作」＋註冊連結，不記錄任何內容（`src/core/ingest.ts` 的 `dmNotice`、`connectors/line.ts` 的 `dm` 事件）。
+**現況（2026-09-25 已實作，待跑 migration 019 後部署）**：屬於某家公司（`org_members`）的人，1:1 就是個人筆記；不屬於的人仍只收到引導語、不記錄。多 org 時先取 owner 那個（LIFF 選單未做）。程式：`connectors/line.ts`（1:1→`dm:<userId>`、follow／unfollow）、`core/ingest.ts`（`ensureDmGroup`、`DM_ASK_RE`）、`core/liff.ts`（只有本人、清單置頂）、migration 019（後台清單排除）。
 
 **完整版設計（觸發：≥3 位付費客戶或 Beta 夥伴主動要求）**
 

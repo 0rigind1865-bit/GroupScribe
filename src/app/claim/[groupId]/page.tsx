@@ -62,7 +62,7 @@ export default async function ClaimPage({
     if (o) {
       const [{ data: st }, { count }] = await Promise.all([
         db.from('org_settings').select('max_groups').eq('org_id', o.id).maybeSingle(),
-        db.from('groups').select('group_id', { count: 'exact', head: true }).eq('org_id', o.id).is('left_at', null),
+        db.from('groups').select('group_id', { count: 'exact', head: true }).eq('org_id', o.id).is('left_at', null).not('group_id', 'like', 'dm:%'),
       ]);
       quota = { used: count ?? 0, max: st?.max_groups ?? 1 };
     }
