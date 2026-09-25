@@ -129,7 +129,7 @@ html {
       .reveal {
         animation: reveal linear both;
         animation-timeline: view();
-        animation-range: entry 0% entry 80%;
+        animation-range: entry 0% entry 180px; /* 固定長度：高的區塊（示範框）也不會捲很久還半透明 */
       }
       /* 流程圖的進度線：捲過這一段時從上往下長出來 */
       .flow-line {
@@ -152,18 +152,64 @@ html {
     }
   }
 
-  /* 官方網站示範：整理結果逐張浮入（IntroDemo 以 animationDelay 錯開） */
-  @keyframes demo-in {
+  /* 官方網站示範短劇（IntroDemo）：訊息進場、打字點點、掃描發光、卡片彈出、確認徽章、游標點擊漣漪 */
+  @keyframes msg-in {
     from {
       opacity: 0;
-      transform: translateY(6px);
+      transform: translateY(10px) scale(0.96);
     }
   }
-  .demo-in {
-    animation: demo-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  .msg-in {
+    animation: msg-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+    transform-origin: left bottom;
+  }
+  @keyframes typing {
+    0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+    30% { transform: translateY(-3px); opacity: 1; }
+  }
+  .typing-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--color-gray-400);
+    animation: typing 0.9s ease-in-out infinite;
+  }
+  @keyframes scan-glow {
+    0% { box-shadow: 0 0 0 0 rgb(16 185 129 / 0); }
+    40% { box-shadow: 0 0 0 4px rgb(16 185 129 / 0.45), 0 0 18px rgb(16 185 129 / 0.35); }
+    100% { box-shadow: 0 0 0 2px rgb(16 185 129 / 0.3); }
+  }
+  .scan-glow {
+    animation: scan-glow 0.65s ease-out both;
+  }
+  @keyframes card-pop {
+    0% { opacity: 0; transform: translateY(-14px) scale(0.9); }
+    70% { opacity: 1; transform: translateY(2px) scale(1.02); }
+    100% { transform: none; }
+  }
+  .card-pop {
+    animation: card-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  @keyframes badge-pop {
+    0% { transform: scale(0.4); opacity: 0; }
+    70% { transform: scale(1.15); opacity: 1; }
+  }
+  .badge-pop {
+    animation: badge-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+  @keyframes click-ripple {
+    from { transform: scale(0.3); opacity: 0.6; }
+    to { transform: scale(2.2); opacity: 0; }
+  }
+  .click-ripple {
+    animation: click-ripple 0.45s ease-out both;
   }
   @media (prefers-reduced-motion: reduce) {
-    .demo-in {
+    .msg-in,
+    .card-pop,
+    .badge-pop,
+    .scan-glow,
+    .typing-dot {
       animation: none;
     }
     .spinner,
