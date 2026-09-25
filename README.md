@@ -281,7 +281,9 @@ src/
 
 1. 客戶到 `/start` 用 LINE 登入、輸入組織名稱 → 免費方案（1 個群）立即建好，自己就是 owner
    （平台擁有者要代建可用 `npx tsx scripts/new-org.ts <slug> <名稱> <管理員 LINE userId> [gs|attend|gs,attend]`）
-2. 客戶把 GroupScribe 官方帳號**邀進**他們的 LINE 工作群（是邀進群，不是加好友）
+2. 客戶把 GroupScribe 官方帳號**邀進**他們的 LINE 工作群（是邀進群，不是加好友）。
+   ⚠️ LINE 一個群只能有一個官方帳號：群裡已有其他 bot 時，群記進群後會在 1 秒內被 LINE 移出
+   （伺服器 log 會看到 `LINE 回覆失敗 400 Failed to send messages`），要先移出舊 bot
 3. bot 回一則「請管理員認領」＋連結；認領前不記錄任何訊息、不抽取、不索引，7 天沒人認領自動退群
 4. 客戶管理員點連結 → LINE 登入 → 按「認領這個群」→ 從那一刻開始記錄（先認領者得）
 5. 管理員之後從 `/login`「用 LINE 登入」進後台；考勤模組再到員工管理頁產加入碼
