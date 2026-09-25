@@ -49,6 +49,14 @@ export async function MoreList({
                 <span className="ml-auto text-gray-300">›</span>
               </a>
             ))}
+            {/* 回到首頁的身分選單：記住選擇後首頁會直接跳走，這是回去重選的唯一明顯入口 */}
+            <a href="/?menu=1" className="card flex items-center gap-4 hover:bg-gray-50">
+              <span>
+                <span className="block font-semibold">回到身分選單</span>
+                <span className="block text-sm text-gray-500">看你所有的身分，重新選一個下次直接進入的</span>
+              </span>
+              <span className="ml-auto text-gray-300">›</span>
+            </a>
           </div>
         </>
       )}
