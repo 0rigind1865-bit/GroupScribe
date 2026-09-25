@@ -16,7 +16,8 @@ const API = join(ROOT, 'src/app/api');
 //   webhook＝LINE 簽章、login＝密碼、liff＝LINE ID token、auth＝LINE Login 流程、
 //   digest＝cron ?key、attend＝考勤模組自己的 orgAdminAccess 三重把關
 //   org/create＝自助註冊（還沒有 org 可綁，自己驗 liffUser）
-const WHITELIST = ['webhook/', 'login/', 'liff/', 'auth/', 'digest/', 'attend/', 'org/'];
+//   platform/＝平台管理（跨所有 org，不屬於任何一個 org，自己驗 isPlatformOwner）
+const WHITELIST = ['webhook/', 'login/', 'liff/', 'auth/', 'digest/', 'attend/', 'org/', 'platform/'];
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

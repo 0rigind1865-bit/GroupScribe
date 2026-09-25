@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { getDb } from '@/db';
 import { publicBase, redirectTo } from '@/http';
-import { isAdminLineUser, liffId, sessionCookieValue, verifyIdToken } from '@/core/liff';
+import { adminCookieValue, isAdminLineUser, liffId, sessionCookieValue, verifyIdToken } from '@/core/liff';
+import { ADMIN_TTL } from '@/core/auth';
 
 // LINE Login callback：code 換 token → 驗 id_token → 設 gs_liff cookie →
 // 依 org_members 決定落地頁。與 LIFF 的 gs_liff 完全同一套 session（core/liff.ts），
@@ -77,5 +78,11 @@ export async function GET(req: NextRequest) {
     `${cookie.name}=${cookie.value}; Path=/; Max-Age=${cookie.maxAge}; HttpOnly; SameSite=Lax; Secure`,
   );
   res.headers.append('Set-Cookie', 'gs_oauth_state=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure');
+  // 平台擁有者（ADMIN_LINE_USER_ID）：與手機 LIFF 那條路（/api/liff/session）一樣發管理 cookie。
+  // 原本只有 LIFF 會發，電腦用 LINE 登入的平台擁有者只被當成 main 的 owner——別家公司 404、設定存不了。
+  if (isAdminLineUser(user.userId)) {
+    const auth = adminCookieValue();
+    if (auth) res.headers.append('Set-Cookie', `gs_auth=${auth}; Path=/; Max-Age=${ADMIN_TTL}; HttpOnly; SameSite=Lax; Secure`);
+  }
   return res;
 }

@@ -294,6 +294,7 @@ src/
 用完後訊息照存、暫停整理，方案頁與今天頁會顯示；用量記在 `org_usage`（migration 018）。
 服務條款與隱私權政策在 `/terms`、`/privacy`（草稿，收費前請律師審閱）。
 
+平台擁有者的總控台在 `/platform`（身分選單裡的「平台管理」）：所有公司的方案、群組數、管理員、本月 AI 用量，可直接改方案；未認領的群也列在這裡。
 平台擁有者也可在 `/o/unclaimed/groups`（或任一 org 的群組頁）用「移轉」下拉手動歸戶。
 認領連結需要公開網址：`.env.local` 設 `APP_BASE_URL=https://<你的網域>`。
 台灣假日初始資料：`npx tsx scripts/seed-holidays.ts <org-slug>`（資料請對照人事行政總處公告核對）。

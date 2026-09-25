@@ -16,8 +16,9 @@ import { enabledModuleIds } from './module-ids';
 //   我要打卡  ＝ employees 有這個 LINE 帳號
 //   我的群組  ＝ 他「現在」在某個已認領的群裡（LINE 群成員 API，見 core/liff.ts myGroups）
 //   群組管理／考勤管理 ＝ org_members 有他（每個 org 各一組，依該 org 開的模組）；平台擁有者另加預設 org 全開
+//   平台管理 ＝ 平台擁有者（後台密碼，或 ADMIN_LINE_USER_ID 的 LINE 帳號）
 
-export type SurfaceId = 'groups' | 'punch' | 'gs' | 'attend';
+export type SurfaceId = 'groups' | 'punch' | 'gs' | 'attend' | 'platform';
 
 export type Surface = {
   key: string; // 唯一：同一人管多個 org 時 gs/attend 會各有一組（'gs:acme'）
@@ -79,6 +80,9 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
     if (o.modules.has('attend'))
       list.push({ key: `attend:${o.slug}`, id: 'attend', slug: o.slug, label: `考勤管理${tail}`, desc: '員工管理、補卡審核、打卡報表與薪資', href: `/o/${o.slug}/attend`, rank: 4 + i * 0.01 });
   });
+
+  // 4. 平台擁有者 → 平台管理（所有公司、未認領的群、改方案）
+  if (owner) list.push({ key: 'platform', id: 'platform', label: '平台管理', desc: '所有公司、未認領的群、方案與用量', href: '/platform', rank: 5 });
 
   list.sort((a, b) => a.rank - b.rank);
   return { list, landing: list[0]?.href ?? null };

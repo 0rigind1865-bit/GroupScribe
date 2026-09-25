@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { redirectTo } from '@/http';
 import { liffUser } from '@/core/liff';
+import { PLAN_LIMITS } from '@/org/plans';
 
 // 自助建立組織：LINE 身分即 owner；免費方案（modules=gs、max_groups=1）。
 // 不走 gsAccess——這是「還沒有 org」的人唯一能打的寫入端點；守門測試以白名單註明。
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message ?? '建立失敗' }, { status: 500 });
   }
   const now = new Date().toISOString();
-  await db.from('org_settings').upsert({ org_id: org.id, modules: ['gs'], plan: 'free', max_groups: 1, monthly_ai_calls: 1500, updated_at: now }, { onConflict: 'org_id' });
+  await db.from('org_settings').upsert({ org_id: org.id, modules: ['gs'], plan: 'free', max_groups: PLAN_LIMITS.free.groups, monthly_ai_calls: PLAN_LIMITS.free.aiCalls, updated_at: now }, { onConflict: 'org_id' });
   await db.from('org_members').upsert({ org_id: org.id, line_user_id: uid, role: 'owner' }, { onConflict: 'org_id,line_user_id' });
   return redirectTo(next || `/o/${slug}`);
 }
