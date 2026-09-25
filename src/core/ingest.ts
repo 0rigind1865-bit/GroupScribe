@@ -12,7 +12,9 @@ let unclaimedId: string | null | undefined; // undefined＝尚未查
 async function unclaimedOrgId(): Promise<string | null> {
   if (unclaimedId !== undefined) return unclaimedId;
   const { data } = await getDb().from('orgs').select('id').eq('slug', 'unclaimed').maybeSingle();
-  return (unclaimedId = data?.id ?? null);
+  // 查不到不快取：migration 016 可能在容器啟動後才跑，下一則訊息再查一次即可生效
+  if (data?.id) unclaimedId = data.id;
+  return data?.id ?? null;
 }
 // ponytail: in-memory 60 秒快取；認領端點會呼叫 forgetGroupOrg 立即失效（單容器前提）
 const orgCache = new Map<string, { claimed: boolean; at: number }>();
