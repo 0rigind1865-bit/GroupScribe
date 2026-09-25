@@ -10,17 +10,19 @@ import { surfaces, type SurfaceId } from '@/org/surfaces';
 //
 // 只有一個面向時整條不渲染——沒有選擇就不該佔一列，也不洩漏「還有別的地方」
 // （權限邊界：群組裡別家公司的人不該知道考勤存在）。
-export async function SurfaceSwitcher({ current }: { current: SurfaceId }) {
+// slug：管理面向所屬的 org（同一人管多家時，同類的膠囊會有好幾顆，靠 slug 分出目前這顆）
+export async function SurfaceSwitcher({ current, slug }: { current: SurfaceId; slug?: string }) {
   const { list } = await surfaces();
   if (list.length < 2) return null;
   return (
     <nav className="flex gap-0.5 overflow-x-auto rounded-full bg-gray-100 p-0.5 text-sm" aria-label="切換面向">
       {list.map((s) => {
-        const on = s.id === current;
+        const on = s.id === current && (!s.slug || !slug || s.slug === slug);
         return (
+          // 經 /go 記住這次的選擇：下次從 LINE 打開首頁直接回到這裡
           <a
-            key={s.id}
-            href={s.href}
+            key={s.key}
+            href={`/go/${encodeURIComponent(s.key)}`}
             aria-current={on ? 'page' : undefined}
             className={`rounded-full px-3 py-1 font-bold whitespace-nowrap ${
               on ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'

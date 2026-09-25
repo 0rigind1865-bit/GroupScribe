@@ -133,6 +133,36 @@ export async function isGroupMember(groupId: string, userId: string): Promise<bo
   return ok;
 }
 
+/**
+ * 這個 LINE 帳號「現在」在哪些群（成員版清單與首頁身分判定共用）。
+ * 以 LINE 群成員 API 為權威（isGroupMember，10 分鐘快取）；排除未認領與群記已離開的群——
+ * 那些群沒有整理結果，列出來只會是空頁。
+ * first=true：只要知道「有沒有」——先試他講過話的群（查 DB 很便宜），找到一個就停，不逐群打 LINE API。
+ */
+export async function myGroups(
+  userId: string,
+  opts: { first?: boolean } = {},
+): Promise<{ group_id: string; name: string | null }[]> {
+  const db = getDb();
+  const [{ data: rows }, { data: unc }] = await Promise.all([
+    db.from('groups_view').select('group_id, name, org_id, left_at').order('last_at', { ascending: false }),
+    db.from('orgs').select('id').eq('slug', 'unclaimed').maybeSingle(),
+  ]);
+  const cand = (rows ?? []).filter((g: any) => !g.left_at && g.org_id !== unc?.id) as {
+    group_id: string;
+    name: string | null;
+  }[];
+  if (opts.first) {
+    const { data: spoke } = await db.from('messages').select('group_id').eq('sender_id', userId).limit(50);
+    const pri = new Set((spoke ?? []).map((m: any) => m.group_id));
+    cand.sort((a, b) => Number(pri.has(b.group_id)) - Number(pri.has(a.group_id)));
+    for (const g of cand) if (await isGroupMember(g.group_id, userId)) return [g];
+    return [];
+  }
+  const hits = await Promise.all(cand.map(async (g) => ((await isGroupMember(g.group_id, userId)) ? g : null)));
+  return hits.filter(Boolean) as { group_id: string; name: string | null }[];
+}
+
 // 成員的 LINE 顯示名稱，用來把「可能是你的」待辦置頂（tasks.assignee 是自由文字暱稱，
 // 與 userId 沒有對應表——最小版就是拿 displayName 去寬鬆比對，不建表）。
 // 值來自 isGroupMember 那次呼叫順手快取的回應；備援路徑（LINE 故障）拿不到名字，回 null。

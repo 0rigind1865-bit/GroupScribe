@@ -1,38 +1,71 @@
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { dbConfigured } from '@/db';
 import { liffId, liffUser } from '@/core/liff';
 import { surfaces } from '@/org/surfaces';
+import { BrandBar } from '@/app/ui/intro';
 import { LiffInit } from './g/liff-init';
 
 export const dynamic = 'force-dynamic';
 
-// 全站唯一入口：依身分落地。
+// 全站唯一入口：所有人都從同一個 LINE 連結進來，這裡依身分決定去哪。
 //
-// 取代原本 middleware 把 `/` 寫死 302 到 /o/main 的做法——那對第二個租戶是壞的：
-// acme 的管理員打根路徑會被送到 /o/main，再被導去 /o/main/attend，然後在 layout 拿到 404。
-// 身分要查 DB，middleware 跑 edge runtime 查不了，所以改在這裡做。
+//   只有一種身分 → 直接進去
+//   兩種以上     → 記得上次選的就直接進去；第一次（或 ?menu=1）顯示選單讓他自己選
+//   沒有身分     → 還沒用 LINE 登入就先跑 LIFF 開機；登入了還是沒有，就說明並給建立組織的入口
 //
-// 落地優先序（src/org/surfaces.ts 的 rank）：打卡 → 我的群組 → 群組管理 → 考勤管理。
-// 員工的日常動作排在管理動作前面：一天打兩次卡的人比一週看一次報表的人多。
-// 覺得順序不對就改 surfaces.ts 的 rank——切換器一直在，落錯了也只是一次點擊。
-export default async function Root() {
+// 原本是系統「猜」：有員工身分就一律先進打卡。老闆同時是員工的話，每次點開都先跑到打卡頁，
+// 而頁首那排切換膠囊不顯眼，很多人不知道還有別的頁面（principles.md：別讓我想）。
+export default async function Root({ searchParams }: { searchParams: Promise<{ menu?: string }> }) {
   if (!dbConfigured()) redirect('/login');
 
   const uid = await liffUser();
-  // 沒有 LINE 身分：可能是平台擁有者用密碼登入（surfaces 會給管理面向），
-  // 也可能是還沒授權的員工——後者要先跑一次 LIFF 開機流程拿身分。
-  const { landing } = await surfaces();
-  if (landing) redirect(landing);
+  const { list } = await surfaces();
+  const { menu } = await searchParams;
+
+  if (list.length === 1 && !menu) redirect(list[0].href);
+  if (list.length > 1) {
+    const last = (await cookies()).get('gs_surface')?.value;
+    const hit = list.find((s) => s.key === last);
+    if (hit && !menu) redirect(hit.href);
+    return (
+      <div className="mx-auto max-w-md pb-8">
+        <BrandBar />
+        <main className="px-4">
+          <h1 className="mt-4 text-2xl font-semibold tracking-tight">你想做什麼？</h1>
+          <p className="mt-1 mb-5 text-sm text-gray-600">
+            這個 LINE 帳號有 {list.length} 種身分。選一個，下次打開會直接帶你去。想換身分，用頁面上方的切換膠囊（管理後台在「更多」頁最下面）。
+          </p>
+          <div className="space-y-3">
+            {list.map((s) => (
+              <a key={s.key} href={`/go/${encodeURIComponent(s.key)}`} className="card flex items-center gap-3 rounded-2xl hover:bg-gray-50">
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="text-base font-semibold">{s.label}</span>
+                    {s.key === last && (
+                      <span className="rounded-full bg-emerald-100 px-2 py-px text-[11px] font-medium text-emerald-900">上次使用</span>
+                    )}
+                  </span>
+                  <span className="mt-0.5 block text-sm text-gray-600">{s.desc}</span>
+                </span>
+                <span className="text-xl text-gray-300">›</span>
+              </a>
+            ))}
+          </div>
+        </main>
+      </div>
+    );
+  }
   if (!uid) return <LiffInit liffId={liffId()} />;
 
-  // 有身分但沒有任何面向：不是員工、沒發過言、也不是管理員
+  // 有身分但沒有任何面向：不是員工、不在任何已認領的群、也不是管理員
   return (
     <main className="mx-auto max-w-md p-6 text-center">
       <p className="mb-2 text-lg font-bold">GroupScribe</p>
       <p className="text-sm text-gray-500">
         這個 LINE 帳號還沒有可用的功能。
         <br />
-        要打卡請向管理員索取加入連結；要看群組整理請先加入有本服務的群組。
+        要打卡請向管理員索取加入連結；要看群組整理，請先加入有群記的群組（群組要先被管理員認領）。
       </p>
       <a className="btn-primary mt-4" href="/start">
         我是管理者，免費建立組織

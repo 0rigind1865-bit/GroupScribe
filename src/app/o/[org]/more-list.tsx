@@ -16,7 +16,7 @@ export async function MoreList({
   extra?: React.ReactNode;
 }) {
   // 手機頂欄拿掉面向切換器後，「換身分」的入口在這裡（桌機頂欄仍有）
-  const others = (await surfaces()).list.filter((s) => s.id !== module.id);
+  const others = (await surfaces()).list.filter((s) => !(s.id === module.id && s.slug === slug));
   return (
     <main className="mx-auto max-w-3xl p-5">
       <h1 className="mb-4 text-2xl font-semibold tracking-tight">更多</h1>
@@ -44,7 +44,7 @@ export async function MoreList({
           <h2 className="mt-6 mb-2 text-sm font-medium text-gray-500">切換身分</h2>
           <div className="space-y-2">
             {others.map((s) => (
-              <a key={s.id} href={s.href} className="card flex items-center gap-4 hover:bg-gray-50">
+              <a key={s.key} href={`/go/${encodeURIComponent(s.key)}`} className="card flex items-center gap-4 hover:bg-gray-50">
                 <span className="font-semibold">{s.label}</span>
                 <span className="ml-auto text-gray-300">›</span>
               </a>

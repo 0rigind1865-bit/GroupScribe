@@ -28,7 +28,7 @@ export async function ShellHeader({
       <div className="mx-auto flex max-w-5xl items-center gap-3 md:gap-5">
         {/* 手機頂欄讓給群組／員工 context；面向切換在「更多」頁（U6） */}
         <div className="hidden md:block">
-          <SurfaceSwitcher current={mod.id} />
+          <SurfaceSwitcher current={mod.id} slug={slug} />
         </div>
         <TopNav moduleId={mod.id} counts={counts} />
         {context && <div className="ml-auto min-w-0 flex-1 md:flex-none">{context}</div>}

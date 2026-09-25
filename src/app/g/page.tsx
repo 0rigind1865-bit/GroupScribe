@@ -1,5 +1,5 @@
-import { dbConfigured, getDb } from '@/db';
-import { isGroupMember, liffId, liffUser } from '@/core/liff';
+import { dbConfigured } from '@/db';
+import { liffId, liffUser, myGroups } from '@/core/liff';
 import { SurfaceSwitcher } from '@/app/ui/surface-switcher';
 import { LiffInit } from './liff-init';
 
@@ -16,12 +16,7 @@ export default async function LiffHome() {
   if (!dbConfigured()) return <main className="p-6 text-gray-500">系統尚未設定資料庫。</main>;
 
   const adminUnset = !process.env.ADMIN_LINE_USER_ID?.trim();
-  const db = getDb();
-  const { data: allGroups } = await db.from('groups_view').select('group_id, name').order('last_at', { ascending: false });
-  const membership = await Promise.all(
-    (allGroups ?? []).map(async (g: any) => ((await isGroupMember(g.group_id, uid)) ? g : null)),
-  );
-  const mine = membership.filter(Boolean) as { group_id: string; name: string | null }[];
+  const mine = await myGroups(uid); // 排除未認領與群記已離開的群（core/liff.ts）
 
   return (
     <main className="mx-auto max-w-md p-5">

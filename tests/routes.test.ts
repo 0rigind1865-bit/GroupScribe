@@ -14,8 +14,8 @@ const ROOT = join(import.meta.dirname, '..');
 const SCAN_DIRS = [join(ROOT, 'src/app/o')];
 const SCAN_FILES = [join(ROOT, 'src/core/links.ts')];
 
-// 允許的絕對路徑開頭：org 連結、API、兩個 LIFF 入口、登入頁
-const ALLOWED = /^\/(o\/|api\/|g$|g\/|a$|a\/|login|_next)/;
+// 允許的絕對路徑開頭：org 連結、API、兩個 LIFF 入口、登入頁、換身分（/go/[key]，由 surfaces 清單產生）
+const ALLOWED = /^\/(o\/|api\/|g$|g\/|a$|a\/|go\/|login|_next)/;
 
 // 路由表定義檔：裡面的 '/inbox' 等是「模組內相對 path」，由 module.base(slug) 組合時
 // 才加上 /o/<slug>。語法上與漏改的絕對連結無法區分，只能整檔豁免——
