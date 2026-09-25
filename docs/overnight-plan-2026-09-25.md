@@ -1,7 +1,8 @@
 # 夜間無人值守執行計劃（2026-09-25 晚 → 09-26 早）
 
-> 目的：jielin 睡覺期間，由 agent 在**無人干預**下推進 `docs/business-plan.md` 第 2.1 節「階段一」剩下的**純程式碼**項目，醒來時看到：一串乾淨的 commit、全綠的測試、一份早晨報告、一包待貼的 migration SQL。
-> 本檔是唯一的執行依據。**上下文被壓縮或不確定下一步時，先重讀本檔第 1 節與第 5 節（進度區），不要憑記憶。**
+> 目的：jielin 睡覺期間，由 agent 在**無人干預**下推進兩件事：(1) `docs/business-plan.md` 第 2.1 節「階段一」剩下的**純程式碼**項目；(2) 報帳模組（整合 Snaptab，X1／X2，jielin 2026-09-25 指定要做完）。醒來時看到：一串乾淨的 commit、全綠的測試、一份早晨報告、一包待貼的 migration SQL。
+> 本檔是唯一的執行依據。**上下文被壓縮或不確定下一步時，先重讀本檔第 0.2 節（紅線）、第 1 節（規則）、第 5 節（進度區），不要憑記憶。**
+> v2：已經過 Fable 對抗式審查（21 條發現）修正，修正對照見第 7 節。X1／X2 任務卡由另一個工作階段撰寫，本版原文保留。
 
 ---
 
@@ -9,11 +10,11 @@
 
 ### 0.1 成功長什麼樣（醒來驗收）
 
-1. `git log` 多出若干個繁中 commit，一個任務一個（或一組相關任務一個）。
+1. `git log de67eae..HEAD` 多出若干個繁中 commit，一個任務（或 X2 的一個子項）一個。
 2. `npm test`、`npm run typecheck`、`npm run build` 三個都綠。
-3. 第 5 節進度區每個任務都有狀態（✅／⏭ 跳過＋原因／❌ 失敗＋原因）。
-4. 第 6 節早晨報告寫好：做了什麼、要 jielin 做什麼（依順序）、要貼的 SQL 檔清單。
-5. 正式站（NAS）與正式資料庫**完全沒被動過**。
+3. 第 5 節進度區每個任務都有狀態（✅／◐／⏭ 跳過＋原因／❌ 失敗＋原因）。
+4. 第 6 節早晨報告寫好：做了什麼、jielin 要做什麼（依順序、指令一字不差）、要貼的 SQL 檔清單。
+5. 正式站（NAS）與正式資料庫**完全沒被寫入過**。
 
 ### 0.2 絕對不做（紅線，違反任一條＝立刻停手、寫進報告）
 
@@ -21,74 +22,84 @@
 |---|---|---|
 | R1 | `git push` | CLAUDE.md：push 要用戶明確指示 |
 | R2 | 部署到 NAS（rsync／ssh／docker） | 部署會漏收 webhook，要用戶在場 |
-| R3 | 對正式 Supabase 跑 migration、INSERT／UPDATE／DELETE | 沒有 staging（S1 未做）；只寫 migration 檔，早上給 SQL |
-| R4 | 在本機 dev server 點任何送出／確認／刪除按鈕 | `.env.local` 連的是正式庫，點了就是改正式資料 |
-| R5 | 修改或刪除守門測試（routes／colors／i18n／api-guard／answer-scope）讓它通過 | 守門測試是紀律本身，失敗要修程式 |
-| R6 | 呼叫會花錢或對外發訊息的 API（Gemini 大量呼叫、LINE push） | 無人監看的支出與外部副作用 |
-| R7 | 新增 npm 依賴 | ponytail 原則；NAS 部署也要多同步檔案 |
-| R8 | 做本檔沒列的功能、「順手」重構 | 防漂移；看到值得做的事寫進報告「建議」欄 |
-| R9 | 改 `.env.local`、讀出或印出任何金鑰 | 金鑰安全 |
+| R3 | **任何會寫入正式 Supabase 的動作**。明確禁用工具：`mcp__supabase__apply_migration`、`mcp__supabase__deploy_edge_function`、`mcp__supabase__create_branch`、`mcp__supabase__merge_branch`、`mcp__supabase__reset_branch`、`mcp__supabase__rebase_branch`、`mcp__supabase__delete_branch`。`mcp__supabase__execute_sql` **只准跑以 `select` 開頭、且只查 `information_schema` 或 `count(*)` 的 SQL**。明確禁跑：`scripts/migrate.sh`、`scripts/*.ts` 中任何會讀 `.env.local` 的腳本（例如 `new-org.ts`、`seed-*.ts`、`extract.ts`、`ask.ts`、`dedupe.ts`） | 沒有 staging；`.env.local` 連正式庫 |
+| R4 | 在本機 dev server 送出任何會寫庫的表單或 API（確認、忽略、刪除、設定、認領、匯入、報帳切換…）。**唯一例外**：用 `ADMIN_PASSWORD` 登入 `/login`（只設 cookie、不寫庫）。看今天頁時**不帶 `?q=`**（會呼叫付費 embedding） | 本機連正式庫 |
+| R5 | 修改或刪除守門測試（`routes`／`colors`／`i18n`／`api-guard`／`answer-scope`）的**判斷邏輯**讓它通過。唯一允許：在白名單陣列加入本計劃新增的公開或自行把關的路由，並在 commit 訊息講明 | 守門測試是紀律本身 |
+| R6 | 呼叫會花錢或對外發訊息的 API（Gemini、LINE push／reply、Google 地圖） | 無人監看的支出與外部副作用 |
+| R7 | 新增 npm 依賴（X2 的 `jsqr` 也不加，留給 jielin 決定） | ponytail 原則；NAS 部署也要多同步檔案 |
+| R8 | 做本檔沒列的功能、「順手」重構 | 防漂移；值得做的事寫進第 5 節「發現但沒做」 |
+| R9 | 改 `.env.local`、讀出或印出任何金鑰或 LINE userId | 金鑰與個資安全 |
+| R10 | 修改 `/Users/linjie/Documents/GitHub/Snaptab`（只讀）；讀取 Snaptab 的 Firebase／Firestore 正式資料 | 別的專案；外部存取 |
 
 ### 0.3 允許的事
 
-- 讀寫 repo 內檔案、新增 migration 檔（編號從 `021` 接續）。
-- 跑 `npm test`、`npm run typecheck`、`npm run build`、`npx tsx` 本機腳本（不連外的）。
-- 本機 dev server **只看畫面**（GET 頁面、截圖），驗證版面。
-- `git add` ＋ `git commit`（CLAUDE.md 已預先授權）。
-- 對正式庫做**唯讀** SELECT 來確認欄位名稱（例如 `information_schema`），但不得寫入。
+- 讀寫本 repo 內檔案；新增 migration 檔（編號見第 2 節規則）；讀 Snaptab repo 的程式碼當規格。
+- 跑 `npm test`、`npm run typecheck`、`npm run build`。
+- 本機 dev server：GET 頁面、`curl` 本機端點、截圖；登入只准用 `ADMIN_PASSWORD`。
+- `git add <明確檔名>` ＋ `git commit`（CLAUDE.md 已預先授權）。**禁止 `git add -A` / `git add .`**（可能掃到別的工作階段的未完成檔案）。
+- 符合 R3 條件的唯讀 `select`。
 
 ---
 
 ## 1. 執行規則（防漂移，每個任務都照做）
 
-1. **開始任務前**：重讀本檔該任務卡＋第 5 節進度區，在進度區把狀態改成 `⏳ 進行中` 並寫開始時間。
-2. **先讀懂再動手**：打開任務卡列出的每個檔案，grep 所有呼叫者，確認計劃寫的行號還對（行號可能已漂移，以實際程式為準）。
-3. **只做任務卡「範圍」內的事**。發現計劃錯了或做不到 → 照第 3 條處理，不要自己擴大範圍。
-4. **完成標準全部打勾才算完成**。每張卡的「完成標準」是硬條件。
-5. **每個任務結束跑三件事**：`npm test`、`npm run typecheck`、（該任務有動 UI 或路由時）`npm run build`。任一失敗就修，修不好就退回（`git checkout -- .` 只退本任務未 commit 的變更）。
-6. **commit**：繁中訊息，格式 `<類型>：<簡述>`，結尾加 `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`。**commit 前 `git status` 看一眼，不要把 `.env*`、截圖暫存、scratchpad 檔 commit 進去。**
-7. **回寫進度**：在第 5 節更新狀態、commit hash、一句話結果；「決策紀錄」表記下任何自行判斷。進度區的更新跟著該任務的 commit 一起進。
-8. **卡住規則**：同一個問題試 3 次還不行 → 標 `⏭ 跳過`，寫下卡在哪、試過什麼，**退回未完成的變更**，換下一個任務。不要在一個任務上耗掉整晚。
-9. **需要用戶決定的事**：不要停下來等。選計劃裡寫的預設；沒有預設就選「最小、可逆」的做法，寫進決策紀錄與早晨報告。
-10. **每完成 3 個任務**：重讀第 0.2 節紅線一次，確認沒有漂移。
-11. **結束條件**（任一成立就收尾寫報告）：所有任務處理完；或連續 3 個任務被跳過；或測試出現無法定位的全域失敗。
+1. **開工第一步（只做一次）**：`git status --short`。若計劃檔有未 commit 的變更 → `git add docs/overnight-plan-2026-09-25.md && git commit`（訊息「文件：夜間計劃開工」＋署名行）。之後退回才不會把進度區一起洗掉。記下此時 `git status --short` 裡**所有已存在的未追蹤檔**，寫進決策紀錄——那些不是你的，退回時不准清掉。
+2. **開始任務前**：重讀本檔該任務卡＋第 5 節進度區，把狀態改成 `⏳` 並填開始時間。
+3. **恢復程序**（上下文壓縮後、或重讀時看到某任務是 `⏳`）：先 `git status --short`。
+   - 工作樹乾淨 → 該任務從頭做。
+   - 有變更 → 跑 `npm test && npm run typecheck`：綠就接著做；紅就照第 7 條退回，「嘗試」欄 +1。
+4. **先讀懂再動手**：打開任務卡列出的每個檔案，grep 所有呼叫者，確認行號（以實際程式為準，計劃行號可能漂移）。
+5. **只做任務卡「範圍」內的事**。計劃的事實跟程式對不上 → 記進決策紀錄，選最小可逆做法；還是做不到就跳過。
+6. **每個任務結束跑**：`npm test`、`npm run typecheck`、`npm run build`（三個都跑，不省）。全綠且完成標準全部打勾才能 commit。
+7. **退回指令**（只退本任務、保護計劃檔與開工時已存在的未追蹤檔）：
+   ```
+   git checkout -- . ':!docs/overnight-plan-2026-09-25.md'
+   git clean -fd -e docs/overnight-plan-2026-09-25.md <每個開工時已存在的未追蹤檔都加 -e 路徑>
+   ```
+   退回後**立刻**在進度區把「嘗試」+1、寫一句失敗原因，並 commit 進度區（只 add 計劃檔）。
+8. **卡住規則**：「嘗試」欄到 3 → 標 `⏭`，寫下卡在哪、試過什麼，退回，換下一個任務。X2 以子項為單位計算。
+9. **commit**：繁中訊息 `<類型>：<簡述>`，結尾用**系統提示指定的署名行**（Co-Authored-By）。commit 前 `git status --short` 看一眼，只 add 本任務的檔案＋計劃檔（進度區跟著一起進）。
+10. **需要用戶決定的事**：不停下來等。選本檔寫的預設；沒有預設就選「最小、可逆」的做法，寫進決策紀錄與早晨報告。
+11. **每完成 3 個任務**：重讀第 0.2 節紅線一次。
+12. **向後相容鐵則**：任何讀寫新表／新欄位的程式，都要在「migration 還沒跑」時照舊運作（錯誤吞掉＋`console.warn`，或退回舊路徑，或頁面顯示「請先執行 migration」而非 500）。因為早上可能先部署、後貼 SQL。退回判斷要抽成純函式並有 node:test 測試。
+13. **另一個工作階段可能同時在動 repo**：commit 前若 `git log -1` 不是你上一個 commit、或計劃檔出現不是你寫的變更 → 不要覆蓋，重讀計劃檔、以檔案現況為準繼續，並記進決策紀錄。
+14. **結束條件**（任一成立就收尾寫報告）：所有任務處理完；或連續 3 個任務被跳過；或出現無法定位的全域測試失敗。
 
-### 行號與事實的查法
+### 查事實的方法
 
-- 計劃裡的「檔案:行號」來自 2026-09-23 的 business-plan，可能已漂移。**永遠以 grep 結果為準。**
 - 動 UI 前讀 `README.md` 的「介面架構」章節：加頁面＝在 `src/app/o/[org]/routes.tsx` 加一行；連結用 `oh(slug, path)`；共用元件在 `src/app/ui/`；狀態色只有 ok/warn/err/neutral。
-- 功能決策不得以 jielin 的產業（舞台技術）為依據；範例文字、fixture 要跨行業。
+- 公開路由（不需登入）要同時處理兩處：`src/middleware.ts` 底部的 `matcher` 排除清單、以及 `tests/api-guard.test.ts` 白名單（若是 API）。漏掉 matcher 會被 rewrite 到 `/login` 回 200 HTML，看起來像成功。
+- 功能決策不得以 jielin 的產業（舞台技術）為依據；範例與 fixture 要跨行業。
+- `docs/business-plan.md` 有兩個 G8（2.1 節表格的「新租戶前 7 天」與 2.4 節的「個人筆記」），本計劃稱前者為 **G8b**。
 
 ---
 
 ## 2. 任務總表（依順序執行）
 
-分三層。**A 層一定要做完才碰 B 層；C 層有時間才做。**
+執行順序：**A 層 → D 層（報帳）→ B 層 → C 層**。報帳是 jielin 指定要做完的，所以優先於 B、C。X1 做完才碰 X2。
 
 | 順序 | 代號 | 名稱 | 層 | 需 migration | 風險 |
 |---|---|---|---|---|---|
-| 1 | A9 | 健康檢查端點＋Docker HEALTHCHECK＋webhook 靜默警示 | A | 否 | 低 |
-| 2 | P1 | PWA 最低基礎（manifest、icon、theme-color） | A | 否 | 低 |
-| 3 | G7 | 進群告知改三段＋「本群由認領組織管理、可匯出」 | A | 否 | 低 |
-| 4 | G8 | 新租戶前 7 天抽取一律需確認 | A | 否 | 低 |
-| 5 | A7 | 新租戶零資料上手卡 | A | 否 | 低 |
-| 6 | L1 | LIFF 開啟事件落表＋觸點 source＋單群深連結 | A | 021 | 中 |
-| 7 | G3 | 內容表加 org_id＋trigger＋backfill＋`transfer_group()` | B | 022 | 中 |
-| 8 | B7 | 抽取合批 debounce | B | 否 | 中 |
-| 9 | G4 | webhook 先落地再回 200 | B | 023 | 高 |
-| 10 | G5 | Connector 金鑰收成函式（只重構介面） | B | 否 | 中 |
-| 11 | A6 | 移除 callback 自動種子（改 migration 種子） | B | 024 | 中 |
-| 12 | A8 | 方案降級語意與 suspended | C | 025 | 中 |
-| 13 | E1 | 跨行業抽取回歸集（腳本＋fixture，不跑） | C | 否 | 低 |
-| 14 | A10 | 設計夥伴一頁合約模板（文件） | C | 否 | 低 |
-| 15 | X1 | 報帳模組 v1：私訊發票照 → 自動記一筆＋管理頁＋CSV 匯出 | D | 有 | 中 |
-| 16 | X2 | 報帳模組 v2：Snaptab 其餘功能完整搬家 | D | 有 | 中 |
+| 1 | A9 | 健康檢查端點＋HEALTHCHECK＋心跳警示 6h | A | 否 | 低 |
+| 2 | P1 | PWA manifest＋192 icon＋theme-color | A | 否 | 低 |
+| 3 | G7 | 進群告知三段、含「管理、匯出」、整體 ≤400 字 | A | 否 | 低 |
+| 4 | A7 | 改寫既有上手卡：抽元件＋已認領未發言狀態 | A | 否 | 低 |
+| 5 | L1 | LIFF 每次開啟落表＋source＋`?g=` 深連結 | A | 是 | 中 |
+| 6 | G8b | **只驗證並記錄**（不寫程式） | A | 否 | — |
+| 7 | X1 | 報帳 v1：私訊收據照 → 自動記一筆＋管理頁＋CSV | D | 是 | 中 |
+| 8 | X2 | 報帳 v2：Snaptab 其餘功能搬家（逐子項） | D | 是 | 中 |
+| 9 | B7 | 抽取合批 debounce | B | 否 | 中 |
+| 10 | G4 | webhook 先落地再回 200 | B | 是 | 高 |
+| 11 | G3 | 內容表 org_id＋`transfer_group()` | B | 是 | 中 |
+| 12 | G5 | line connector 收成工廠（僅 line.ts 內） | B | 否 | 低 |
+| 13 | A6 | seed-owner 腳本；有條件移除 callback 自動種子 | B | 否 | 中 |
+| 14 | A8 | suspended 狀態擋 AI＋橫幅 | C | 是 | 中 |
+| 15 | E1 | 抽取回歸集：fixture＋比對器（不跑） | C | 否 | 低 |
+| 16 | A10 | 設計夥伴一頁合約草稿 | C | 否 | 低 |
 
-**D 層（報帳，jielin 2026-09-25 指定要做完）**：A 層做完就做 D 層，**優先於 B、C 層**。X1 做完才碰 X2。規格來源：另一個專案 `/Users/linjie/Documents/GitHub/Snaptab`（只讀，不改那個 repo）。
+**migration 編號規則**：每次新增前 `ls supabase/migrations`，取「已存在的最大編號 +1」（目前最大是 `020`，所以第一支是 `021`）。檔名 `0NN_<英文短名>.sql`。SQL 一律可重跑（`if not exists`、`create or replace`、`drop trigger if exists`、backfill 加 `where ... is null`）。本機沒有 psql，SQL 今晚無法執行驗證——這點要寫進報告。
 
-**明確不在今晚範圍**：S1 staging、Supabase 升 Pro、LINE console 設定、G6 分享卡（要先在 LINE Console 啟用 shareTargetPicker，無法驗證）、B 階段二所有項目、CLA／商標／寄信。
-
-**migration 編號規則**：實際編號依完成順序從 `021` 往上排；跳過的任務不佔號。上表編號只是預估。
+**明確不在今晚範圍**：S1 staging、Supabase 升 Pro、LINE Console 設定、G6 分享卡、demo 群拆 org、B 階段二所有項目、CLA／商標／寄信、X2 的 QR 掃描（需新依賴）與 Snaptab 舊資料搬移。
 
 ---
 
@@ -96,156 +107,78 @@
 
 ### 1. A9 健康檢查
 
-- **目標**：外部監控（UptimeRobot）與 Docker 能知道服務活著；webhook 長時間沒進來時看得見。
+- **目標**：外部監控與 Docker 能知道服務活著；webhook 靜默看得見。
 - **範圍**：
-  - 新增 `src/app/api/health/route.ts`：GET 回 `{ ok: true }`＋DB 可達性（對一張小表做 `select id limit 1`，逾時 3 秒算失敗→回 503）。不回任何金鑰或內部資訊。
-  - `api-guard.test.ts` 的白名單加入 health（這是合法擴充白名單，不是改測試邏輯；在 commit 訊息講明）。
-  - `middleware.ts`：確認 `/api/health` 不需登入即可存取。
-  - `Dockerfile` runner 階段加 `HEALTHCHECK`：用 `node -e "fetch('http://localhost:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"`（slim 映像沒有 curl）。
-  - webhook 靜默警示：**不做私訊推播**（R6）。只在設定頁／今天頁已有的心跳顯示處，靜默 >6 小時時改用 warn 色＋文字提醒。若已存在類似顯示就只調門檻。
+  - `src/app/api/health/route.ts`：GET → 對一張小表做 `select id limit 1`（3 秒逾時）→ 成功回 `{ ok: true }`，失敗回 503 `{ ok: false }`。不回任何內部資訊。
+  - `src/middleware.ts` matcher 排除加 `api/health`；`tests/api-guard.test.ts` 白名單加 `health`（R5 允許的擴充）。
+  - `Dockerfile` runner 階段加：
+    `HEALTHCHECK --interval=60s --timeout=5s --start-period=30s CMD node -e "fetch('http://localhost:3000/api/health').then(r=>r.json()).then(j=>process.exit(j.ok?0:1)).catch(()=>process.exit(1))"`
+  - 心跳警示：只改既有 `settings/page.tsx` 的心跳顯示（先 grep 確認位置），門檻 24h → 6h，超過時用 `Banner tone="warn"`。不做私訊（R6）。
 - **完成標準**：
-  - [ ] `npm run build` 成功，`.next` 內有 health 路由
-  - [ ] dev server 下 `curl localhost:3000/api/health` 回 200 與 `ok:true`
-  - [ ] api-guard 測試綠
-  - [ ] Dockerfile 有 HEALTHCHECK 且語法正確（`docker` 不在本機時只做目視檢查，報告註明）
+  - [ ] 三件套綠
+  - [ ] dev server 未登入 `curl -s localhost:3000/api/health` 回的是 **JSON** 且含 `"ok"`（不是 HTML）
+  - [ ] 本機沒有 docker → Dockerfile 只做目視檢查，報告註明「HEALTHCHECK 未實測」
 
 ### 2. P1 PWA 基礎
 
-- **目標**：管理者可「加到主畫面」，有正確 icon 與主題色。
-- **範圍**：`src/app/manifest.ts`（Next 原生 metadata route，不手寫 json）＋ `public/brand/` 既有圖轉出 192／512 icon（用 macOS 內建 `sips`，不裝套件）＋ `layout.tsx` 加 `viewport` 匯出含 `themeColor`（亮／暗兩色）。`start_url` 設 `/`、`display: standalone`、名稱「群記」。
+- **現況**：`src/app/icon.png`（256）、`src/app/apple-icon.png`（180）、`public/brand/mark-512.png`（512）已存在。
+- **範圍**：
+  - `sips -z 192 192 public/brand/mark-512.png --out public/brand/icon-192.png`
+  - `src/app/manifest.ts`（Next 原生）：name「群記 GroupScribe」、short_name「群記」、`start_url: '/'`、`display: 'standalone'`、icons 192＋512。
+  - `src/app/layout.tsx` 加 `export const viewport`，含 `themeColor`（亮／暗各一，用既有 CSS 色票值）。
+  - middleware matcher 排除加 `manifest`。
 - **不做**：service worker、離線、推播。
 - **完成標準**：
-  - [ ] build 成功；dev server `GET /manifest.webmanifest` 回合法 JSON
-  - [ ] icon 檔存在且尺寸正確（`sips -g pixelWidth` 驗證）
-  - [ ] middleware 放行 manifest 與 icon（未登入可取得）
+  - [ ] 三件套綠
+  - [ ] 未登入 `curl -s localhost:3000/manifest.webmanifest` 回合法 JSON（用 `node -e` 解析通過）
+  - [ ] `sips -g pixelWidth public/brand/icon-192.png` 顯示 192
 
 ### 3. G7 進群告知三段
 
-- **目標**：告知文像「自我介紹」而非隱私聲明，並明寫「本群整理由認領的公司管理、可匯出」。
-- **範圍**：只改 `src/core/ingest.ts` 的 `DEFAULT_NOTICE`（及 1:1 個人筆記的告知若有共用段落）。三段：①我是誰、會做什麼（一句話＋@我 提問）②誰看得到（本群由認領此群的公司管理，管理者可查看與匯出整理結果；成員可從下方連結看自己群的整理）③隱私（移出即停止、收回同步刪除、可要求刪除）。租戶自訂文字（`org_settings.join_notice_text`）行為不變。
-- **注意**：LINE 單則文字上限 5000 字，但越短越好，目標 ≤ 250 字。不得寫「符合 LINE 規範」（business-plan K1）。
+- **現況**：實際送出＝`DEFAULT_NOTICE` ＋ `withLiffEntry()` 附的【看整理結果】【提醒訂閱】＋法務連結（`src/core/ingest.ts` 約 74–107 行）。
+- **範圍**：改 `DEFAULT_NOTICE`，並允許精簡 `withLiffEntry()` 的附加段以去重。三段：①我是誰、會做什麼、@我 提問 ②誰看得到：本群整理由認領此群的公司管理，管理者可查看與匯出；成員可從下方連結看本群整理 ③隱私：移出即停止、收回同步刪除、可要求刪除。租戶自訂文字行為不變。不得寫「符合 LINE 規範」。
 - **完成標準**：
-  - [ ] 既有測試綠；若 core.test 有斷言告知文內容就同步更新（這不是守門測試）
-  - [ ] 字數 ≤ 250（在 commit 訊息附字數）
-  - [ ] 文案含「管理」「匯出」兩個概念
+  - [ ] 新增測試：`withLiffEntry(DEFAULT_NOTICE)` 在 `LIFF_ID`、`APP_BASE_URL` 都有假值時的完整輸出 **≤ 400 字**，且含「管理」「匯出」
+  - [ ] 三件套綠（既有斷言告知文的測試同步更新，非守門測試）
 
-### 4. G8 新租戶前 7 天全需確認
+### 4. A7 上手卡改寫
 
-- **目標**：新公司前 7 天抽出來的東西都先進收件匣，避免假陽性直接變成「事實」（principles 規則一）。
-- **範圍**：`src/core/extract.ts` 寫入 events/tasks/notes 時，若群組所屬 org 的 `orgs.created_at` 在 7 天內 → `needs_confirmation = true`。org 建立時間由既有查詢取得，**不加 migration**。1:1 個人筆記（`dm:` 群）不套用（本人自己記的）。
-- **完成標準**：
-  - [ ] 抽出一個純函式（例如 `forceConfirm(orgCreatedAt, now, groupId)`）並加單元測試：6 天前→true、8 天前→false、dm 群→false
-  - [ ] 測試與 typecheck 綠
-
-### 5. A7 新租戶上手卡
-
-- **目標**：新公司第一次進後台，不是一句「把 bot 加進群組」，而是三步引導＋即時狀態。
-- **範圍**：今天頁（`src/app/o/[org]/(admin)/page.tsx`）零群組／零訊息時的空狀態：
-  - 步驟 1：加群記好友（按鈕連 `https://line.me/R/ti/p/@<LINE_BOT_BASIC_ID>`，env 未設時隱藏此鈕）
-  - 步驟 2：把群記邀進工作群（文字說明）
-  - 步驟 3：到群裡點認領連結（接 A5 既有流程）
-  - 狀態列：「已收到 N 則，整理中」（有群但訊息少時顯示；N 用既有 groups_view 資料）
-  - 註明「群記是未認證官方帳號（灰色盾牌），這是正常的」
-  - 註明「前 7 天整理出的項目會先請你確認」（呼應 G8）
-- 用 `src/app/ui/` 既有元件（Empty／Banner），不新刻樣式；文字走既有 i18n 機制（若今天頁有用 i18n，五語系 key 都要補，`i18n.test` 會擋）。
-- `.env.example` 加 `LINE_BOT_BASIC_ID`（值留空、附註解）。
-- **完成標準**：
-  - [ ] build＋三支守門測試綠
-  - [ ] dev server 截圖：用一個零群組的 org 看空狀態（若正式庫沒有零群組的 org，改用元件層級的判斷分支程式碼審查＋說明，**不得為了截圖去建 org**，R3）
-  - [ ] 手機寬度（375px）不破版
-
-### 6. L1 LIFF 開啟事件
-
-- **目標**：知道成員從哪個觸點打開 LIFF，止損線（開啟率 <20%）才量得到。
+- **現況**：今天頁已有「三步開始」空狀態卡（`(admin)/page.tsx` 約 158–185 行），但判斷「有沒有群」用的是 `groups_view`（以 messages 為主表）——**已認領但 0 則訊息的群看不到**，所以用戶會一直看到零群組卡。
 - **範圍**：
-  - migration：`funnel_events(id bigserial, org_id uuid null, group_id text null, line_user_id text null, step text not null, source text null, at timestamptz default now())`＋`(step, at)` 索引。開 RLS、不寫 policy（照既有表慣例，先 grep 確認慣例）。
-  - `/api/liff/session` 建 session 成功時 insert 一列 `step='liff_open'`；`source` 從請求帶來的 query（`src=notice|answer|digest`）取，白名單外一律存 null。**寫入失敗只 console.warn，不影響登入**（表可能還沒建）。
-  - 三個觸點的 LIFF 連結加 `?src=`：進群告知、@回答附的連結、每日提醒。
-  - 單群深連結：`?g=<groupId>` 開 LIFF 時直接進該群頁（先確認 LIFF 端現在怎麼處理 query，liff.state 的轉址行為要實測程式碼路徑）。
+  - 把上手卡抽成 `src/app/ui/onboarding-card.tsx`（純展示元件，props 傳入狀態）。
+  - 「有群」改查 `groups` 表（本 org、`left_at is null`、`group_id not like 'dm:%'`）；N 則用 `groups_view.message_count`。三種狀態：零群 → 三步卡；有群但訊息 < 20 → 「已收到 N 則，整理中」＋一句「整理出的項目會先進收件匣請你確認」；其餘 → 不顯示。
+  - 步驟 1 按鈕連 `https://line.me/R/ti/p/@<LINE_BOT_BASIC_ID>`，env 未設時隱藏按鈕只留文字。加註「群記是未認證官方帳號（灰色盾牌），這是正常的」。
+  - `.env.example` 加 `LINE_BOT_BASIC_ID=`（附註解）。
+  - 若今天頁文字走 i18n → 五語系 key 都要補。
 - **完成標準**：
-  - [ ] migration 檔存在，SQL 可重跑（`create table if not exists`、`create index if not exists`）
-  - [ ] 單元測試：source 白名單解析函式
-  - [ ] 表不存在時登入仍成功（程式碼路徑審查：錯誤被吞並 warn）
-  - [ ] build＋測試綠
+  - [ ] node:test 用 `react-dom/server` 的 `renderToStaticMarkup` 測元件：零群狀態含三步文字；env 未設時沒有 `line.me` 連結；有群少訊息狀態含「N 則」
+  - [ ] 三件套綠
+  - [ ] （可選）用 `ADMIN_PASSWORD` 登入 dev server 截今天頁 375px 寬圖；拿不到零群組 org 就跳過截圖，不得為截圖建資料（R3）
 
-### 7. G3 內容表 org_id
+### 5. L1 LIFF 開啟事件＋深連結
 
-- **目標**：為日後 RLS 與轉移鋪路，內容表各自帶 `org_id`。
-- **範圍**：一支 migration：
-  - messages／events／tasks／notes／embeddings／media_assets／push_subscriptions 加 `org_id uuid null`（先 grep schema 確認這些表名與 group_id 欄位都存在；media_assets 若無 group_id 就經 message_id 取）。
-  - 一個共用 trigger function：insert 時若 `org_id` 為 null，從 `groups.org_id` 帶入。
-  - backfill 用 UPDATE ... FROM groups（寫成可重跑）。
-  - `transfer_group(gid text, new_org uuid)`：upsert groups 列（K2 修正 (2)：匯入群可能沒有 groups 列）＋更新上述各表 org_id，全在一個函式內。
-  - **應用程式碼本任務不讀這個欄位**（只鋪路）。既有 A5 認領流程若是直接 UPDATE groups，改呼叫 `transfer_group` 的 rpc——**但 migration 沒跑前 rpc 會失敗**，所以採「先試 rpc，函式不存在（錯誤碼 PGRST202 / 42883）時退回舊寫法」。
-- **完成標準**：
-  - [ ] migration 可重跑（`add column if not exists`、`create or replace`、`drop trigger if exists`）
-  - [ ] 報告註明：大表 backfill 可能跑較久，建議離峰貼
-  - [ ] 認領流程的退回邏輯有單元測試或清楚的程式碼審查說明
-  - [ ] 測試與 typecheck 綠
-
-### 8. B7 抽取合批 debounce
-
-- **目標**：同一群連續來訊息時，不要每批 webhook 都呼叫一次抽取；等 45 秒沒新訊息再抽（省 AI 費用的最大槓桿）。
-- **範圍**：新增（或放進既有 worker 模組）一個 per-group 計時器：`scheduleExtract(gid)` 重設該群計時器，到期才 `retryPendingMedia` → `extractGroup`。最長等待上限 3 分鐘（持續有訊息時也要抽）。webhook route 改呼叫它。
-- **已知天花板**（寫 `ponytail:` 註解）：計時器在記憶體，容器重啟時未到期的會掉——下次訊息或既有補抽機制會接手（先 grep 確認有沒有定期補抽；沒有的話在報告寫明風險）。
-- 手動匯入、`/api/extract` 手動觸發**不經過** debounce。
-- **完成標準**：
-  - [ ] 純邏輯單元測試（用可注入的 clock 或 `node:test` 的 mock timers）：連續三次呼叫只觸發一次；超過 3 分鐘上限會強制觸發
-  - [ ] 測試與 typecheck 綠
-
-### 9. G4 webhook 先落地（高風險，嚴守完成標準）
-
-- **目標**：webhook 收到就先寫進 DB 再回 200，處理失敗或容器重啟也不會漏。
-- **前置**：B7 已完成（處理迴圈要接 debounce）。若 B7 被跳過，本任務仍可做，處理後直接呼叫舊流程。
+- **現況**：`src/app/g/liff-init.tsx` 只在沒有有效 `gs_liff` cookie（TTL 7 天）時才 POST `/api/liff/session`，所以在 session route 落表只量到「登入」。`/`（`src/app/page.tsx`）redirect 時會丟掉 query；`/g/page.tsx` 不讀 searchParams。LINE Console 的 LIFF endpoint 可能設在 `/` 或 `/g`（見 middleware 註解）。
 - **範圍**：
-  - migration：`webhook_events(id bigserial, channel_id text, webhook_event_id text unique, is_redelivery bool, payload jsonb, received_at, processed_at, attempts int default 0, error text)`。
-  - `connectors/line.ts` 的 parseEvents 保留 `webhookEventId` 與 `deliveryContext.isRedelivery`（新增欄位，不改既有欄位語意）。
-  - webhook route：驗簽 → insert（`on conflict do nothing`）→ 回 200 → `after()` 觸發處理一次。**insert 失敗（例如表還沒建）→ 退回現行 `after()` 直接處理的舊路徑**，保證 migration 前部署也不會壞。
-  - 處理器 `processPendingWebhooks()`：撈 `processed_at is null and attempts < 5`，逐筆 `handleEvent`，成功標 processed_at，失敗 attempts+1 記 error。
-  - 啟動補處理：`src/instrumentation.ts` 在 **production 且 env `WEBHOOK_WORKER=1`** 時才啟動 60 秒輪詢；**dev 預設關閉**（R4：本機 dev 連正式庫，不能讓它偷偷處理正式事件）。
+  - migration：`funnel_events(id bigserial primary key, org_id uuid, group_id text, line_user_id text, step text not null, source text, at timestamptz not null default now())`＋`(step, at)` 索引。RLS 照既有表慣例（先 grep）。
+  - 落表點：`/g/page.tsx` 與 `/g/[groupId]/page.tsx` 每次 server render 時 insert 一列 `step='liff_open'`（有 session 才寫）；**失敗吞掉＋warn**（表可能還沒建）。
+  - `source`：從 searchParams `src` 取，白名單 `notice|answer|digest`，其他存 null。白名單解析抽成純函式。
+  - 深連結：`/` 與 `/g` 兩處都處理 `?g=<gid>`：本人是該群成員（既有 `isGroupMember`）→ redirect `/g/<gid>?src=<src>`；否則忽略 `g`。`liff-init.tsx` 登入完成後的導向要保留 `location.search`（確認現在怎麼導，保留 `src` 與 `g`）。
+  - 三個觸點的 LIFF 連結加 `?src=`：進群告知（`withLiffEntry`）、@回答附連結、每日提醒（`digest.ts`）。
 - **完成標準**：
-  - [ ] 單元測試：parseEvents 會帶出 webhookEventId／isRedelivery（用假 payload）
-  - [ ] 程式碼審查確認三條路徑：表存在→落地；表不存在→舊路徑；重送→冪等不重複
-  - [ ] dev server 啟動後 log 中**沒有**輪詢啟動訊息（證明 dev 預設關）
-  - [ ] build＋測試綠
-  - [ ] 報告寫明部署順序：先貼 migration → 部署 → `.env.local` 加 `WEBHOOK_WORKER=1` → `docker rm -f` ＋ `docker run` 重建
+  - [ ] node:test：`parseSource()` 白名單；「insert 回 error 物件時不丟例外」的包裝函式（注入假 db）
+  - [ ] migration 檔可重跑
+  - [ ] 三件套綠
+  - [ ] 決策紀錄寫明深連結處理了哪兩個入口
 
-### 10. G5 Connector 金鑰收成函式
+### 6. G8b 前 7 天全需確認 —— 只驗證、不寫程式
 
-- **目標**：日後一家公司一個 LINE 帳號（形態 B）時，不用大改。今晚只改介面，行為完全不變。
-- **範圍**：`lineConnector` 單例改成 `createLineConnector(creds)` 工廠；`getConnector(channelId?)` 目前永遠回用 env 金鑰建的那一個（快取）。所有呼叫點改走 `getConnector()`。先 grep 列出所有 `lineConnector` 與 `process.env.LINE_CHANNEL` 使用處。
-- **不做**：金鑰進 DB、多 channel 路由。
+- **原因**：`supabase/schema.sql` 的 events／tasks／notes 三表 `needs_confirmation boolean not null default true`，`extract.ts` 新增時不設此欄、更新時強制 true。也就是「全部都要確認」本來就成立，寫程式是空操作。
+- **範圍**：grep 驗證上述事實仍成立（尤其確認沒有任何路徑把新項目寫成 false）→ 寫進決策紀錄。產品意圖由 A7 的文案承接。
 - **完成標準**：
-  - [ ] `grep -rn "lineConnector\b" src` 只剩定義處與 config
-  - [ ] 行為不變：既有測試全綠、build 綠
-  - [ ] 若呼叫點太多（>20）或牽涉 middleware edge runtime 限制 → 標跳過，寫原因
+  - [ ] 決策紀錄有 grep 證據（檔案:行號）
+  - [ ] 若發現有路徑寫 false → 不改，列進「發現但沒做」
 
-### 11. A6 移除 callback 自動種子
-
-- **目標**：`ADMIN_LINE_USER_ID` 登入就自動變 main owner 的後門拿掉。
-- **範圍**：migration 以 SQL 種入 org_members(owner)——**但 migration 不能讀 env**，所以改成：migration 不動，改在 `scripts/new-org.ts` 旁加一個 `scripts/seed-owner.ts`（帶參數執行，早上由 jielin 跑）；callback 移除自動種子區塊。
-- **風險**：jielin 本人若還沒在 org_members 裡，移除後會登不進後台。**必須先唯讀查詢正式庫確認 jielin 的 userId 已在 main 的 org_members**（用 `ADMIN_LINE_USER_ID` 比對，**不要印出 userId 本身**，只印 true/false）。查不到或無法查 → 本任務只寫好程式、**不 commit 移除那段**，改標跳過並在報告說明。
-- demo 群拆 org 的部分**今晚不做**（牽涉搬正式資料）。
-- **完成標準**：
-  - [ ] 唯讀確認結果記在決策紀錄
-  - [ ] build＋測試綠
-
-### 12. A8 降級語意（C 層）
-
-- **範圍**：migration 在 `org_settings` 加 `status text default 'active'`（active／suspended）；`aiScope`（B5 的 AI 入口門）遇 suspended 一律擋；後台頂端顯示 suspended 橫幅（用 Banner）。**不做**自動 leaveGroup、自動刪資料、私訊（全是不可逆或對外動作）。
-- **完成標準**：單元測試 suspended 會擋 AI；build＋測試綠。
-
-### 13. E1 抽取回歸集（C 層）
-
-- **範圍**：`tests/fixtures/golden/` 三個行業（例如：餐飲門市、室內裝修、補習班——**不要用舞台技術**）各 30 則繁中虛構對話＋期望抽出的 events/tasks/notes JSON；`scripts/extract-eval.ts` 讀 fixture → 呼叫抽取 → 比對算假陽性率。**今晚只寫不跑**（R6）。不加進 `npm test`。
-- **完成標準**：`npx tsc --noEmit` 綠；fixture JSON 合法；README 或腳本頂端註明怎麼跑、大約花多少呼叫次數。
-
-### 14. A10 合約模板（C 層）
-
-- **範圍**：`docs/legal/design-partner-agreement.md`，一頁：半價 6 個月、無 SLA、資料歸屬與匯出、LINE 條款變動時的遷移條款（business-plan 第 3、8 節）、終止與刪除。標明「草稿，簽約前請法律專業人士審閱」。
-- **完成標準**：文件存在、≤ 1 頁 A4 份量、無宣稱「符合 LINE 規範」。
-
-### 15. X1 報帳模組 v1（D 層）
+### 7. X1 報帳模組 v1（D 層）
 
 - **目標**：員工出差先墊錢 → 在 LINE **私訊群記一張收據／發票照片** → 自動變成一筆報帳（金額、日期、店家、分類由 AI 讀）→ bot 回一句「記好了」→ 管理者在網頁看清單、補專案、勾「已報帳」、匯出 CSV。
 - **為什麼這樣接（已查過程式，2026-09-25）**：
@@ -299,7 +232,7 @@
   - [ ] dev server 只看畫面：`/o/main/expense` 與 `/report` 能開（表還沒建時頁面顯示「請先執行 migration」而不是 500）；手機 375px 不破版
   - [ ] 報告註明：要貼的 migration 檔名；部署後「用員工 LINE 私訊一張收據」的驗收步驟
 
-### 16. X2 報帳模組 v2：Snaptab 完整搬家（D 層）
+### 8. X2 報帳模組 v2：Snaptab 完整搬家（D 層）
 
 - **前置**：X1 完成。每個子項獨立 commit，做不到的標 ⏭ 不影響其他子項。
 - **子項**（對照 Snaptab 檔案）：
@@ -315,13 +248,99 @@
   - **Snaptab 舊資料搬過來**：資料在 Firebase（專案 `snaptab-wh`），要讀正式 Firestore＝外部存取。只寫一份搬移步驟說明，不寫程式不執行。
 - **完成標準**：每個做完的子項都有測試（有邏輯的）或 dev server 畫面確認（純 UI 的）；守門測試＋全部測試＋typecheck＋build 綠。
 
+### 9. B7 抽取合批 debounce
+
+- **目標**：同一群連續來訊息時，等 45 秒沒新訊息才抽一次；持續有訊息時最長 3 分鐘強制抽一次。
+- **範圍**：新增 `scheduleExtract(gid)`（放 `src/core/` 既有合適模組，或新檔 `src/core/debounce.ts`），到期執行 `retryPendingMedia(gid)` → `extractGroup(gid)`。webhook route 改呼叫它。手動匯入、`/api/extract` 手動觸發**不經過** debounce。計時器用可注入的 `setTimeout`／`now` 以便測試。
+- 先 grep 確認有沒有定期補抽（cron／digest 裡順便抽）。寫 `ponytail:` 註解：「計時器在記憶體，容器重啟時未到期的會掉，由 <實際的補抽機制> 接手；沒有補抽機制的話寫明風險」。
+- 注意 X1：收據記帳發生在媒體解析（`retryPendingMedia`／`processMedia`），debounce 會讓群組內的媒體重試延後，但 1:1 收據的即時回覆走 `processMedia` 當下的 replyToken，**不能被 debounce 延後**（replyToken 會過期）。改完要確認這條路徑沒變。
+- **完成標準**：
+  - [ ] node:test（注入假計時器）：45 秒內連呼叫 3 次只觸發 1 次；持續呼叫超過 3 分鐘會強制觸發；不同群互不影響
+  - [ ] 三件套綠
+
+### 10. G4 webhook 先落地（高風險，嚴守完成標準）
+
+- **範圍**：
+  - migration：`webhook_events(id bigserial primary key, channel_id text, webhook_event_id text unique, is_redelivery boolean, payload jsonb not null, received_at timestamptz default now(), claimed_at timestamptz, processed_at timestamptz, attempts int not null default 0, error text)`＋`where processed_at is null` 部分索引。
+  - 存的是 **LINE 原始的每個 event 物件**（不是 parseEvents 之後的結果，因為 parseEvents 會丟掉部分事件類型）。`webhook_event_id` 取原始 event 的 `webhookEventId`，`is_redelivery` 取 `deliveryContext.isRedelivery`。
+  - webhook route：驗簽 → 把原始 events 批次 insert（`onConflict: 'webhook_event_id', ignoreDuplicates: true`）→ 回 200 → `after()` 呼叫 `processPendingWebhooks()`。**insert 回 error（例如表還沒建）→ 走現行舊路徑**（直接 parseEvents＋handleEvent）。「要不要走舊路徑」抽成純函式。
+  - `processPendingWebhooks()`：用租約認領（比照 `extract.ts` 的 `claimed_at` 做法）：只處理 `processed_at is null and attempts < 5 and (claimed_at is null or claimed_at < now() - 10 分鐘)` 的列，先 update 設 `claimed_at=now(), attempts=attempts+1` 並 `returning`，只處理自己認領到的；對每列 `parseEvents({events:[payload]})` → `handleEvent`；成功設 `processed_at`，失敗寫 `error`。處理完觸及的群走 B7 的 `scheduleExtract`（B7 被跳過就直接呼叫舊流程）。
+  - **replyToken 時效**：輪詢補處理的舊事件 replyToken 多半已過期（進群告知、1:1 收據回覆、@回答都用 reply）。補處理時 reply 失敗要吞掉、不算處理失敗，否則會一直重試。
+  - `src/instrumentation.ts`：
+    ```ts
+    export async function register() {
+      if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+      if (process.env.NODE_ENV !== 'production' || process.env.WEBHOOK_WORKER !== '1') return;
+      const { startWebhookPoller } = await import('./core/webhook-worker'); // 路徑依實際
+      startWebhookPoller(60_000);
+    }
+    ```
+    dev 預設關閉（R4）。
+- **完成標準**：
+  - [ ] node:test：`shouldFallback(error)` 純函式；從假的 LINE 原始 payload 取出 `webhookEventId`／`isRedelivery` 的函式
+  - [ ] node:test（注入假 db）：insert 回 error → 呼叫舊處理路徑
+  - [ ] `npm run build` 綠（證明 instrumentation 沒把 node 模組帶進 edge）
+  - [ ] dev server 啟動 log **沒有**輪詢啟動訊息
+  - [ ] migration 檔可重跑
+  - [ ] 報告寫明部署順序：貼 migration → 部署 → `.env.local` 加 `WEBHOOK_WORKER=1` → `docker rm -f` ＋ `docker run` 重建（`docker restart` 不會重讀 env）
+
+### 11. G3 內容表 org_id＋transfer_group
+
+- **範圍**：一支 migration：
+  - 先 grep `supabase/schema.sql` 確認 messages／events／tasks／notes／embeddings／media_assets／push_subscriptions 的實際表名與 group_id 欄位；沒有 group_id 的（如 media_assets）經 message_id 取。（`expenses` 本來就有 org_id，不在此列。）
+  - 各表 `add column if not exists org_id uuid`。
+  - 共用 trigger function：insert 時 `org_id is null` 就從 `groups.org_id` 帶入（群組列不存在就留 null）。
+  - backfill：`update ... set org_id = g.org_id from groups g where t.group_id = g.group_id and t.org_id is null`（每表一句）。
+  - `transfer_group(gid text, new_org uuid, set_claimed boolean default true)`：upsert groups 列（匯入群可能沒有 groups 列）→ 設 org_id（`set_claimed` 為 true 時一併設 `claimed_at=now()`，比照現有認領）→ 更新上述各表 org_id。
+  - 應用程式：先 grep 列出所有歸戶入口（至少：`api/group/claim/route.ts`、`src/org/orgs.ts` 的 `claimGroup()`、`api/group/update`），改成先呼叫 rpc `transfer_group`；rpc 回「函式不存在」（`PGRST202` 或 `42883`）→ 退回原本寫法。退回判斷抽成純函式。**語意必須與原本寫法一致**（例如 `claimGroup` 的 `ignoreDuplicates`＝已有歸屬就不覆蓋；若 rpc 無法表達就該入口不改，寫進決策紀錄）。
+- **完成標準**：
+  - [ ] node:test：`isMissingFunction(err)` 純函式（PGRST202、42883、其他錯誤三種情況）
+  - [ ] 三件套綠
+  - [ ] 報告註明：backfill 對大表較久，建議離峰貼；messages 加 trigger 會讓匯入每批多一次查詢（可接受）
+
+### 12. G5 line connector 工廠
+
+- **現況**：`lineConnector` 只在 `src/connectors/line.ts`、`src/core/config.ts`、`tests/core.test.ts` 出現；`getConnector()` 已在 `config.ts`。
+- **範圍**：只把 `line.ts` 內直讀 `process.env.LINE_CHANNEL_*` 的地方收進 `createLineConnector(creds)`；`config.ts` 的 `getConnector()` 用 env 建一次並快取；`tests/core.test.ts` 的 import 同步改（非守門測試）。**`liff.ts`、`middleware.ts` 的 env 讀取不動**。
+- **完成標準**：
+  - [ ] `grep -n "process.env.LINE_CHANNEL" src/connectors/line.ts` 只剩建立預設 creds 的那一處（或 0 處，改由 config.ts 傳入）
+  - [ ] 三件套綠，行為不變
+
+### 13. A6 seed-owner 腳本＋有條件移除自動種子
+
+- **範圍**：
+  - 新增 `scripts/seed-owner.ts`：參數 `<orgSlug> <lineUserId>`，upsert org_members(owner)。**今晚不執行**（R3）。頂端註解寫用法。
+  - 唯讀檢查（R3 允許的 count）：
+    `select count(*) from org_members m join orgs o on o.id = m.org_id where o.slug = 'main' and m.role = 'owner'`
+  - 結果 ≥ 1 → 移除 `src/app/api/auth/line/callback/route.ts` 的自動種子區塊，報告請 jielin 確認那一列 owner 是他本人。
+  - 結果 = 0、或查不了 → **不移除**，只在該區塊加 `// ponytail: 待 seed-owner 跑過後移除（business-plan A6）`，狀態記 ◐。
+- **完成標準**：
+  - [ ] 決策紀錄記下 count 結果（只記數字）
+  - [ ] 三件套綠
+
+### 14. A8 suspended 狀態（C 層）
+
+- **範圍**：migration `org_settings` 加 `status text not null default 'active'`（check in ('active','suspended')）。B5 的 AI 入口門（grep `aiScope`）遇 suspended 一律擋（含 X1 的收據解析，它走同一個 vision 入口）；後台 layout 顯示 `Banner tone="warn"` 橫幅。**欄位不存在（migration 未跑）→ 視為 active**（比照 `quota.ts` 的 `error ? null` 寫法）。不做自動退群、刪資料、私訊。
+- **完成標準**：node:test 測「suspended 擋、active 放、查詢 error 視為 active」；三件套綠。
+
+### 15. E1 抽取回歸集（C 層）
+
+- **現況**：抽取與 DB 耦合（從 messages 撈、寫 events/tasks/notes），沒有「prompt→結果」的純入口。
+- **範圍**：只寫 `tests/fixtures/golden/<行業>.json` 三份（例如餐飲門市、室內裝修、補習班，**不要用舞台技術**），各 30 則繁中虛構對話＋期望抽出的項目；`scripts/extract-eval.ts` 只實作「讀 fixture＋比對期望與實際、算假陽性率」的比對器，抽取入口留 `TODO`：註明需先從 extract.ts 抽出純函式，且之後執行時必須讀 `EVAL_SUPABASE_URL` 等專用 env、缺就 `process.exit(1)`，**絕不讀 `.env.local`**。不加進 `npm test`。
+- **完成標準**：typecheck 綠；三份 JSON 可被 `JSON.parse`；比對器有一個 node:test（用假的「實際結果」）。
+
+### 16. A10 合約草稿（C 層）
+
+- **範圍**：`docs/legal/design-partner-agreement.md`：半價 6 個月、無 SLA、資料歸屬與匯出、LINE 條款變動時的遷移條款（business-plan 第 3、8 節）、終止與 30 天刪除。首行標明「草稿，簽約前請法律專業人士審閱」。
+- **完成標準**：文件存在、約一頁 A4、全文不含「符合 LINE」字樣（grep 驗證）。
+
 ---
 
 ## 4. 收尾（所有任務處理完後）
 
-1. 跑一次完整 `npm test`、`npm run typecheck`、`npm run build`，結果貼進第 6 節。
-2. 把新 migration 依編號列在第 6 節，並產生一個合併檔 `scratchpad` 以外、放在 `supabase/migrations/` 的各自檔案即可（不另外合併，避免重複來源）。
-3. 更新 `docs/business-plan.md` 對應項目的狀態標記（✅／◐），格式照既有「✅ **已完成 2026-09-26**（…）」寫法。
+1. 跑 `npm test`、`npm run typecheck`、`npm run build`，結果寫進第 6 節。
+2. 列出本晚新增的 migration 檔，並排出**建議貼上順序**（小而關鍵的先貼，G3 backfill 最後、離峰）。每段建議先用 `begin; … rollback;` 試跑一次語法。
+3. 更新 `docs/business-plan.md` 第 2.1 節表格對應列的狀態（照既有「✅ **已完成 2026-09-26**（…）」格式；G8b 對應 2.1 節表格 G8 那一列，**不是** 2.4 節）。報帳模組不在 business-plan 裡，只寫在本報告。
 4. 填第 6 節早晨報告，commit：`文件：夜間執行報告`。
 5. **不 push、不部署。**
 
@@ -333,30 +352,36 @@
 **最後更新**：—
 **起始 commit**：`de67eae`
 
-| 順序 | 代號 | 狀態 | commit | 開始 | 結束 | 一句話結果 |
-|---|---|---|---|---|---|---|
-| 1 | A9 | ⬜ | | | | |
-| 2 | P1 | ⬜ | | | | |
-| 3 | G7 | ⬜ | | | | |
-| 4 | G8 | ⬜ | | | | |
-| 5 | A7 | ⬜ | | | | |
-| 6 | L1 | ⬜ | | | | |
-| 7 | G3 | ⬜ | | | | |
-| 8 | B7 | ⬜ | | | | |
-| 9 | G4 | ⬜ | | | | |
-| 10 | G5 | ⬜ | | | | |
-| 11 | A6 | ⬜ | | | | |
-| 12 | A8 | ⬜ | | | | |
-| 13 | E1 | ⬜ | | | | |
-| 14 | A10 | ⬜ | | | | |
-| 15 | X1 | ⬜ | | | | |
-| 16 | X2 | ⬜ | | | | |
+| 順序 | 代號 | 狀態 | 嘗試 | commit | 開始 | 結束 | 一句話結果 |
+|---|---|---|---|---|---|---|---|
+| 1 | A9 | ⬜ | 0 | | | | |
+| 2 | P1 | ⬜ | 0 | | | | |
+| 3 | G7 | ⬜ | 0 | | | | |
+| 4 | A7 | ⬜ | 0 | | | | |
+| 5 | L1 | ⬜ | 0 | | | | |
+| 6 | G8b | ⬜ | 0 | | | | |
+| 7 | X1 | ⬜ | 0 | | | | |
+| 8 | X2-1 網頁記一筆 | ⬜ | 0 | | | | |
+| 8 | X2-2 我的清單 | ⬜ | 0 | | | | |
+| 8 | X2-3 付款方式 | ⬜ | 0 | | | | |
+| 8 | X2-4 自訂分類 | ⬜ | 0 | | | | |
+| 8 | X2-5 統計 | ⬜ | 0 | | | | |
+| 8 | X2-6 文字語音記帳 | ⬜ | 0 | | | | |
+| 8 | X2-7 地點 | ⬜ | 0 | | | | |
+| 9 | B7 | ⬜ | 0 | | | | |
+| 10 | G4 | ⬜ | 0 | | | | |
+| 11 | G3 | ⬜ | 0 | | | | |
+| 12 | G5 | ⬜ | 0 | | | | |
+| 13 | A6 | ⬜ | 0 | | | | |
+| 14 | A8 | ⬜ | 0 | | | | |
+| 15 | E1 | ⬜ | 0 | | | | |
+| 16 | A10 | ⬜ | 0 | | | | |
 
-狀態圖例：⬜ 未開始／⏳ 進行中／✅ 完成／⏭ 跳過（寫原因）／❌ 失敗（寫原因）
+狀態圖例：⬜ 未開始／⏳ 進行中／✅ 完成／◐ 部分完成／⏭ 跳過（寫原因）／❌ 失敗（寫原因）
 
 ### 決策紀錄（自行判斷的事都記這裡）
 
-| 時間 | 任務 | 決定 | 理由 |
+| 時間 | 任務 | 決定 | 理由／證據 |
 |---|---|---|---|
 | | | | |
 
@@ -370,15 +395,21 @@
 
 ### 一句話
 
-（例：14 項做完 11 項、跳過 3 項；測試全綠；你需要貼 4 段 SQL、改 1 個環境變數、部署一次。）
+（例：16 項做完 12 項、跳過 4 項；測試全綠；你需要貼 5 段 SQL、改 1 個環境變數、部署一次。）
 
-### 你醒來要做的事（照順序）
+### 你醒來要做的事（照順序，指令一字不差）
 
 1. 看這份報告與 `git log de67eae..HEAD --oneline`
-2. 到 Supabase SQL Editor 依序貼：（列出檔案路徑）
-3. （若有）執行：（一字不差的指令）
-4. 部署（照 NAS 部署流程）
-5. `git push`
+2. 到 Supabase SQL Editor 依序貼：（列出檔案路徑與建議順序）
+3. （若有）執行：（指令）
+4. 部署（照 NAS 部署流程；G4 要加 `WEBHOOK_WORKER=1` 並 `docker rm -f` ＋ `docker run`）
+5. 報帳驗收：用員工 LINE 私訊群記一張收據，看有沒有回「記好了」、`/o/main/expense` 有沒有出現
+6. `git push`
+
+### 要你決定的事（最多兩項）
+
+1. X2 的 QR 掃電子發票：加 `jsqr` 套件，還是只靠 AI 讀照片？
+2. Snaptab 舊資料要不要搬（搬移步驟說明寫在：＿＿）
 
 ### 測試結果
 
@@ -392,4 +423,39 @@
 
 ### 風險與注意
 
-（例：G4 需要 `WEBHOOK_WORKER=1` 才會補處理；B7 計時器重啟會掉）
+（至少包含：SQL 今晚未實際執行過；HEALTHCHECK 未實測；B7 計時器重啟會掉；G4 補處理時 replyToken 已過期）
+
+---
+
+## 7. 審查修正對照（v1 → v2）
+
+Fable 對抗式審查共 21 條，全數採納：
+
+| # | 嚴重度 | 問題 | 本版處置 |
+|---|---|---|---|
+| 1 | 高 | G8 是空操作（needs_confirmation 預設就是 true） | 改為 G8b「只驗證並記錄」 |
+| 2 | 高 | 紅線漏掉 Supabase MCP 寫入工具 | R3 列出禁用工具全名、限制 execute_sql、禁跑讀 .env.local 的腳本 |
+| 3 | 高 | L1 在 session route 落表只量到登入 | 改在 `/g` 兩頁每次 render 落表 |
+| 4 | 高 | 深連結落點未定義，`/` 會丟 query | `/` 與 `/g` 都處理 `?g=` |
+| 5 | 高 | 退回指令會洗掉進度區、留半成品 | 開工先 commit 計劃檔；退回加排除與 `git clean` |
+| 6 | 高 | instrumentation 會在 edge 跑；雙路徑無租約 | 加 `NEXT_RUNTIME` 守門＋dynamic import；租約認領；存原始 event |
+| 7 | 中 | A6 前置檢查在本機做不到 | 改用不需 env 的 count 查詢；不通過就只留註解 |
+| 8 | 中 | G7 字數對象不明、段落重疊 | 以完整輸出計 ≤400 字，允許精簡 withLiffEntry，用測試驗 |
+| 9 | 中 | A7 已認領未發言的群看不到；描述過期 | 改查 groups 表；改寫既有卡 |
+| 10 | 中 | A7 截圖需登入、可能打到付費 API | 登入例外寫進 R4；禁 `?q=`；改用 renderToStaticMarkup 測試 |
+| 11 | 中 | E1 無法不碰 DB 跑 | 只寫 fixture＋比對器，抽取入口留 TODO＋專用 env |
+| 12 | 中 | 防漂移缺嘗試次數與恢復程序 | 進度表加「嘗試」欄；新增恢復程序（規則 3） |
+| 13 | 中 | 完成標準可自我宣告 | 退回判斷一律抽純函式＋node:test；刪掉「或程式碼審查」 |
+| 14 | 中 | transfer_group 與三條歸戶路徑不等價 | 加 `set_claimed` 參數、列三個入口、語意不符就不改 |
+| 15 | 低 | health 未排除 middleware 會假綠 | matcher 加排除；驗 JSON；HEALTHCHECK 驗 body |
+| 16 | 低 | icon 已存在 | 只補 192 與 matcher |
+| 17 | 低 | G5 範圍不清 | 只收 line.ts 內，liff/middleware 不動 |
+| 18 | 低 | A8 未寫向後相容 | 欄位不存在視為 active |
+| 19 | 低 | 署名寫死、0.3 自相矛盾 | 用系統提示署名；0.3 對齊 R3 |
+| 20 | 低 | business-plan 兩個 G8 | 改稱 G8b 並明指 2.1 節 |
+| 21 | 低 | SQL 貼的順序 | 收尾排建議順序、G3 最後、先 rollback 試跑 |
+
+合併時另外補的（主 agent）：
+- 另一個工作階段同時在改本檔（加入 X1／X2）→ 新增規則 13（別覆蓋別人的變更）、禁 `git add -A`、開工時記下既有未追蹤檔並在退回時排除、R10（Snaptab 只讀）。
+- X1 與 B7／G4／A8 的交互：B7 不能延後 1:1 收據的即時 reply；G4 補處理時 reply 失敗不算失敗；A8 的 suspended 也擋收據解析。
+- X1／X2 任務卡未經本輪 Fable 審查（撰寫時間晚於審查），原文保留。
