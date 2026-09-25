@@ -1,13 +1,27 @@
-import { notFound, redirect } from 'next/navigation';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
 import { getDb } from '@/db';
 import { liffUser, verifyClaimToken } from '@/core/liff';
 import { isPlatformOwner } from '@/org/orgs';
+import { BrandBar, DemoSection, FaqSection, LegalFooter, StepsSection, TrustSection } from '@/app/ui/intro';
 
 export const dynamic = 'force-dynamic';
+
+// LINE 在群裡貼連結時會抓這組 og 資料畫預覽卡（標題＋圖），群成員第一眼就看得到是群記
+export async function generateMetadata({ params }: { params: Promise<{ groupId: string }> }): Promise<Metadata> {
+  const { groupId } = await params;
+  const { data } = await getDb().from('groups').select('name').eq('group_id', groupId).maybeSingle();
+  const title = data?.name ? `認領「${data.name}」` : '認領這個群';
+  const description = '群記：群裡講過的，都記得。點開了解，管理員一鍵認領。';
+  return { title, description, openGraph: { title: `${title} · 群記`, description, images: ['/brand/og.png'] } };
+}
 
 // 認領頁（商業計劃 A5）：bot 進群後貼的連結會到這裡。
 // 誰能認領：拿得到連結（＝看得到群內訊息）且是某個 org 管理員的人；平台擁有者可認領到任何 org。
 // 先認領者得；已認領的群顯示由誰管理，不提供搶奪（轉移由平台擁有者在群組頁做）。
+//
+// 版面：上半是「這個群要做什麼」的動作卡，下半是服務介紹（與官方網站 /about 共用）。
+// 沒登入時不再直接導去 LINE 登入——從群裡點進來的人多半還不知道群記是什麼，先讓他看懂再登入。
 export default async function ClaimPage({
   params,
   searchParams,
@@ -21,7 +35,8 @@ export default async function ClaimPage({
 
   const owner = await isPlatformOwner();
   const uid = await liffUser();
-  if (!uid && !owner) redirect(`/api/auth/line?next=${encodeURIComponent(`/claim/${encodeURIComponent(groupId)}?t=${t}`)}`);
+  const here = `/claim/${encodeURIComponent(groupId)}?t=${t}`;
+  const loginHref = `/api/auth/line?next=${encodeURIComponent(here)}`;
 
   const db = getDb();
   const [{ data: g }, { data: unc }] = await Promise.all([
@@ -55,14 +70,25 @@ export default async function ClaimPage({
   const full = !!quota && quota.used >= quota.max;
 
   return (
-    <main className="mx-auto max-w-md p-6">
-      <div className="card space-y-4">
+    <div className="mx-auto max-w-md pb-8">
+      <BrandBar />
+      <main className="px-4">
+      <div className="card space-y-4 rounded-2xl">
         <div>
-          <p className="text-xs font-medium text-gray-500">GroupScribe · 認領群組</p>
+          <p className="text-xs font-medium text-gray-500">認領群組</p>
           <h1 className="mt-1 text-xl font-semibold tracking-tight">{groupName}</h1>
+          {!claimedBy && <p className="mt-1 text-sm text-gray-600">群記已經在這個群裡，但還沒有所屬的公司，所以還沒開始記錄。</p>}
         </div>
 
-        {claimedBy ? (
+        {!uid && !owner && !claimedBy ? (
+          <>
+            <p className="text-sm text-gray-700">你是這個群所屬公司的管理員嗎？用 LINE 登入，一鍵認領。</p>
+            <a className="btn-primary h-11 w-full text-base" href={loginHref}>
+              用 LINE 登入並認領
+            </a>
+            <p className="text-xs text-gray-500">不是管理員？不用做任何事，管理員認領後你就能在 LINE 裡看到整理結果。</p>
+          </>
+        ) : claimedBy ? (
           <>
             <p className="text-sm text-gray-700">
               這個群已由 <strong>{claimedBy.name}</strong> 管理。
@@ -76,7 +102,7 @@ export default async function ClaimPage({
         ) : !orgs.length ? (
           <>
             <p className="text-sm text-gray-700">你的 LINE 帳號還沒有組織。免費建立一個，回來再點一次這個連結就能認領。</p>
-            <a className="btn-primary w-full" href={`/start?next=${encodeURIComponent(`/claim/${encodeURIComponent(groupId)}?t=${t}`)}`}>
+            <a className="btn-primary w-full" href={`/start?next=${encodeURIComponent(here)}`}>
               建立我的組織（免費）
             </a>
           </>
@@ -114,10 +140,22 @@ export default async function ClaimPage({
             )}
             <button className="btn-primary w-full">認領這個群</button>
             {quota && <p className="text-xs text-gray-500">目前方案：{quota.used} / {quota.max} 個群</p>}
-            <p className="text-xs text-gray-500">認領前 bot 不會記錄任何訊息；認領後群裡的人可以在 LINE 裡看到整理結果。</p>
+            <p className="text-xs text-gray-500">認領前群記不會記錄任何訊息；認領後群裡的人可以在 LINE 裡看到整理結果。</p>
           </form>
         )}
       </div>
-    </main>
+
+      <div className="mt-10 space-y-10">
+        <DemoSection title="群記會幫這個群做什麼" />
+        <StepsSection />
+        <TrustSection />
+        <FaqSection />
+        <a className="block text-center text-sm text-emerald-700 underline" href="/about">
+          完整介紹與方案 →
+        </a>
+      </div>
+      </main>
+      <LegalFooter />
+    </div>
   );
 }

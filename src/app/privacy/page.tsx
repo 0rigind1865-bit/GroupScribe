@@ -1,6 +1,6 @@
 import { H2, LegalDoc, UL } from '@/app/ui/legal';
 
-export const metadata = { title: '隱私權政策 · GroupScribe' };
+export const metadata = { title: '隱私權政策' };
 
 // 隱私權政策（依台灣個人資料保護法第 8 條告知事項架構）。
 // ponytail: 內容為草稿，正式收費前請律師審閱；資料庫區域請對照 Supabase 專案設定填寫。

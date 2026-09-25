@@ -36,15 +36,15 @@ export const forgetGroupOrg = (groupId: string) => orgCache.delete(groupId);
 export function claimNotice(groupId: string): string {
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '');
   const link = base ? `${base}/claim/${encodeURIComponent(groupId)}?t=${claimToken(groupId)}` : null;
-  return `我是群記 🦉，GroupScribe 的群組工作助理。
-這個群還沒有所屬的公司。在管理員認領之前，我不會記錄任何訊息。
+  // 連結會被 LINE 畫成帶 logo 的預覽卡（認領頁的 og 設定）；文字只講「現在的狀態」與「誰要做什麼」
+  return `大家好，我是群記 🦉
+我會把群裡的對話整理成行程、待辦和公告，平常不說話。
 
-請本群所屬公司的管理員點下面連結認領（需用 LINE 登入）：
+這個群還沒有所屬的公司，所以我還沒開始記錄。
+請管理員點這裡認領（一鍵、免費）：
 ${link ?? '（系統尚未設定公開網址，請聯絡平台管理者）'}
 
-還沒有 GroupScribe 帳號？用 LINE 免費建立：${base ? `${base}/start` : '（請聯絡平台管理者）'}
-
-7 天內沒有人認領，我會自動離開群組。`;
+7 天內沒人認領，我會自動離開。`;
 }
 
 // 未認領超過 N 天自動退群（每日 cron 由 /api/digest 順手呼叫）：陌生群不燒費、不留資料
@@ -156,7 +156,7 @@ export function dmNotice(): string {
 2. 我會在群裡貼一個認領連結，管理員點一下就好
 （LINE 規定一個群只能有一個官方帳號：群裡已有其他機器人時，要先移出它）
 
-${base ? `還沒有帳號？免費建立：${base}/start` : ''}
+${base ? `看看群記怎麼運作：${base}/about` : ''}
 （這個 1:1 聊天室我不會記錄任何內容）`.trim();
 }
 

@@ -122,7 +122,20 @@ html {
     border-radius: 9999px;
     animation: spin 0.7s linear infinite;
   }
+  /* 官方網站示範：整理結果逐張浮入（IntroDemo 以 animationDelay 錯開） */
+  @keyframes demo-in {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+  .demo-in {
+    animation: demo-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
   @media (prefers-reduced-motion: reduce) {
+    .demo-in {
+      animation: none;
+    }
     .spinner,
     .is-clicked::before {
       animation-duration: 1.6s;

@@ -1,6 +1,6 @@
 import { H2, LegalDoc, UL } from '@/app/ui/legal';
 
-export const metadata = { title: '服務條款 · GroupScribe' };
+export const metadata = { title: '服務條款' };
 
 // 服務條款。ponytail: 草稿，正式收費前請律師審閱；退款與 SLA 依實際營運決定後回填。
 const CONTACT = '0rigin.d.1865@gmail.com';

@@ -13,5 +13,7 @@ ENV PORT=3000
 # standalone 自帶 server.js 與最小 node_modules
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+# 公開圖檔（logo、分享預覽圖）：standalone 不會自動帶 public/
+COPY --from=builder /app/public ./public
 EXPOSE 3000
 CMD ["node", "server.js"]

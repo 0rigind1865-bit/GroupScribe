@@ -1,5 +1,6 @@
 import { getDb } from '@/db';
 import { liffUser } from '@/core/liff';
+import { BrandBar } from '@/app/ui/intro';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +13,8 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
 
   if (!uid) {
     return (
-      <main className="mx-auto max-w-md p-6">
+      <main className="mx-auto max-w-md px-4 pb-6">
+        <BrandBar />
         <div className="card space-y-4">
           <div>
             <p className="text-xs font-medium text-gray-500">GroupScribe</p>
@@ -42,7 +44,8 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   const orgs = (mine ?? []).map((r: any) => r.orgs).filter(Boolean) as { slug: string; name: string }[];
 
   return (
-    <main className="mx-auto max-w-md p-6">
+    <main className="mx-auto max-w-md px-4 pb-6">
+        <BrandBar />
       <div className="card space-y-4">
         <div>
           <p className="text-xs font-medium text-gray-500">GroupScribe</p>

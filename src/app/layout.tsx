@@ -1,7 +1,23 @@
 import type { ReactNode } from 'react';
+import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 import './globals.css';
 
-export const metadata = { title: 'GroupScribe', description: '群組工作助理 Dashboard' };
+// 分享預覽（LINE／FB 貼連結時的卡片）：圖片要絕對網址，所以 metadataBase 依請求網址算。
+// APP_BASE_URL 優先（容器在代理後面，host 不一定是公開網址）。
+export async function generateMetadata(): Promise<Metadata> {
+  const h = await headers();
+  const base =
+    process.env.APP_BASE_URL?.replace(/\/$/, '') ||
+    `${h.get('x-forwarded-proto') ?? 'https'}://${h.get('x-forwarded-host') ?? h.get('host') ?? 'localhost:3000'}`;
+  const description = '把群記邀進 LINE 工作群，它會安靜地把對話整理成行程、待辦和公告。';
+  return {
+    metadataBase: new URL(base),
+    title: { default: '群記 GroupScribe', template: '%s · 群記' },
+    description,
+    openGraph: { siteName: '群記', locale: 'zh_TW', type: 'website', title: '群記：群裡講過的，都記得', description, images: ['/brand/og.png'] },
+  };
+}
 
 // root layout 只包 html/body：nav 與群組切換器在 (admin) 殼，讓 /login（及未來 LIFF /g/）天然在殼外
 export default function RootLayout({ children }: { children: ReactNode }) {
