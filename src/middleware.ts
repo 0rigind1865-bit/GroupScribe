@@ -51,10 +51,10 @@ async function validAdmin(raw: string | undefined): Promise<boolean> {
   return timingEq(sig, await hmacHex(adminKey, exp));
 }
 
-// gs_liff：`userId.exp.HMAC(userId.exp)`，金鑰 = LINE_CHANNEL_SECRET ?? ADMIN_PASSWORD（與 core/liff.ts 一致）
+// gs_liff：`userId.exp.HMAC(userId.exp)`，金鑰 = SESSION_SECRET（退路同 core/liff.ts，兩處必須一致）
 async function validLiff(raw: string | undefined): Promise<boolean> {
   if (!raw) return false;
-  const secret = process.env.LINE_CHANNEL_SECRET ?? process.env.ADMIN_PASSWORD;
+  const secret = process.env.SESSION_SECRET ?? process.env.LINE_CHANNEL_SECRET ?? process.env.ADMIN_PASSWORD;
   if (!secret) return false;
   if (!liffKey) liffKey = await importHmacKey(secret);
   const i = raw.lastIndexOf('.');
@@ -117,7 +117,7 @@ export const config = {
   // /g 與 /api/liff 為 LIFF 成員入口、/a 與 /api/attend 為考勤員工入口：
   // 不走 admin cookie，改由 LINE ID token 驗證（見 core/liff.ts；考勤 API 自帶三重把關）
   // /api/auth 為 LINE Login 流程（登入本身不能要求已登入）
-  // /api/digest 給 NAS cron 打，自行以 ?key=ADMIN_PASSWORD 把關
+  // /api/digest 給 NAS cron 打，自行以 ?key=CRON_SECRET 把關
   // g/(?!a/|a$)：/g 成員版整段跳過，但 /g/a...（LIFF endpoint 設在 /g 時的員工端深連結）
   // 要進來走上面的 rewrite。群組 id 以 a 開頭的 /g/abc 仍會被排除（負向前瞻只認 a/ 與 a 結尾）。
   // /claim 為認領頁：從群組連結點進來的人還沒有 cookie，由頁面自己導去 LINE Login

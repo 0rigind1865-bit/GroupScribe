@@ -70,7 +70,7 @@ const NOTICE_VERSION = 'v1';
 export const liffUrl = (): string | null =>
   process.env.LIFF_ID ? `https://liff.line.me/${process.env.LIFF_ID}` : null;
 
-// 進群告知的內建預設；實際發送內容以 app_settings.join_notice_text 為準（可在 /settings 編輯）
+// 進群告知的內建預設；各 org 可在 /settings 改寫（org_settings.join_notice_text）
 export const DEFAULT_NOTICE = `大家好，我是群記 🦉（GroupScribe 群組工作助理）
 我會在背景記錄本群組的訊息（文字、圖片、PDF），整理成可搜尋的工作紀錄。
 
@@ -211,7 +211,7 @@ async function handleFollow(userId: string, replyToken: string | undefined, chan
 
 export async function handleEvent(ev: NormalizedEvent, channelId: string): Promise<void> {
   if (ev.kind === 'follow') return handleFollow(ev.userId, ev.replyToken, channelId);
-  if (ev.kind === 'join') return handleJoin(ev.groupId, ev.replyToken, channelId);
+  if (ev.kind === 'join') return handleJoin(ev.groupId, ev.replyToken);
   if (ev.kind === 'leave') return handleLeave(ev.groupId);
   if (ev.kind === 'unsend') return handleUnsend(ev.groupId, ev.messageId);
   return handleMessage(ev.message, channelId);
@@ -256,18 +256,33 @@ async function handleLeave(groupId: string) {
   if (error) console.error('標記群組離開失敗', groupId, error);
 }
 
-// 進群：發一次隱私告知（可在 /settings 編輯與開關）＋寫 consent log，之後保持沉默
-async function handleJoin(groupId: string, replyToken: string | undefined, channelId: string) {
-  const db = getDb();
-  // 全域告知設定；表尚未建立或未設定時 fallback 為「開啟＋內建預設」，維持原行為
-  const { data: cfg } = await db
-    .from('app_settings')
+// 進群告知設定（商業計劃 G1）：每家公司各一份，存在 org_settings；沒有列或沒填＝「開啟＋內建預設」
+export async function noticeFor(orgId: string): Promise<{ enabled: boolean; text: string }> {
+  const { data } = await getDb()
+    .from('org_settings')
     .select('join_notice_enabled, join_notice_text')
-    .eq('id', 1)
+    .eq('org_id', orgId)
     .maybeSingle();
-  const enabled = cfg?.join_notice_enabled ?? true;
-  const noticeText = (cfg?.join_notice_text ?? '').trim() || DEFAULT_NOTICE;
+  return { enabled: data?.join_notice_enabled ?? true, text: (data?.join_notice_text ?? '').trim() || DEFAULT_NOTICE };
+}
 
+// 發隱私告知＋記 consent（關閉＝沒告知，就不該留「已告知」記錄）。
+// 有 replyToken（剛進群）用免費的 reply；認領時已沒有 replyToken，改 push 到群組（佔 1 則額度）。
+export async function sendJoinNotice(groupId: string, orgId: string, replyToken?: string): Promise<void> {
+  const { enabled, text } = await noticeFor(orgId);
+  if (!enabled) return;
+  const connector = getConnector();
+  const msg = withLiffEntry(text);
+  const sent = replyToken ? (await connector.reply(replyToken, msg), 'ok') : await connector.push?.(groupId, msg);
+  if (sent !== 'ok') return console.error('進群告知送出失敗', groupId, sent);
+  await getDb()
+    .from('consent_log')
+    .insert({ group_id: groupId, channel_id: await getChannelId(), notice_version: NOTICE_VERSION });
+}
+
+// 進群：發一次隱私告知（各 org 在 /settings 編輯與開關）＋寫 consent log，之後保持沉默
+async function handleJoin(groupId: string, replyToken: string | undefined) {
+  const db = getDb();
   // 不論告知開關都記錄群組（重新加入 → 清除離開標記、補名稱）。新列的 org_id 走欄位預設＝未認領
   await db.from('groups').upsert({ group_id: groupId, left_at: null, updated_at: new Date().toISOString() });
   groupNamed.delete(groupId);
@@ -275,17 +290,14 @@ async function handleJoin(groupId: string, replyToken: string | undefined, chann
   forgetGroupOrg(groupId);
   await ensureGroupProfile(groupId);
 
-  // 未認領：只回認領連結，不發告知、不記 consent（認領後由管理員決定何時開始）
+  // 未認領：只回認領連結，不發告知、不記 consent（認領時由 /api/group/claim 補發）
   if (await isUnclaimed(groupId)) {
     if (replyToken) await getConnector().reply(replyToken, claimNotice(groupId));
     return;
   }
-
-  // 只有開啟時才發告知＋記 consent（關閉＝沒告知，就不該留「已告知」記錄）
-  if (enabled) {
-    await db.from('consent_log').insert({ group_id: groupId, channel_id: channelId, notice_version: NOTICE_VERSION });
-    if (replyToken) await getConnector().reply(replyToken, withLiffEntry(noticeText));
-  }
+  // 重新加入已認領的群：用該群所屬公司的告知
+  const { data: g } = await db.from('groups').select('org_id').eq('group_id', groupId).maybeSingle();
+  if (g?.org_id) await sendJoinNotice(groupId, g.org_id, replyToken);
 }
 
 // 收回訊息 → 對應刪除訊息、向量、媒體原檔（規劃書第 10 節）

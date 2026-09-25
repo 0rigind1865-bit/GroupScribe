@@ -3,6 +3,8 @@ import { DEFAULT_NOTICE } from '@/core/ingest';
 import { SetupNotice } from '../setup-notice';
 import { messageQuota } from '@/connectors/line';
 import { refreshSettings, DEFAULT_EMBEDDING_MODEL } from '@/core/settings';
+import { orgAdminAccess, orgGroups } from '@/org/orgs';
+import { notFound } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,17 +30,25 @@ const PRICES: Record<string, { input: number; output: number }> = {
 const EMBED_PRICE = 0.15;
 
 export default async function SettingsPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ org: string }>;
   searchParams: Promise<{ saved?: string; error?: string; processed?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { saved, error, processed } = await searchParams;
+  const access = await orgAdminAccess((await params).org);
+  if (!access) notFound();
+  // 收訊／LINE 額度／AI 用量與模型是全站共用的平台數字（商業計劃 G1、U11）：只給平台擁有者看。
+  // 公司管理員只看自己的進群告知與自己群組的抽取品質。
+  const platform = access.via === 'platform';
+  const groupIds = (await orgGroups(access.org.id)).map((g) => g.group_id);
   const db = getDb();
   const { data: cfg } = await db
-    .from('app_settings')
+    .from('org_settings')
     .select('join_notice_enabled, join_notice_text')
-    .eq('id', 1)
+    .eq('org_id', access.org.id)
     .maybeSingle();
   // 收訊健康：LINE 漏收不可回補，停機期間掉的訊息永久消失且無人會知道（E 節約束）
   const { data: hb } = await db.from('app_settings').select('last_webhook_at').eq('id', 1).maybeSingle();
@@ -79,6 +89,7 @@ export default async function SettingsPage({
         .select('id', { count: 'exact', head: true })
         .eq('source', 'ai')
         .gte('created_at', since30)
+        .in('group_id', groupIds)
         .neq('group_id', 'DEMO-GROUP'); // 示範資料是寫死的，算進去會虛增採用率
     // 「忽略」有兩種語意，混在一起會嚴重誤判抽取品質：
     //   還沒確認就忽略 ＝ 人第一眼就說「這不對」→ 真正的品質訊號
@@ -147,11 +158,12 @@ export default async function SettingsPage({
       )}
       {error && error !== 'budget' && error !== 'ai' && (
         <p className="card mb-4 border-red-200 bg-red-50 text-sm text-red-700">
-          儲存失敗——<code>app_settings</code> 表可能尚未建立，請在 Supabase SQL Editor 執行{' '}
-          <code>supabase/migrations/003_app_settings.sql</code>。
+          儲存失敗——<code>org_settings</code> 表可能尚未建立，請在 Supabase SQL Editor 執行{' '}
+          <code>supabase/migrations/012_orgs.sql</code>。
         </p>
       )}
 
+      {platform && (<>
       <section className="card mb-6 space-y-2">
         <h2 className="font-bold">收訊狀態</h2>
         {lastWebhook ? (
@@ -356,6 +368,7 @@ export default async function SettingsPage({
           <code>ADMIN_PASSWORD</code>）仍然只能改環境變數——那是刻意的，不是還沒做。
         </p>
       </section>
+      </>)}
 
       {/* 抽取品質：這是產品價值的健康指標，比用量更重要——
           用量告訴你花了多少錢，這裡告訴你那些錢有沒有換到有用的東西。 */}
@@ -416,8 +429,9 @@ export default async function SettingsPage({
 
       <form action="/api/settings" method="post" className="card space-y-4">
         <h2 className="font-bold">進群告知訊息</h2>
+        <input type="hidden" name="org" value={access.org.slug} />
         <p className="text-sm text-gray-500">
-          bot 加入群組時會發送這則訊息（隱私告知＋用法），之後保持沉默。這是它唯一主動說話的時機。
+          群組被你認領時（或 bot 重新加入你的群組時）會發送這則訊息（隱私告知＋用法），之後保持沉默。只影響你的群組。
         </p>
 
         <label className="flex items-center gap-2 text-sm">

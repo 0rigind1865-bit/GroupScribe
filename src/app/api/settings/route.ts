@@ -4,14 +4,16 @@ import { redirectTo } from '@/http';
 import { invalidateSettings } from '@/core/settings';
 import { gsAccess } from '@/org/orgs';
 
-// 儲存全域設定（進群告知訊息與開關）
+// 設定分兩種（商業計劃 G1）：
+//   進群告知 → 每家公司各一份（org_settings），該 org 管理員自己改
+//   AI 模型／預算 → 全站共用同一把 Gemini 金鑰與同一個向量空間，本質是平台設定，留在 app_settings、只有平台擁有者能改
 export async function POST(req: NextRequest) {
   const form = await req.formData();
   const access = await gsAccess(req, form);
-  // ponytail: app_settings 仍是全站單列（商業計劃 G1 才遷 org_settings），先只讓平台擁有者改；
-  // G1 完成後改成 org 管理員也能改自己 org 的
-  if (!access || access.via !== 'platform') return NextResponse.json({ error: '沒有權限' }, { status: 403 });
+  if (!access) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const back = `${access.base}/settings`;
+  const platformOnly = form.has('ai') || form.has('monthly_budget');
+  if (platformOnly && access.via !== 'platform') return NextResponse.json({ error: '沒有權限' }, { status: 403 });
 
   // AI 設定（migration 011）：模型與免費層上限。金鑰不走這條，永遠只讀環境變數。
   if (form.has('ai')) {
@@ -40,9 +42,10 @@ export async function POST(req: NextRequest) {
 
   const enabled = form.get('enabled') === 'on'; // checkbox 未勾選則不送
   const text = String(form.get('text') ?? '').trim() || null; // 空則存 null（進群時 fallback 內建預設）
-  const { error } = await getDb()
-    .from('app_settings')
-    .upsert({ id: 1, join_notice_enabled: enabled, join_notice_text: text, updated_at: new Date().toISOString() });
+  const { error } = await getDb().from('org_settings').upsert(
+    { org_id: access.org.id, join_notice_enabled: enabled, join_notice_text: text, updated_at: new Date().toISOString() },
+    { onConflict: 'org_id' },
+  );
   if (error) console.error('儲存設定失敗', error);
   return redirectTo(error ? `${back}?error=1` : `${back}?saved=1`);
 }

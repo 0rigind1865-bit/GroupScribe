@@ -57,6 +57,7 @@ create table if not exists embeddings (
 );
 create index if not exists embeddings_vec on embeddings using hnsw (embedding vector_cosine_ops);
 create index if not exists embeddings_source on embeddings (source_id);
+create index if not exists embeddings_group on embeddings (group_id); -- migration 020
 
 create table if not exists consent_log (
   id bigint generated always as identity primary key,

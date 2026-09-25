@@ -23,9 +23,10 @@ export const isDemoGroup = (groupId: string) => demoMode() && groupId === DEMO_G
 export const liffId = () => process.env.LIFF_ID ?? '';
 
 function secret(): string {
-  // 簽章金鑰借用既有機密（零新 env）；LINE_CHANNEL_SECRET 不存在時退回 ADMIN_PASSWORD
-  const s = process.env.LINE_CHANNEL_SECRET ?? process.env.ADMIN_PASSWORD;
-  if (!s) throw new Error('缺少 LINE_CHANNEL_SECRET / ADMIN_PASSWORD，無法簽 LIFF session');
+  // 專用金鑰（商業計劃 G2）：不再借 LINE 驗簽密鑰。換 key 只會讓大家重新走一次 LIFF 自動登入。
+  // ponytail: 未設 SESSION_SECRET 時退回舊的借用鏈，設好 env 後可拿掉
+  const s = process.env.SESSION_SECRET ?? process.env.LINE_CHANNEL_SECRET ?? process.env.ADMIN_PASSWORD;
+  if (!s) throw new Error('缺少 SESSION_SECRET，無法簽 LIFF session');
   return s;
 }
 

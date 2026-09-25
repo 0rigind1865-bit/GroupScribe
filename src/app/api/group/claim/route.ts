@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { redirectTo } from '@/http';
 import { getDb } from '@/db';
-import { forgetGroupOrg } from '@/core/ingest';
+import { forgetGroupOrg, sendJoinNotice } from '@/core/ingest';
 import { verifyClaimToken } from '@/core/liff';
 import { gsAccess } from '@/org/orgs';
 
@@ -45,6 +45,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
   forgetGroupOrg(groupId); // 下一則訊息立刻開始記錄，不等快取過期
+  // 換了主人就發新主人的隱私告知：未認領時進群只發過認領連結，這是這個群第一次被告知會被記錄
+  if (cur?.org_id !== access.org.id && access.slug !== 'unclaimed') {
+    await sendJoinNotice(groupId, access.org.id).catch((e) => console.error('認領後告知失敗', groupId, e));
+  }
 
   const backRaw = String(form.get('back') ?? '');
   const back = backRaw.startsWith('/') && !backRaw.startsWith('//') ? backRaw : `${access.base}/groups?group=${encodeURIComponent(groupId)}&claimed=1`;
