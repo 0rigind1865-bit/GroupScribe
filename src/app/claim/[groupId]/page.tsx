@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getDb } from '@/db';
 import { liffUser, verifyClaimToken } from '@/core/liff';
 import { isPlatformOwner } from '@/org/orgs';
-import { BrandBar, DemoSection, FaqSection, LegalFooter, StepsSection, TrustSection } from '@/app/ui/intro';
+import { BrandBar, DemoSection, FaqSection, FlowSection, LegalFooter, StepsSection, TrustSection } from '@/app/ui/intro';
 
 export const dynamic = 'force-dynamic';
 
@@ -147,11 +147,12 @@ export default async function ClaimPage({
 
       <div className="mt-10 space-y-10">
         <DemoSection title="群記會幫這個群做什麼" />
+        <FlowSection />
         <StepsSection />
         <TrustSection />
         <FaqSection />
         <a className="block text-center text-sm text-emerald-700 underline" href="/about">
-          完整介紹與方案 →
+          後台功能、打卡與薪資、方案 →
         </a>
       </div>
       </main>

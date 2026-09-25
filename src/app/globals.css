@@ -122,6 +122,36 @@ html {
     border-radius: 9999px;
     animation: spin 0.7s linear infinite;
   }
+  /* 官方網站捲動動畫：瀏覽器原生 scroll-driven animation，零 JS。
+     不支援的瀏覽器（舊 iOS）@supports 不成立，內容直接顯示、沒有動畫。 */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: reveal linear both;
+        animation-timeline: view();
+        animation-range: entry 0% entry 80%;
+      }
+      /* 流程圖的進度線：捲過這一段時從上往下長出來 */
+      .flow-line {
+        transform-origin: top;
+        animation: grow-y linear both;
+        animation-timeline: view();
+        animation-range: entry 40% cover 70%;
+      }
+    }
+  }
+  @keyframes reveal {
+    from {
+      opacity: 0;
+      transform: translateY(28px) scale(0.98);
+    }
+  }
+  @keyframes grow-y {
+    from {
+      transform: scaleY(0);
+    }
+  }
+
   /* 官方網站示範：整理結果逐張浮入（IntroDemo 以 animationDelay 錯開） */
   @keyframes demo-in {
     from {

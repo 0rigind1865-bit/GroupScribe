@@ -1,4 +1,16 @@
-import { BrandBar, DemoSection, FaqSection, LegalFooter, PlansSection, StepsSection, TrustSection } from '@/app/ui/intro';
+import {
+  AttendSection,
+  BrandBar,
+  DemoSection,
+  FaqSection,
+  FeaturesSection,
+  FlowSection,
+  LegalFooter,
+  MemberSection,
+  PlansSection,
+  StepsSection,
+  TrustSection,
+} from '@/app/ui/intro';
 
 export const metadata = { title: '群裡講過的，都記得' };
 
@@ -25,8 +37,12 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <div className="space-y-10 px-4">
+      <div className="space-y-16 px-4">
         <DemoSection />
+        <FlowSection />
+        <FeaturesSection />
+        <MemberSection />
+        <AttendSection />
         <StepsSection />
         <TrustSection />
         <PlansSection />
