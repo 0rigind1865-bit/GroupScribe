@@ -52,7 +52,7 @@ export default function AboutPage() {
       <LegalFooter />
 
       {/* 手機底部固定 CTA；桌機不需要（整頁一眼看得完） */}
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/90 p-3 backdrop-blur md:hidden">
+      <div data-cta className="fixed inset-x-0 bottom-0 z-20 border-t border-gray-200 bg-white/90 p-3 backdrop-blur md:hidden">
         <a className="btn-primary h-11 w-full text-base" href="/start">
           免費開始 · 1 個群免費
         </a>

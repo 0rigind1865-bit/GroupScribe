@@ -9,6 +9,9 @@ import { useEffect, useRef, useState } from 'react';
 //   ④ 歸位：每張卡標上去了哪裡（月曆／待辦／公告）
 // 對話內容是虛構的一般商務情境，不寫死任何產業（plan.md B.7）。
 // prefers-reduced-motion：直接顯示最終狀態，不播放。
+//
+// 鎖捲動（使用者要求）：滑到示範框時自動對齊並鎖住捲動，播完或按「跳過」才解鎖。
+// 三個保險避免讓人以為當機：跳過鈕全程可見、播完自動解鎖、同一次瀏覽只鎖一次（重播不鎖）。
 
 type Kind = 'event' | 'task' | 'note';
 const CHIP: Record<Kind, { label: string; cls: string; dest: string }> = {
@@ -53,8 +56,23 @@ const CAPTION: Record<Phase, string> = {
 
 type Cursor = { x: number; y: number; on: boolean; click: boolean };
 
+// 鎖住捲動：html 加 class（CSS 設 overflow hidden、藏底部 CTA）＋擋滾輪、觸控拖動與捲動鍵
+const SCROLL_KEYS = new Set(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' ']);
+const block = (e: Event) => {
+  if (e instanceof KeyboardEvent && !SCROLL_KEYS.has(e.key)) return;
+  e.preventDefault();
+};
+function lockScroll(on: boolean) {
+  document.documentElement.classList.toggle('demo-lock', on);
+  const fn = on ? window.addEventListener : window.removeEventListener;
+  for (const t of ['wheel', 'touchmove', 'keydown']) fn(t, block, { passive: false } as AddEventListenerOptions);
+}
+
 export function IntroDemo() {
   const box = useRef<HTMLDivElement>(null);
+  const runRef = useRef({ dead: false });
+  const lockedOnce = useRef(false);
+  const [locked, setLocked] = useState(false);
   const btns = useRef<(HTMLButtonElement | null)[]>([]);
   const [started, setStarted] = useState(false);
   const [run, setRun] = useState(0);
@@ -78,15 +96,38 @@ export function IntroDemo() {
           io.disconnect();
         }
       },
-      { threshold: 0.35 },
+      { threshold: 0.6 },
     );
     io.observe(el);
     return () => io.disconnect();
   }, []);
 
+  // 播放中鎖捲動；解鎖時一定清掉監聽（元件卸載也要）
+  useEffect(() => {
+    lockScroll(locked);
+    return () => lockScroll(false);
+  }, [locked]);
+
+  const finish = () => {
+    setShown(CHAT.length);
+    setTyping(null);
+    setScan(null);
+    setNoise(true);
+    setCards(ALL_CARDS.length);
+    setOk(new Set(ALL_CARDS.map((_, i) => i)));
+    setCursor((p) => ({ ...p, on: false }));
+    setPhase('done');
+    setLocked(false);
+  };
+  const skip = () => {
+    runRef.current.dead = true;
+    finish();
+  };
+
   useEffect(() => {
     if (!started) return;
-    let dead = false;
+    const ctl = { dead: false };
+    runRef.current = ctl;
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     const reset = () => {
       setShown(0);
@@ -100,12 +141,18 @@ export function IntroDemo() {
 
     // 不要動畫的人：直接看結果
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setShown(CHAT.length);
-      setNoise(true);
-      setCards(ALL_CARDS.length);
-      setOk(new Set(ALL_CARDS.map((_, i) => i)));
-      setPhase('done');
+      finish();
       return;
+    }
+
+    // 第一次播：把示範框對齊到畫面上緣，然後鎖住捲動
+    if (!lockedOnce.current && box.current) {
+      lockedOnce.current = true;
+      window.scrollTo({ top: box.current.getBoundingClientRect().top + window.scrollY - 12, behavior: 'smooth' });
+      // 等平滑捲動對齊完再鎖，太早鎖會把捲動卡在半路
+      setTimeout(() => {
+        if (!ctl.dead) setLocked(true);
+      }, 500);
     }
 
     // 游標移到第 j 張卡的確認鈕（座標相對於示範框）
@@ -123,56 +170,64 @@ export function IntroDemo() {
       setPhase('chat');
       await sleep(400);
       for (let i = 0; i < CHAT.length; i++) {
+        if (ctl.dead) return; // 每一步開頭都檢查：跳過後不能再多冒出一個「正在輸入」
         setTyping(CHAT[i].who);
         await sleep(i === 1 ? 450 : 850); // 「好」打得比較快
-        if (dead) return;
+        if (ctl.dead) return;
         setTyping(null);
         setShown(i + 1);
         await sleep(300);
       }
       await sleep(500);
-      if (dead) return;
+      if (ctl.dead) return;
 
+      if (ctl.dead) return;
       setPhase('extract');
       let n = 0;
       for (let i = 0; i < CHAT.length; i++) {
+        if (ctl.dead) return;
         setScan(i);
         await sleep(650);
-        if (dead) return;
+        if (ctl.dead) return;
         if (CHAT[i].noise) setNoise(true);
         for (const _ of EXTRACT[i]) {
           n++;
           setCards(n);
           await sleep(380);
-          if (dead) return;
+          if (ctl.dead) return;
         }
         setScan(null);
         await sleep(200);
       }
       await sleep(400);
-      if (dead) return;
+      if (ctl.dead) return;
 
+      if (ctl.dead) return;
       setPhase('review');
       const c = box.current;
       if (c) setCursor({ x: c.clientWidth - 30, y: c.clientHeight - 20, on: true, click: false });
       await sleep(350);
       for (let j = 0; j < ALL_CARDS.length; j++) {
+        if (ctl.dead) return;
         aim(j);
         await sleep(700);
-        if (dead) return;
+        if (ctl.dead) return;
         setCursor((p) => ({ ...p, click: true }));
         await sleep(160);
         setOk((s) => new Set(s).add(j));
         setCursor((p) => ({ ...p, click: false }));
         await sleep(320);
-        if (dead) return;
+        if (ctl.dead) return;
       }
       setCursor((p) => ({ ...p, on: false }));
       await sleep(300);
-      if (!dead) setPhase('done');
+      if (!ctl.dead) {
+        setPhase('done');
+        setLocked(false);
+      }
     })();
     return () => {
-      dead = true;
+      ctl.dead = true;
     };
   }, [started, run]);
 
@@ -180,6 +235,15 @@ export function IntroDemo() {
 
   return (
     <div ref={box} className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+      {/* 跳過：播放中全程可見（鎖捲動的出口） */}
+      {phase !== 'idle' && phase !== 'done' && (
+        <button
+          onClick={skip}
+          className="absolute top-12 right-2 z-20 rounded-full bg-gray-900 px-3 py-1 text-xs font-semibold text-white shadow-md"
+        >
+          {locked ? '跳過 ↓' : '跳過'}
+        </button>
+      )}
       {/* 進度條：對話 → AI 提取 → 人員確認 → 歸位 */}
       <div className="grid grid-cols-4 gap-1 border-b border-gray-200 px-3 py-2 text-center text-[11px]">
         {STAGES.map((s, i) => (

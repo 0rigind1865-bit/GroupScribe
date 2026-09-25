@@ -152,6 +152,23 @@ html {
     }
   }
 
+  /* 示範播放中鎖捲動（IntroDemo 在 html 加 .demo-lock）；底部 CTA 讓開，別擋住示範框 */
+  html.demo-lock,
+  html.demo-lock body {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  [data-cta] {
+    transition:
+      transform 0.3s ease,
+      opacity 0.3s ease;
+  }
+  html.demo-lock [data-cta] {
+    transform: translateY(110%);
+    opacity: 0;
+    pointer-events: none;
+  }
+
   /* 官方網站示範短劇（IntroDemo）：訊息進場、打字點點、掃描發光、卡片彈出、確認徽章、游標點擊漣漪 */
   @keyframes msg-in {
     from {

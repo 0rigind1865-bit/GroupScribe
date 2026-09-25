@@ -84,40 +84,8 @@ export function TrustSection() {
   );
 }
 
-// ── 整理到哪裡：一條從對話到送達的流程線（捲動時線條長出來，節點逐個浮入）──
-const FLOW = [
-  { t: '群組對話', d: '大家照常講話。文字、圖片、PDF、語音都收，貼圖和「好」「收到」這類閒聊不記錄。', tag: '零輸入' },
-  { t: 'AI 提取', d: '找出日期、時間、地點、負責人和拍板的決定，整理成行程、待辦、公告。', tag: '自動' },
-  { t: '收件匣：人員確認', d: '每一筆都附上 AI 根據的那句原話。管理員或最清楚狀況的群成員按「確認」、改錯字，或一鍵忽略。', tag: '你把關' },
-  { t: '定案歸位', d: '確認過的內容進月曆、待辦、公告與檔案。之後的對話若改期，AI 會提出更新，再等你確認。', tag: '可回溯' },
-  { t: '送到每個人手上', d: '成員在 LINE 裡點開就看得到；訂閱的人每天早上收到私訊提醒；忘了就在群裡 @群記 問。', tag: '在 LINE 裡' },
-];
-
-export function FlowSection() {
-  return (
-    <section className="reveal">
-      <Eyebrow>整理到哪裡</Eyebrow>
-      <h2 className="mb-1 text-lg font-semibold tracking-tight">從一句話，到每個人的行事曆</h2>
-      <p className="mb-5 text-sm text-gray-600">AI 只負責提出線索，人確認過才算數。</p>
-      <ol className="relative space-y-5 pl-9">
-        <span aria-hidden className="absolute top-2 bottom-2 left-[13px] w-0.5 rounded bg-gray-200" />
-        <span aria-hidden className="flow-line absolute top-2 bottom-2 left-[13px] w-0.5 rounded bg-emerald-500" />
-        {FLOW.map((s, i) => (
-          <li key={s.t} className="reveal relative">
-            <span className="absolute top-0 -left-9 grid h-7 w-7 place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white">
-              {i + 1}
-            </span>
-            <p className="flex items-center gap-2 font-semibold">
-              {s.t}
-              <span className="rounded-full bg-emerald-100 px-2 py-px text-[11px] font-medium text-emerald-900">{s.tag}</span>
-            </p>
-            <p className="mt-0.5 text-sm leading-relaxed text-gray-600">{s.d}</p>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
-}
+// ── 整理到哪裡：捲動敘事版在 intro-flow.tsx（client）──
+export { FlowSection } from './intro-flow';
 
 // ── 功能巡禮：每個功能一段文字配一支小手機 ──
 const FEATURES = [
