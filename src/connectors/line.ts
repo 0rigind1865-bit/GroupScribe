@@ -4,178 +4,192 @@ import { dmGroupId, isDm, type MessagingConnector, type NormalizedEvent } from '
 // LINE Messaging API Connector（規劃書第 4 節）。REST 很單純，直接 fetch，不裝 SDK。
 const API = 'https://api.line.me/v2/bot';
 const DATA_API = 'https://api-data.line.me/v2/bot';
-const token = () => process.env.LINE_CHANNEL_ACCESS_TOKEN ?? '';
+
+// 金鑰收成參數（商業計劃 G5）：日後一家公司一個 LINE 帳號（形態 B）時，
+// 依 channel 取各自的金鑰建 connector，不必再改十幾個呼叫點。現在只有一組：環境變數。
+// creds 是函式而非值：每次呼叫才讀，維持「部署後改 .env 重建容器即生效」的行為，build 時也不需要金鑰。
+export type LineCreds = { accessToken: string; channelSecret: string };
+export const envCreds = (): LineCreds => ({
+  accessToken: process.env.LINE_CHANNEL_ACCESS_TOKEN ?? '',
+  channelSecret: process.env.LINE_CHANNEL_SECRET ?? '',
+});
 
 // 群組成員顯示名稱快取。ponytail: in-memory、重啟即清，之後量大再落 DB
 const nameCache = new Map<string, string>();
 // 群組 summary（名稱/頭貼）快取，同上
 const summaryCache = new Map<string, { name?: string; pictureUrl?: string }>();
 
-export const lineConnector: MessagingConnector = {
-  supportsBackfill: false, // LINE 拿不到加入前的歷史，冷啟動靠 txt 匯入（規劃書 4.2）
+export function createLineConnector(creds: () => LineCreds): MessagingConnector {
+  const token = () => creds().accessToken;
+  return {
+    supportsBackfill: false, // LINE 拿不到加入前的歷史，冷啟動靠 txt 匯入（規劃書 4.2）
 
-  verifyWebhook(rawBody, signature) {
-    const secret = process.env.LINE_CHANNEL_SECRET;
-    if (!secret) return false;
-    const mac = crypto.createHmac('sha256', secret).update(rawBody).digest();
-    const sig = Buffer.from(signature, 'base64');
-    return sig.length === mac.length && crypto.timingSafeEqual(mac, sig);
-  },
+    verifyWebhook(rawBody, signature) {
+      const secret = creds().channelSecret;
+      if (!secret) return false;
+      const mac = crypto.createHmac('sha256', secret).update(rawBody).digest();
+      const sig = Buffer.from(signature, 'base64');
+      return sig.length === mac.length && crypto.timingSafeEqual(mac, sig);
+    },
 
-  parseEvents(body) {
-    const out: NormalizedEvent[] = [];
-    for (const ev of (body as any)?.events ?? []) {
-      // 1:1（source.type=user）當成 dm:<userId> 的個人筆記群；多人聊天室（room）不服務
-      const userId: string | undefined = ev.source?.userId;
-      const groupId: string | undefined =
-        ev.source?.groupId ?? (ev.source?.type === 'user' && userId ? dmGroupId(userId) : undefined);
-      if (!groupId) continue;
-      if (ev.type === 'follow') {
-        out.push({ kind: 'follow', userId: userId!, replyToken: ev.replyToken });
-        continue;
-      }
-      if (ev.type === 'unfollow') {
-        out.push({ kind: 'leave', groupId }); // 封鎖＝離開個人筆記
-        continue;
-      }
-      if (ev.type === 'join') {
-        out.push({ kind: 'join', groupId, replyToken: ev.replyToken });
-        continue;
-      }
-      if (ev.type === 'leave') {
-        out.push({ kind: 'leave', groupId });
-        continue;
-      }
-      if (ev.type === 'unsend') {
-        if (ev.unsend?.messageId) out.push({ kind: 'unsend', groupId, messageId: ev.unsend.messageId });
-        continue;
-      }
-      if (ev.type !== 'message') continue;
-
-      const m = ev.message;
-      const base = {
-        groupId,
-        senderId: ev.source.userId as string | undefined,
-        messageId: m.id as string,
-        replyToken: ev.replyToken as string | undefined,
-        timestamp: new Date(ev.timestamp),
-        source: 'webhook' as const,
-        mentionsBot: false,
-      };
-
-      if (m.type === 'text') {
-        const mentionees: { index: number; length: number; isSelf?: boolean }[] = m.mention?.mentionees ?? [];
-        const mentionsBot = mentionees.some((x) => x.isSelf === true);
-        let question: string | undefined;
-        if (mentionsBot) {
-          // 去掉所有 @提及字段，剩下的就是問題本文
-          question = m.text as string;
-          for (const x of [...mentionees].sort((a, b) => b.index - a.index)) {
-            question = question.slice(0, x.index) + question.slice(x.index + x.length);
-          }
-          question = question.trim();
+    parseEvents(body) {
+      const out: NormalizedEvent[] = [];
+      for (const ev of (body as any)?.events ?? []) {
+        // 1:1（source.type=user）當成 dm:<userId> 的個人筆記群；多人聊天室（room）不服務
+        const userId: string | undefined = ev.source?.userId;
+        const groupId: string | undefined =
+          ev.source?.groupId ?? (ev.source?.type === 'user' && userId ? dmGroupId(userId) : undefined);
+        if (!groupId) continue;
+        if (ev.type === 'follow') {
+          out.push({ kind: 'follow', userId: userId!, replyToken: ev.replyToken });
+          continue;
         }
-        out.push({ kind: 'message', message: { ...base, mentionsBot, type: 'text', text: m.text, question } });
-      } else if (m.type === 'image') {
-        out.push({ kind: 'message', message: { ...base, type: 'image', mediaRef: m.id } });
-      } else if (m.type === 'file') {
-        const pdf = /\.pdf$/i.test(m.fileName ?? '');
-        out.push({
-          kind: 'message',
-          message: { ...base, type: pdf ? 'pdf' : 'other', text: m.fileName, mediaRef: pdf ? m.id : undefined },
-        });
-      } else if (m.type === 'audio') {
-        // 語音走既有媒體管線（Storage→轉寫→索引與抽取）。轉寫失敗時原檔仍在，
-        // 至少「捕捉」成立——比整型排除好（D 表：語音訊息進捕捉）
-        out.push({ kind: 'message', message: { ...base, type: 'audio', mediaRef: m.id } });
-      } else if (m.type === 'sticker') {
-        out.push({ kind: 'message', message: { ...base, type: 'other', text: '[貼圖]' } });
+        if (ev.type === 'unfollow') {
+          out.push({ kind: 'leave', groupId }); // 封鎖＝離開個人筆記
+          continue;
+        }
+        if (ev.type === 'join') {
+          out.push({ kind: 'join', groupId, replyToken: ev.replyToken });
+          continue;
+        }
+        if (ev.type === 'leave') {
+          out.push({ kind: 'leave', groupId });
+          continue;
+        }
+        if (ev.type === 'unsend') {
+          if (ev.unsend?.messageId) out.push({ kind: 'unsend', groupId, messageId: ev.unsend.messageId });
+          continue;
+        }
+        if (ev.type !== 'message') continue;
+
+        const m = ev.message;
+        const base = {
+          groupId,
+          senderId: ev.source.userId as string | undefined,
+          messageId: m.id as string,
+          replyToken: ev.replyToken as string | undefined,
+          timestamp: new Date(ev.timestamp),
+          source: 'webhook' as const,
+          mentionsBot: false,
+        };
+
+        if (m.type === 'text') {
+          const mentionees: { index: number; length: number; isSelf?: boolean }[] = m.mention?.mentionees ?? [];
+          const mentionsBot = mentionees.some((x) => x.isSelf === true);
+          let question: string | undefined;
+          if (mentionsBot) {
+            // 去掉所有 @提及字段，剩下的就是問題本文
+            question = m.text as string;
+            for (const x of [...mentionees].sort((a, b) => b.index - a.index)) {
+              question = question.slice(0, x.index) + question.slice(x.index + x.length);
+            }
+            question = question.trim();
+          }
+          out.push({ kind: 'message', message: { ...base, mentionsBot, type: 'text', text: m.text, question } });
+        } else if (m.type === 'image') {
+          out.push({ kind: 'message', message: { ...base, type: 'image', mediaRef: m.id } });
+        } else if (m.type === 'file') {
+          const pdf = /\.pdf$/i.test(m.fileName ?? '');
+          out.push({
+            kind: 'message',
+            message: { ...base, type: pdf ? 'pdf' : 'other', text: m.fileName, mediaRef: pdf ? m.id : undefined },
+          });
+        } else if (m.type === 'audio') {
+          // 語音走既有媒體管線（Storage→轉寫→索引與抽取）。轉寫失敗時原檔仍在，
+          // 至少「捕捉」成立——比整型排除好（D 表：語音訊息進捕捉）
+          out.push({ kind: 'message', message: { ...base, type: 'audio', mediaRef: m.id } });
+        } else if (m.type === 'sticker') {
+          out.push({ kind: 'message', message: { ...base, type: 'other', text: '[貼圖]' } });
+        }
+        // 影片：維持排除（不是知識載體，且抓取與轉寫成本高）
       }
-      // 影片：維持排除（不是知識載體，且抓取與轉寫成本高）
-    }
-    return out;
-  },
+      return out;
+    },
 
-  async fetchMedia(ref) {
-    const res = await fetch(`${DATA_API}/message/${ref}/content`, {
-      headers: { authorization: `Bearer ${token()}` },
-    });
-    if (!res.ok) throw new Error(`LINE 抓取媒體失敗 ${res.status}`);
-    return {
-      data: Buffer.from(await res.arrayBuffer()),
-      mime: res.headers.get('content-type') ?? 'application/octet-stream',
-    };
-  },
+    async fetchMedia(ref) {
+      const res = await fetch(`${DATA_API}/message/${ref}/content`, {
+        headers: { authorization: `Bearer ${token()}` },
+      });
+      if (!res.ok) throw new Error(`LINE 抓取媒體失敗 ${res.status}`);
+      return {
+        data: Buffer.from(await res.arrayBuffer()),
+        mime: res.headers.get('content-type') ?? 'application/octet-stream',
+      };
+    },
 
-  async reply(replyToken, text) {
-    const res = await fetch(`${API}/message/reply`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token()}` },
-      body: JSON.stringify({ replyToken, messages: [{ type: 'text', text: text.slice(0, 4900) }] }), // LINE 上限 5000 字
-    });
-    if (!res.ok) console.error('LINE 回覆失敗', res.status, await res.text());
-  },
+    async reply(replyToken, text) {
+      const res = await fetch(`${API}/message/reply`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ replyToken, messages: [{ type: 'text', text: text.slice(0, 4900) }] }), // LINE 上限 5000 字
+      });
+      if (!res.ok) console.error('LINE 回覆失敗', res.status, await res.text());
+    },
 
-  // 1:1 推送。LINE 硬約束：對方必須已加 bot 好友，只是群成員不行（計劃 B.8）。
-  // 403＝封鎖或未加好友（永久性，呼叫端停用訂閱）；其餘非 2xx 視為暫時性失敗可重試。
-  async push(userId, text) {
-    const res = await fetch(`${API}/message/push`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: `Bearer ${token()}` },
-      body: JSON.stringify({ to: userId, messages: [{ type: 'text', text: text.slice(0, 4900) }] }),
-    });
-    if (res.ok) return 'ok';
-    const body = await res.text();
-    console.error('LINE 推送失敗', res.status, body);
-    return res.status === 403 ? 'blocked' : 'error';
-  },
+    // 1:1 推送。LINE 硬約束：對方必須已加 bot 好友，只是群成員不行（計劃 B.8）。
+    // 403＝封鎖或未加好友（永久性，呼叫端停用訂閱）；其餘非 2xx 視為暫時性失敗可重試。
+    async push(userId, text) {
+      const res = await fetch(`${API}/message/push`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token()}` },
+        body: JSON.stringify({ to: userId, messages: [{ type: 'text', text: text.slice(0, 4900) }] }),
+      });
+      if (res.ok) return 'ok';
+      const body = await res.text();
+      console.error('LINE 推送失敗', res.status, body);
+      return res.status === 403 ? 'blocked' : 'error';
+    },
 
-  async leaveGroup(groupId) {
-    const res = await fetch(`${API}/group/${encodeURIComponent(groupId)}/leave`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${token()}` },
-    });
-    if (!res.ok && res.status !== 404) console.error('LINE 離開群組失敗', groupId, res.status, await res.text());
-    return res.ok || res.status === 404; // 404＝本來就不在群
-  },
+    async leaveGroup(groupId) {
+      const res = await fetch(`${API}/group/${encodeURIComponent(groupId)}/leave`, {
+        method: 'POST',
+        headers: { authorization: `Bearer ${token()}` },
+      });
+      if (!res.ok && res.status !== 404) console.error('LINE 離開群組失敗', groupId, res.status, await res.text());
+      return res.ok || res.status === 404; // 404＝本來就不在群
+    },
 
-  async resolveGroupSummary(groupId) {
-    const cached = summaryCache.get(groupId);
-    if (cached) return cached;
-    const res = await fetch(`${API}/group/${groupId}/summary`, {
-      headers: { authorization: `Bearer ${token()}` },
-    });
-    if (!res.ok) return undefined; // 404 = bot 不在群（純匯入的自訂 group_id 等），呼叫端自行標記
-    const { groupName, pictureUrl } = await res.json();
-    const summary = { name: groupName as string | undefined, pictureUrl: pictureUrl as string | undefined };
-    if (summary.name) summaryCache.set(groupId, summary);
-    return summary;
-  },
+    async resolveGroupSummary(groupId) {
+      const cached = summaryCache.get(groupId);
+      if (cached) return cached;
+      const res = await fetch(`${API}/group/${groupId}/summary`, {
+        headers: { authorization: `Bearer ${token()}` },
+      });
+      if (!res.ok) return undefined; // 404 = bot 不在群（純匯入的自訂 group_id 等），呼叫端自行標記
+      const { groupName, pictureUrl } = await res.json();
+      const summary = { name: groupName as string | undefined, pictureUrl: pictureUrl as string | undefined };
+      if (summary.name) summaryCache.set(groupId, summary);
+      return summary;
+    },
 
-  async resolveSenderName(groupId, userId) {
-    const key = `${groupId}:${userId}`;
-    const cached = nameCache.get(key);
-    if (cached) return cached;
-    // 1:1 沒有群成員 API，改查個人檔案（對方已加好友才拿得到，1:1 本來就是）
-    const path = isDm(groupId) ? `/profile/${userId}` : `/group/${groupId}/member/${userId}`;
-    const res = await fetch(`${API}${path}`, {
-      headers: { authorization: `Bearer ${token()}` },
-    });
-    if (!res.ok) return undefined; // 成員退群等情況拿不到，附來源時退回顯示 userId
-    const { displayName } = await res.json();
-    if (displayName) nameCache.set(key, displayName);
-    return displayName;
-  },
-};
+    async resolveSenderName(groupId, userId) {
+      const key = `${groupId}:${userId}`;
+      const cached = nameCache.get(key);
+      if (cached) return cached;
+      // 1:1 沒有群成員 API，改查個人檔案（對方已加好友才拿得到，1:1 本來就是）
+      const path = isDm(groupId) ? `/profile/${userId}` : `/group/${groupId}/member/${userId}`;
+      const res = await fetch(`${API}${path}`, {
+        headers: { authorization: `Bearer ${token()}` },
+      });
+      if (!res.ok) return undefined; // 成員退群等情況拿不到，附來源時退回顯示 userId
+      const { displayName } = await res.json();
+      if (displayName) nameCache.set(key, displayName);
+      return displayName;
+    },
+  };
+}
+
+export const lineConnector = createLineConnector(envCreds);
 
 // 本月推送訊息用量（設定頁的進度條）。LINE 有官方查詢端點，不必自己記帳：
 //   /message/quota            → { type: 'limited', value } 或 { type: 'none' }（無上限方案）
 //   /message/quota/consumption → { totalUsage }（本月已用，每月 1 號重置）
 // 只計「主動推送」——回覆訊息（reply）不計入額度，所以這條數字通常是每日摘要推播貢獻的。
 // 任何一支失敗就回 null，設定頁改顯示查不到的原因，不擋整頁。
-export async function messageQuota(): Promise<
+export async function messageQuota(creds: () => LineCreds = envCreds): Promise<
   { limit: number | null; used: number } | { error: string }
 > {
+  const token = () => creds().accessToken;
   if (!token()) return { error: '缺少 LINE_CHANNEL_ACCESS_TOKEN' };
   const get = async (path: string) => {
     const res = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token()}` } });

@@ -38,3 +38,15 @@ test('landWebhook：表不存在或丟例外 → fallback；成功 → landed；
   assert.equal(await landWebhook([], okDb), 'landed');
   assert.equal(upserts, 1);
 });
+
+// ── G5：connector 的金鑰由參數傳入 ──
+import { createHmac } from 'node:crypto';
+import { createLineConnector } from '../src/connectors/line';
+
+test('createLineConnector：驗簽用傳進來的 channelSecret；沒有 secret 一律拒絕', () => {
+  const body = '{"events":[]}';
+  const sig = createHmac('sha256', 'secret-A').update(body).digest('base64');
+  assert.equal(createLineConnector(() => ({ accessToken: '', channelSecret: 'secret-A' })).verifyWebhook(body, sig), true);
+  assert.equal(createLineConnector(() => ({ accessToken: '', channelSecret: 'secret-B' })).verifyWebhook(body, sig), false);
+  assert.equal(createLineConnector(() => ({ accessToken: '', channelSecret: '' })).verifyWebhook(body, sig), false);
+});

@@ -91,7 +91,7 @@
 | 9 | B7 | ✅ | 1 | （本 commit） | 18:26 | 18:40 | createDebouncer（可注入時鐘）＋scheduleExtract：安靜 45 秒、最多 3 分鐘；webhook 改排進合批；3 支假時鐘測試 |
 | 10 | G4 | ✅ | 2 | （本 commit） | 18:41 | 19:20 | migration 024 webhook_events＋claim_webhook_events（skip locked、租約 10 分、最多 5 次）；存原始 event；表不存在走舊路徑；輪詢只在 production＋WEBHOOK_WORKER=1；dev 確認未啟動 |
 | 11 | G3 | ✅ | 1 | （本 commit） | 19:21 | 19:40 | migration 025：7 張內容表加 org_id、insert 觸發器帶入、groups 換公司時觸發器連動、backfill 可重跑；應用程式零改動 |
-| 12 | G5 | line connector 收成工廠（僅 line.ts 內） | B | 否 | 低 |
+| 12 | G5 | ✅ | 1 | （本 commit） | 19:46 | 20:00 | createLineConnector(creds)＋envCreds；line.ts 內 env 只剩 envCreds 一處；lineConnector 與 getConnector 呼叫點不變；驗簽測試 |
 | 13 | A6 | seed-owner 腳本；有條件移除 callback 自動種子 | B | 否 | 中 |
 | 14 | A8 | suspended 狀態擋 AI＋橫幅 | C | 是 | 中 |
 | 15 | E1 | 抽取回歸集：fixture＋比對器（不跑） | C | 否 | 低 |
@@ -348,8 +348,8 @@
 
 ## 5. 進度回寫區（agent 每個任務更新）
 
-**目前狀態**：執行中（任務 12 G5）
-**最後更新**：2026-09-26 19:40
+**目前狀態**：執行中（任務 13 A6）
+**最後更新**：2026-09-26 20:00
 **起始 commit**：`de67eae`
 
 | 順序 | 代號 | 狀態 | 嘗試 | commit | 開始 | 結束 | 一句話結果 |
