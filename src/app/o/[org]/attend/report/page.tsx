@@ -1,5 +1,5 @@
 import { getDb } from '@/db';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { requireModule } from '@/org/orgs';
 import { monthData } from '@/attend/data';
 import { dayInOut } from '@/attend/abnormal';
@@ -52,6 +52,9 @@ export default async function AttendCalendar({
 
   const today = workDate(new Date());
   const month = sp.month && isYm(sp.month) ? sp.month : today.slice(0, 7);
+  // 沒帶 ?emp（從底部「報表」點進來）：頁面其實在算第一位員工，網址也要說清楚——
+  // 否則頂端膠囊寫「選擇員工…」、頁面卻是某人的薪資，匯出或結算前得停下來想「這是誰的」（審查 F28）
+  if (emp && sp.emp !== emp.id) redirect(oh(slug, '/attend/report', { emp: emp.id, month }));
 
   if (!emp) {
     return (

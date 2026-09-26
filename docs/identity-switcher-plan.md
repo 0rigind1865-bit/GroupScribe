@@ -358,8 +358,8 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 | D2 | 報帳改名＋專案 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 167 pass；另含 T6 移過來的報帳 App 最小版五語系（labels.ts）與記一筆頁標題（F55 一併做） |
 | D3 | 打卡主鈕 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 167 pass；今天最後一筆是上班 → 下班實心、上班描邊（不改 API） |
 | D4 | 個人報帳公司級動作 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 分類「管理」格拿掉，改小字連到 /o/<slug>/expense/categories（只給能管該公司報帳的人）；「重新命名專案」保留（管理端沒有對應功能） |
-| D5 | 報表膠囊 | P1 | ⬜ | | 0 | | |
-| D6 | 待啟用排前 | P1 | ⬜ | | 0 | | |
+| D5 | 報表膠囊 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 素材 A：/o/main/attend/report 自動轉 ?emp=…&month=…，膠囊寫「林杰 ▾」；ALL_OK 已在 T5 補 |
+| D6 | 待啟用排前 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 依 pending／active／disabled 排序 |
 | D7 | 加入流程 | P1 | ⬜ | | 0 | | |
 | D8 | 單群頁返回 | P1 | ⬜ | | 0 | | |
 | D9 | 首頁兜底文案 | P1 | ⬜ | | 0 | | |

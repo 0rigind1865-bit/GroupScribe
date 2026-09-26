@@ -41,7 +41,9 @@ export default async function EmployeesPage({
   const admins = (isMissingModulesColumn(first.error) ? (await members('line_user_id, role')).data : first.data) as
     | { line_user_id: string; role: string; modules?: string[] | null }[]
     | null;
-  const employees = (emps ?? []) as Employee[];
+  // 待啟用排最前：從總覽「待啟用員工」點進來的人，要找的就是這些（原本照 active < disabled < pending 排在最底，審查 F29）
+  const RANK: Record<string, number> = { pending: 0, active: 1, disabled: 2 };
+  const employees = ((emps ?? []) as Employee[]).sort((a, b) => (RANK[a.status] ?? 9) - (RANK[b.status] ?? 9));
   const orgMods = enabledModuleIds(settings.modules);
   const adminSet = new Map((admins ?? []).map((a) => [a.line_user_id, a.role]));
   // 這一頁的「管理員」＝能管考勤的人（migration 028：管理權依模組授權）
