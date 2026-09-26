@@ -176,3 +176,26 @@ test('parseTextExpense：公司自訂分類——品項等於分類名就直接�
   assert.equal(parseTextExpense('機票 5000', ['機票', '雜支'])?.category, '機票');
   assert.equal(parseTextExpense('午餐 120', ['機票', '雜支'])?.category, '雜支'); // 公司沒有「餐飲」這類
 });
+
+// ── 電子發票 QR 解析（從 Snaptab 搬來，尚未接掃描）──
+import { parseInvoiceCodes, rocDateToISO } from '../src/expense/invoice';
+
+// 左碼：字軌 10＋民國日期 7＋隨機碼 4＋銷售額 8（16 進位）＋總計 8（16 進位）＋買方 8＋賣方 8＋驗證 24 ＝ 77 字
+const head = 'AB12345678' + '1150926' + '1234' + '00000064' + '00000069' + '00000000' + '12345678' + 'x'.repeat(24);
+
+test('發票 QR：左碼取號碼、日期、含稅總額與品項（數量 >1 標 ×n）', () => {
+  const d = parseInvoiceCodes({ data: `${head}:**********:2:2:1:咖啡:1:50:麵包:2:25` });
+  assert.equal(d?.invoiceNo, 'AB12345678');
+  assert.equal(d?.rocDate, '1150926');
+  assert.equal(d?.total, 105);
+  assert.deepEqual(d?.items, ['咖啡', '麵包×2']);
+  assert.equal(d?.complete, true);
+  assert.equal(rocDateToISO('1150926'), '2026/09/26');
+});
+
+test('發票 QR：品項接續到右碼；不是發票左碼 → null', () => {
+  const d = parseInvoiceCodes({ data: `${head}:**********:2:3:1:咖啡:1:50` }, { data: '**:麵包:2:25' });
+  assert.deepEqual(d?.items, ['咖啡', '麵包×2']);
+  assert.equal(d?.complete, false); // 整張 3 項、只拿到 2 項
+  assert.equal(parseInvoiceCodes({ data: 'https://example.com' }), null);
+});
