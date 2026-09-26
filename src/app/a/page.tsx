@@ -131,6 +131,7 @@ export default async function AttendHome({
           geoFailed: tt('GEO_FAILED'),
           inRange: tt('IN_RANGE'),
           outOfRange: tt('OUT_OF_RANGE'),
+          outOfRangeNear: tt('OUT_OF_RANGE_NEAR'),
           locatingStatus: tt('LOCATING_STATUS'),
         }}
       />

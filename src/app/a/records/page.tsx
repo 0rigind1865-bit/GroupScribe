@@ -42,6 +42,7 @@ export default async function RecordsPage({
 
   const [y, m] = month.split('-').map(Number);
   const sel = sp.d && byDate.has(sp.d) ? byDate.get(sp.d)! : null;
+  const abnormal = [...byDate.values()].filter((d) => d.abnormal).length;
 
   return (
     <AttendShell emp={emp} current="records" loc={loc} tt={tt} back={`/a/records?month=${month}`} {...sd}>
@@ -71,6 +72,22 @@ export default async function RecordsPage({
           );
         }}
       />
+
+      {/* 圖例＋異常摘要：日格只用顏色說狀態，沒說明就得一格一格點（審查 F38）。字與顏色都從同一份來（day-tone.ts、i18n） */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
+        {(['STATUS_PUNCH_NORMAL', 'STATUS_PUNCH_IN_MISSING', 'STATUS_REPAIR_PENDING'] as const).map((k) => (
+          <span key={k} className="flex items-center gap-1">
+            <span className={`h-3 w-3 rounded-sm ${dayCellClass(k)}`} aria-hidden="true" />
+            {k === 'STATUS_PUNCH_IN_MISSING' ? tt('MISS_ANY') : tt(k)}
+          </span>
+        ))}
+      </div>
+      {abnormal > 0 && (
+        <a href="/a/adjust" className="mt-3 flex items-center justify-between rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
+          {tt('ABNORMAL_DAYS', { n: abnormal })}
+          <span>{tt('GO_ADJUST')}</span>
+        </a>
+      )}
 
       {sel && (
         <section className="card mt-4">

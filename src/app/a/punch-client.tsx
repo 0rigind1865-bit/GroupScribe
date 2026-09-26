@@ -27,6 +27,7 @@ export type PunchLabels = {
   geoFailed: string; // 含 {msg}
   inRange: string; // 含 {name}
   outOfRange: string;
+  outOfRangeNear: string; // 含 {name}、{m}
   locatingStatus: string;
 };
 
@@ -49,6 +50,7 @@ export function PunchPanel({ locations, labels, next = 'in' }: { locations: Punc
   const [busy, setBusy] = useState<'in' | 'out' | null>(null);
   const [err, setErr] = useState('');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoDenied, setGeoDenied] = useState(false);
   const [mapFailed, setMapFailed] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   const mapEl = useRef<HTMLDivElement>(null);
@@ -60,8 +62,9 @@ export function PunchPanel({ locations, labels, next = 'in' }: { locations: Punc
     if (!navigator.geolocation) return;
     const id = navigator.geolocation.watchPosition(
       (p) => setCoords({ lat: p.coords.latitude, lng: p.coords.longitude }),
-      () => {
-        /* 拒絕或失敗：靜默——按鈕按下時會再要一次並顯示原因 */
+      (e) => {
+        // 拒絕定位要當場說：原本靜默，狀態列永遠停在「定位中…」（審查 F39）；其他失敗按下時會再要一次
+        if (e.code === e.PERMISSION_DENIED) setGeoDenied(true);
       },
       { enableHighAccuracy: true, maximumAge: 30000, timeout: 15000 },
     );
@@ -160,8 +163,14 @@ export function PunchPanel({ locations, labels, next = 'in' }: { locations: Punc
   }, [coords]);
 
   const hit = coords ? locations.find((l) => distance(coords.lat, coords.lng, l.lat, l.lng) <= l.radius) : null;
-  // 只有「已定位且確定不在任何範圍內」才擋；還沒定位到不擋（讓伺服端判定）
-  const blocked = !!coords && locations.length > 0 && !hit;
+  // 不在範圍時告訴他最近的地點還差多遠，而不是一串座標（審查 F39）
+  const near = coords && !hit && locations.length
+    ? locations
+        .map((l) => ({ name: l.name, m: Math.max(0, Math.round(distance(coords.lat, coords.lng, l.lat, l.lng) - l.radius)) }))
+        .sort((a, b) => a.m - b.m)[0]
+    : null;
+  // 擋：公司還沒設地點（伺服端一定拒絕，頁面上方已有提示）、或已定位且確定不在任何範圍內；還沒定位到不擋（讓伺服端判定）
+  const blocked = locations.length === 0 || (!!coords && !hit);
 
   function submit(type: 'in' | 'out', lat: number, lng: number) {
     const f = formRef.current!;
@@ -212,14 +221,15 @@ export function PunchPanel({ locations, labels, next = 'in' }: { locations: Punc
 
       <div className="mb-3 rounded-lg bg-gray-50 p-2 text-xs">
         {coords ? (
-          <>
-            <span className={hit ? 'font-bold text-emerald-700' : 'font-bold text-red-600'}>
-              {hit ? labels.inRange.replace('{name}', hit.name) : labels.outOfRange}
-            </span>
-            <span className="ml-2 text-gray-500">
-              {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}
-            </span>
-          </>
+          <span className={hit ? 'font-bold text-emerald-700' : 'font-bold text-red-600'}>
+            {hit
+              ? labels.inRange.replace('{name}', hit.name)
+              : near
+                ? labels.outOfRangeNear.replace('{name}', near.name).replace('{m}', String(near.m))
+                : labels.outOfRange}
+          </span>
+        ) : geoDenied ? (
+          <span className="font-bold text-red-600">{labels.geoDenied}</span>
         ) : (
           <span className="text-gray-500">{labels.locatingStatus}</span>
         )}

@@ -96,13 +96,18 @@ export default async function AdjustPage({
       <form action="/api/attend/adjust" method="post" className="card space-y-3">
         {/* 表單要有標題：點底部「我的申請」進來直接是一張表，3 秒內答不出這頁幹嘛（審查 F22） */}
         <h2 className="card-title">{tt('ADJUST_TITLE')}</h2>
-        <label className="block text-sm">
-          <span className="mb-1 block font-bold text-gray-700">{tt('TYPE_LABEL')}</span>
-          <select className="input w-full" name="type" defaultValue={defType}>
-            <option value="in">{tt('IN_CARD')}</option>
-            <option value="out">{tt('OUT_CARD')}</option>
-          </select>
-        </label>
+        {/* 兩個選項用兩顆分段鈕，不用 <select>：LINE 內建瀏覽器要多一步開系統選單（審查 F54、畫布 StaffAdjust） */}
+        <fieldset className="text-sm">
+          <legend className="mb-1 block font-bold text-gray-700">{tt('TYPE_LABEL')}</legend>
+          <div className="segmented w-full">
+            {(['in', 'out'] as const).map((v) => (
+              <label key={v} className="flex-1">
+                <input type="radio" name="type" value={v} defaultChecked={defType === v} className="sr-only" />
+                {tt(v === 'in' ? 'IN_CARD' : 'OUT_CARD')}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <label className="block text-sm">
           <span className="mb-1 block font-bold text-gray-700">{tt('DATETIME_LABEL')}</span>
           <input className="input w-full" type="datetime-local" name="datetime" defaultValue={defDatetime} required />

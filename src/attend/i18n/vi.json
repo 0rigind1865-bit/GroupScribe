@@ -128,5 +128,7 @@
   "EXP_PAY": "Thanh toán",
   "EXP_SAVE": "+ Lưu",
   "EXP_NOT_ENABLED": "Công ty của bạn chưa bật chức năng chi phí, hoặc bạn chưa là nhân viên chính thức. Vui lòng liên hệ quản lý.",
-  "ORG_PLACEHOLDER": "Mã do quản lý đưa"
+  "ORG_PLACEHOLDER": "Mã do quản lý đưa",
+  "OUT_OF_RANGE_NEAR": "Còn cách “{name}” {m} m",
+  "MISS_ANY": "Thiếu chấm công"
 }

@@ -137,6 +137,16 @@ html {
   .segmented > button {
     @apply flex min-h-9 items-center justify-center rounded-[10px] px-3 text-center font-bold whitespace-nowrap text-gray-600 hover:text-gray-900;
   }
+  /* 表單版（單選鈕包在 label 裡，零 JS）：選中的那格用 :has(:checked) 浮起 */
+  .segmented > label {
+    @apply flex min-h-9 cursor-pointer items-center justify-center rounded-[10px] px-3 text-center font-bold whitespace-nowrap text-gray-600;
+  }
+  .segmented > label:has(:checked) {
+    @apply bg-white text-gray-900 shadow-xs;
+  }
+  .segmented > label:has(:focus-visible) {
+    @apply ring-2 ring-emerald-500/40;
+  }
   .segmented > [aria-current='page'] {
     @apply bg-white text-gray-900 shadow-xs;
   }
@@ -631,7 +641,7 @@ body:has(.batch-box:checked) #batch {
   .nav-ind { background: #34423a; }
   .btn:hover { background: #232b27; }
   .segmented { background: #232b27; }
-  .segmented > [aria-current='page'] { background: #1a211e; color: #e8edea; }
+  .segmented > [aria-current='page'], .segmented > label:has(:checked) { background: #1a211e; color: #e8edea; }
   .btn-danger { background: #1a211e; border-color: #542626; }
   .btn-danger:hover { background: #2b1d1d; }
   .btn-confirm { background: #33270f; border-color: #5c4718; color: #fcd34d; }
