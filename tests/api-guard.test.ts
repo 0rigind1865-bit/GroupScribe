@@ -17,7 +17,8 @@ const API = join(ROOT, 'src/app/api');
 //   digest＝cron ?key、attend＝考勤模組自己的 orgAdminAccess 三重把關
 //   org/create＝自助註冊（還沒有 org 可綁，自己驗 liffUser）
 //   platform/＝平台管理（跨所有 org，不屬於任何一個 org，自己驗 isPlatformOwner）
-const WHITELIST = ['webhook/', 'login/', 'liff/', 'auth/', 'digest/', 'attend/', 'org/', 'platform/'];
+//   health/＝健康檢查（公開、唯讀、只回 ok 布林，不碰任何 org 資料）
+const WHITELIST = ['webhook/', 'login/', 'liff/', 'auth/', 'digest/', 'attend/', 'org/', 'platform/', 'health/'];
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

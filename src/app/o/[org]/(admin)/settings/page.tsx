@@ -5,6 +5,7 @@ import { messageQuota } from '@/connectors/line';
 import { refreshSettings, DEFAULT_EMBEDDING_MODEL } from '@/core/settings';
 import { orgAdminAccess, orgGroups } from '@/org/orgs';
 import { notFound } from 'next/navigation';
+import { Banner } from '@/app/ui/banner';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,8 @@ export default async function SettingsPage({
   // 收訊健康：LINE 漏收不可回補，停機期間掉的訊息永久消失且無人會知道（E 節約束）
   const { data: hb } = await db.from('app_settings').select('last_webhook_at').eq('id', 1).maybeSingle();
   const lastWebhook = hb?.last_webhook_at ? new Date(hb.last_webhook_at) : null;
+  // 靜默 6 小時就警示（A9）：工作群半天沒訊息不常見，漏收又無法回補，寧可早點看到
+  const SILENT_WARN_HOURS = 6;
   const silentHours = lastWebhook ? (Date.now() - lastWebhook.getTime()) / 3_600_000 : null;
   const enabled = cfg?.join_notice_enabled ?? true;
   const text = cfg?.join_notice_text ?? DEFAULT_NOTICE;
@@ -170,17 +173,17 @@ export default async function SettingsPage({
           <>
             <p className="text-sm">
               最後收到 LINE 訊息：{lastWebhook.toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false })}
-              {silentHours !== null && silentHours > 24 && (
+              {silentHours !== null && silentHours > SILENT_WARN_HOURS && (
                 <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-xs font-bold text-amber-900">
                   已靜默 {Math.floor(silentHours)} 小時
                 </span>
               )}
             </p>
-            {silentHours !== null && silentHours > 24 && (
-              <p className="text-xs text-amber-700">
+            {silentHours !== null && silentHours > SILENT_WARN_HOURS && (
+              <Banner tone="warn">
                 若群組其實有在對話，代表 webhook 沒進來——檢查 LINE Console 的 Webhook URL 與「Use webhook」開關。
                 <strong>漏收的訊息無法回補</strong>，建議在 Console 開啟 Webhook redelivery（本站有去重索引，重送安全）。
-              </p>
+              </Banner>
             )}
           </>
         ) : (
