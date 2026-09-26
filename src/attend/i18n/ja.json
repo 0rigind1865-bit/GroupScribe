@@ -131,5 +131,7 @@
   "ORG_PLACEHOLDER": "管理者から受け取った代号",
   "OUT_OF_RANGE_NEAR": "「{name}」まであと {m} m",
   "MISS_ANY": "打刻漏れ",
-  "SEE_ALL_TOOLS": "すべてのツール →"
+  "SEE_ALL_TOOLS": "すべてのツール →",
+  "NOT_FOUND": "このページは見つからないか、アクセス権がありません。",
+  "GO_HOME": "ホームへ"
 }

@@ -39,7 +39,8 @@ export async function ShellHeader({
         side="admin"
         tt={(k, p) => t('zh-TW', k, p)}
         brand
-        navSlot={<TopNav moduleId={mod.id} counts={counts} />}
+        // 未認領的群只有群組清單一頁：不畫群組助理的分頁（身分列說「未認領的群」，分頁卻是今天／收件匣，T10 第 2 輪）
+        navSlot={slug === 'unclaimed' ? undefined : <TopNav moduleId={mod.id} counts={counts} />}
         contextSlot={context}
       />
     </header>

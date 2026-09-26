@@ -84,16 +84,21 @@ const companyless = (s: Surface) => s.slugs === undefined && !s.slug;
 /**
  * 點角色開關要去哪（/go/@me、/go/@admin，審查 F16、F31）：
  *   1. from 已經在目標角色 → 原地不動（回 from）
+ *   1.5 剛從目標角色跳過來、還沒移動 → 回你離開的那一格（backKey＝「離開的~到達的」，到達的＝from 才算；
+ *       琥珀小點直達群組助理後按「個人」要回打卡，不是對應到群組，T10 第 2 輪）
  *   2. 同一個工具的另一邊；兩邊都有公司時要同一家（交集），一邊沒有公司（群組）只比工具
  *   3. 目標角色上次用的（lastKey）
  *   4. 目標角色第一個
  *   目標角色沒有東西 → null（呼叫端送回 landing）
  */
-export function resolveRoleJump(g: Grouped, target: Side, fromKey?: string | null, lastKey?: string | null): Surface | null {
+export function resolveRoleJump(g: Grouped, target: Side, fromKey?: string | null, lastKey?: string | null, backKey?: string | null): Surface | null {
   const all = itemsOf(g, target);
   if (!all.length) return null;
   const from = [...itemsOf(g, 'me'), ...itemsOf(g, 'admin')].find((s) => s.key === fromKey);
   if (from && sideOf(from.role) === target) return from;
+  const [left, arrived] = (backKey ?? '').split('~');
+  const back = from && arrived === from.key && all.find((s) => s.key === left);
+  if (back) return back;
   if (from) {
     const want = PAIR[from.id];
     const cands = all.filter((s) => s.id === want);
@@ -107,12 +112,18 @@ export function resolveRoleJump(g: Grouped, target: Side, fromKey?: string | nul
 
 /**
  * /go/<key> 要去哪：@me／@admin 走角色開關規則；其他 key 必須在清單裡（不能拿來跳到別人的後台）。
- * 回 null → 呼叫端送回落地頁。lastOf 給「該角色上次用的」cookie 值。
+ * 回 null → 呼叫端送回落地頁。lastOf 給「該角色上次用的」、backOf 給「從該角色離開時的來回」cookie 值。
  */
-export function goTarget(list: Surface[], key: string, from: string | null, lastOf: (side: Side) => string | undefined): Surface | null {
+export function goTarget(
+  list: Surface[],
+  key: string,
+  from: string | null,
+  lastOf: (side: Side) => string | undefined,
+  backOf: (side: Side) => string | undefined = () => undefined,
+): Surface | null {
   if (key === '@me' || key === '@admin') {
     const side: Side = key === '@me' ? 'me' : 'admin';
-    return resolveRoleJump(groupSurfaces(list), side, from, lastOf(side));
+    return resolveRoleJump(groupSurfaces(list), side, from, lastOf(side), backOf(side));
   }
   return list.find((x) => x.key === key) ?? null;
 }

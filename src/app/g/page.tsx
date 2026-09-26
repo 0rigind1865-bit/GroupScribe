@@ -58,7 +58,7 @@ export default async function LiffHome({ searchParams }: { searchParams: Promise
       <p className="mb-4 text-sm text-gray-500">
         {mine.length
           ? '選一個群組看整理好的行程、待辦與公告。'
-          : '你是 GroupScribe 所在群組的成員，這裡就會出現該群的整理。看不到群組？bot 可能還沒被加進群，或你已退出該群。'}
+          : '你是群記所在群組的成員，這裡就會出現該群的整理。看不到群組？bot 可能還沒被加進群，或你已退出該群。'}
       </p>
 
       <div className="space-y-2">

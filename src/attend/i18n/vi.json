@@ -131,5 +131,7 @@
   "ORG_PLACEHOLDER": "Mã do quản lý đưa",
   "OUT_OF_RANGE_NEAR": "Còn cách “{name}” {m} m",
   "MISS_ANY": "Thiếu chấm công",
-  "SEE_ALL_TOOLS": "Tất cả công cụ →"
+  "SEE_ALL_TOOLS": "Tất cả công cụ →",
+  "NOT_FOUND": "Không tìm thấy trang này, hoặc bạn không có quyền xem.",
+  "GO_HOME": "Về trang chủ"
 }

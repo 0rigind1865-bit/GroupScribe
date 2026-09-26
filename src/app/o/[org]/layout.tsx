@@ -11,8 +11,12 @@ export const dynamic = 'force-dynamic';
 // 非成員猜 slug 打 /o/<slug> 會看到 404、分頁標題卻寫著那家公司的名字——等於能枚舉租戶（T10 第 1 輪 critical）
 export async function generateMetadata({ params }: { params: Promise<{ org: string }> }): Promise<Metadata> {
   if (!dbConfigured()) return {};
-  const access = await visibleModules((await params).org);
-  return access ? { title: { default: access.org.name, template: `%s · ${access.org.name}` } } : {};
+  const slug = (await params).org;
+  const access = await visibleModules(slug);
+  if (!access) return {};
+  // 未認領的群不是一家公司：標題與身分列同一個名字（T10 第 2 輪）
+  const name = slug === 'unclaimed' ? '未認領的群' : access.org.name;
+  return { title: { default: name, template: `%s · ${name}` } };
 }
 
 // org 層外殼：唯一的權限閘門。

@@ -50,20 +50,29 @@ export default async function Root({ searchParams }: { searchParams: Promise<Rec
   if (mode === 'none')
     // 沒有任何身分：中性文案，不對可能是協力廠商的人講打卡與管理員（審查 F52）
     return (
-      <main className="mx-auto max-w-md p-6 text-center">
-        <p className="mb-2 text-lg font-bold">GroupScribe</p>
-        <p className="text-sm text-gray-500">{tt('HOME_NONE')}</p>
-        <a className="btn mt-4" href="/start">
-          {tt('HOME_CREATE_ORG')}
-        </a>
-      </main>
+      // 拿到加入碼的新員工也會落到這裡：給「輸入加入碼」主鈕與語言地球（T10 第 2 輪）
+      <div className="mx-auto max-w-md pb-8">
+        <BrandBar link={false} right={<LangMenu loc={loc} back="/" />} />
+        <main className="px-6 pt-4 text-center">
+          <p className="text-sm text-gray-500">{tt('HOME_NONE')}</p>
+          <div className="mt-4 flex flex-wrap justify-center gap-2">
+            <a className="btn-primary inline-block" href="/a/join">
+              {tt('ENTER_CODE')}
+            </a>
+            <a className="btn inline-block" href="/start">
+              {tt('HOME_CREATE_ORG')}
+            </a>
+          </div>
+        </main>
+      </div>
     );
 
   // 選單（畫布 IdHome）：個人一段（淺色）、每家公司一段（深色段頭）、平台一段
   const g = groupSurfaces(list);
   const toggle = hasRoleToggle(g);
   const row = (s: Surface) => (
-    <a key={s.key} href={`/go/${encodeURIComponent(s.key)}`} className="id-row">
+    // home=1：只有在首頁選單選的才改「下次打開直接進來」；身分列的抽屜是臨時切換（T10 第 2 輪）
+    <a key={s.key} href={`/go/${encodeURIComponent(s.key)}?home=1`} className="id-row">
       <span className="id-row-tile">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           {TOOL_ICON[s.id]}

@@ -76,10 +76,15 @@ export default async function GroupsPage({
       {!groups?.length && (
         <div className="card text-sm text-gray-500">
           <p className="mb-1 font-bold text-gray-700">還沒有任何群組</p>
-          <p>
-            把 bot 加進 LINE 群組，或到 <a className="text-emerald-700 underline" href={`/o/${slug}/import`}>匯入聊天記錄</a>{' '}
-            建立一個純匯入的群組。
-          </p>
+          {/* 未認領的群不能匯入（import 頁對它 404，T10 第 2 輪） */}
+          {slug === 'unclaimed' ? (
+            <p>目前沒有等待認領的群。</p>
+          ) : (
+            <p>
+              把 bot 加進 LINE 群組，或到 <a className="text-emerald-700 underline" href={`/o/${slug}/import`}>匯入聊天記錄</a>{' '}
+              建立一個純匯入的群組。
+            </p>
+          )}
         </div>
       )}
 

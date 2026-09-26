@@ -6,10 +6,15 @@ import { PLAN_LIMITS } from '@/org/plans';
 import { IdentityBar } from '@/app/ui/identity-bar';
 import { surfaces } from '@/org/surfaces';
 import { groupSurfaces } from '@/org/surface-groups';
+import { enabledModuleIds } from '@/org/module-ids';
 import { t } from '@/attend/i18n';
 import { Banner } from '@/app/ui/banner';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: '平台管理' }; // 分頁標題「平台管理 · 群記」（T10 第 2 輪）
+
+// 入口一律經 /go/<key>：與身分列同一條路，會記下「管理上次用的」（T10 第 2 輪）
+const go = (key: string) => `/go/${encodeURIComponent(key)}`;
 
 // 平台管理：只有平台擁有者看得到（其他人一律「找不到頁面」，不洩漏這頁存在）。
 // 一頁看完：所有公司（方案、群組數、管理員、本月 AI 用量）、未認領的群；可直接改方案、進任一家後台。
@@ -88,7 +93,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                   <span className="text-xs text-gray-500">{fmt(g.updated_at)} 進群</span>
                 </p>
               ))}
-              <a className="btn btn-sm" href="/o/unclaimed/groups">
+              <a className="btn btn-sm" href={go('unclaimed')}>
                 去移轉（指定給某家公司）
               </a>
             </div>
@@ -103,7 +108,8 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
             {tenants.map((o) => {
               const st = o.org_settings ?? {};
               const plan = (st.plan ?? 'free') as keyof typeof PLAN_LIMITS;
-              const mods = st.modules ?? ['attend'];
+              // 與 surfaces() 同一規則：預設公司三個工具全開，其他照 org_settings.modules（T10 第 2 輪）
+              const mods = o.slug === (process.env.DEFAULT_ORG_SLUG ?? 'main') ? ['gs', 'attend', 'expense'] : enabledModuleIds(st.modules);
               const cap = st.monthly_ai_calls ?? null;
               const owners = o.org_members.map((m) => m.display_name ?? '（未命名）').join('、') || '（沒有管理員）';
               return (
@@ -123,17 +129,17 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                   </p>
                   <div className="flex flex-wrap items-center gap-2">
                     {mods.includes('gs') && (
-                      <a className="btn btn-sm" href={`/o/${o.slug}`}>
+                      <a className="btn btn-sm" href={go(`gs:${o.slug}`)}>
                         群組助理 →
                       </a>
                     )}
                     {mods.includes('attend') && (
-                      <a className="btn btn-sm" href={`/o/${o.slug}/attend`}>
+                      <a className="btn btn-sm" href={go(`attend:${o.slug}`)}>
                         考勤 →
                       </a>
                     )}
                     {mods.includes('expense') && (
-                      <a className="btn btn-sm" href={`/o/${o.slug}/expense`}>
+                      <a className="btn btn-sm" href={go(`expense:${o.slug}`)}>
                         報帳 →
                       </a>
                     )}

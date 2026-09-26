@@ -45,7 +45,7 @@ test('P2 只在群組的外部成員：整列不渲染，什麼管理字都沒�
 test('P3 員工＋報帳：沒有角色開關，工具按鈕有選單；看不到管理', () => {
   const html = render([punch('a'), myexp('a')], 'punch', 'me', 'vi');
   assert.ok(!html.includes('id-toggle'));
-  assert.ok(html.includes('<details class="id-menu">'));
+  assert.ok(html.includes('<details class="id-menu" data-no-swipe="">')); // 遮罩上滑動不換分頁（T10 第 2 輪）
   assert.ok(html.includes('Chấm công'));
   assert.deepEqual(hasNone(html, ['Quản lý', '管理', '考勤', '群組助理']), []);
 });
@@ -107,7 +107,7 @@ test('所有連結只有 /go/…、目前頁（關閉）與 /?menu=1——不直
 
 test('無障礙：選單按鈕的 aria-label 說出工具名、角色開關是 nav、目前選單列有 aria-current', () => {
   const html = render([punch('a'), myexp('a'), adm('attend', 'a', 'A')], 'myexpense', 'me', 'zh-TW', { closeHref: '/a/expense?tab=list' });
-  assert.ok(html.includes('<summary class="id-tool" aria-label="報帳，切換工具">'));
+  assert.ok(html.includes('<summary class="id-tool" aria-label="報帳, 切換工具">')); // 半形逗號：五語系共用（T10 第 2 輪）
   assert.ok(html.includes('<nav class="id-toggle" aria-label="切換角色">'));
   // 目前那列＝關閉、留在原頁（不經 /go/；補進來的 key 走 /go/ 會落到別家，T10 第 1 輪）
   assert.match(html, /<a class="id-row" href="\/a\/expense\?tab=list" aria-current="page">/);
@@ -117,7 +117,7 @@ test('無障礙：選單按鈕的 aria-label 說出工具名、角色開關是 n
 test('琥珀小點給工具 key：點「管理」直達有待辦的工具，不走同工具對應（T10 第 1 輪）', () => {
   const list = [punch('a'), adm('gs', 'a', 'A'), adm('attend', 'a', 'A')];
   const html = render(list, 'punch', 'me', 'zh-TW', { dot: 'gs:a' });
-  assert.ok(html.includes('href="/go/gs%3Aa"'));
+  assert.ok(html.includes('href="/go/gs%3Aa?from=punch"')); // 帶 from：回程按「個人」回打卡（T10 第 2 輪）
   assert.ok(html.includes('role="img"'));
   assert.ok(!html.includes('/go/@admin'));
 });
@@ -164,4 +164,11 @@ test('員工端外殼：七種角色都恰好一顆「切換語言」，單一�
   }
   // P1：沒有身分列
   assert.ok(!shell([punch('a')]).includes('id-bar'));
+});
+
+test('有角色開關時姓名下方寫公司名（P6：個人側的公司可能不是管理側那家，T10 第 2 輪）', () => {
+  const html = renderToStaticMarkup(
+    createElement(AttendHeader, { emp: { display_name: '阿明', dept: '外場', picture_url: null }, loc: 'zh-TW', tt: tt('zh-TW'), back: '/a', groups: groupSurfaces([punch('b'), adm('attend', 'a', 'A')]), org: '光明診所' }),
+  );
+  assert.ok(html.includes('光明診所 · 外場'));
 });

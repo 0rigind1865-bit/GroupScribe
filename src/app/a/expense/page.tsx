@@ -21,7 +21,7 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
   const tt = (key: MsgKey, params?: Record<string, string | number>) => t(loc, key, params);
   const uid = await liffUser();
   // 開機畫面走員工端語系：越南籍員工第一眼不該是中文（審查 F44）
-  if (!uid) return <AttendLiffBoot liffId={liffId()} tt={tt} />;
+  if (!uid) return <AttendLiffBoot liffId={liffId()} tt={tt} brand={tt('TOOL_EXPENSE')} />;
   if (!dbConfigured()) return <main className="p-6 text-gray-500">系統尚未設定資料庫。</main>;
   const me = await myExpenseIdentity();
   if (!me)

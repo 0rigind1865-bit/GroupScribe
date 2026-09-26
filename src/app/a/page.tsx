@@ -55,9 +55,17 @@ export default async function AttendHome({
           title={tt('NOT_JOINED')}
           hint=""
           action={
-            <a href="/a/join" className="btn-primary inline-block">
-              {tt('ENTER_CODE')}
-            </a>
+            // 群組成員誤入這頁也要有路回去（T10 第 2 輪）
+            <div className="flex flex-wrap justify-center gap-2">
+              <a href="/a/join" className="btn-primary inline-block">
+                {tt('ENTER_CODE')}
+              </a>
+              {inGroups && (
+                <a href="/g" className="btn inline-block">
+                  {tt('BACK_TO_GROUPS')}
+                </a>
+              )}
+            </div>
           }
         />
       </AttendShell>

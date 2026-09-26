@@ -21,7 +21,7 @@ export type LiffMsgs = {
 };
 
 const ZH: LiffMsgs = {
-  brand: 'GroupScribe',
+  brand: '群記',
   connecting: '連線 LINE 中…',
   noId: '尚未設定 LIFF_ID（管理者請在 .env 加入後重啟）',
   noIdentity: '取不到 LINE 身份，請關閉後重新開啟',

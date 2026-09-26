@@ -131,5 +131,7 @@
   "ORG_PLACEHOLDER": "Kode dari pengelola",
   "OUT_OF_RANGE_NEAR": "{m} m lagi dari “{name}”",
   "MISS_ANY": "Absen kurang",
-  "SEE_ALL_TOOLS": "Semua alat →"
+  "SEE_ALL_TOOLS": "Semua alat →",
+  "NOT_FOUND": "Halaman ini tidak ditemukan, atau Anda tidak punya akses.",
+  "GO_HOME": "Ke beranda"
 }

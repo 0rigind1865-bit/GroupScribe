@@ -22,6 +22,7 @@ export default async function ImportPage({
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await params;
   const { org } = await requireModule(slug, 'gs');
+  if (slug === 'unclaimed') notFound(); // 未認領的群不能匯入（T10 第 2 輪）
   if (!org) notFound();
   const { inserted, indexed, archived, error, group } = await searchParams;
   const db = getDb();

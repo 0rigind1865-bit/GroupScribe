@@ -1,7 +1,7 @@
 import { Suspense, type ReactNode } from 'react';
 import { getDb } from '@/db';
 import { orgBySlug, orgGroups } from '@/org/orgs';
-import { visibleModules } from '@/org/modules';
+import { moduleGate } from '@/org/modules';
 import { orgAiBudget } from '@/core/quota';
 import { Banner } from '@/app/ui/banner';
 import { notFound } from 'next/navigation';
@@ -26,8 +26,7 @@ export default async function AdminLayout({
   const { org: slug } = await params;
   const org = await orgBySlug(slug);
   if (!org) notFound();
-  const access = await visibleModules(slug);
-  if (!access?.modules.some((m) => m.id === 'gs')) notFound();
+  await moduleGate(slug, 'gs');
 
   const db = getDb();
   const groups = await orgGroups(org.id);
@@ -58,9 +57,11 @@ export default async function AdminLayout({
         )}
         {children}
       </div>
-      <Suspense fallback={null}>
-        <BottomNav moduleId="gs" counts={counts} />
-      </Suspense>
+      {slug !== 'unclaimed' && (
+        <Suspense fallback={null}>
+          <BottomNav moduleId="gs" counts={counts} />
+        </Suspense>
+      )}
     </>
   );
 }

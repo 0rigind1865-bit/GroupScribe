@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { requireModule } from '@/org/orgs';
 import { oh } from '@/org/href';
 import { TaskCircle, TimeChip, realAssignee } from '@/app/ui/item-marker';
@@ -45,6 +45,7 @@ export default async function Today({
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await params;
   const { org } = await requireModule(slug, 'gs');
+  if (slug === 'unclaimed') redirect(oh(slug, '/groups')); // 未認領的群沒有「今天」（T10 第 2 輪）
   if (!org) notFound();
   const { group: groupParam, q, view } = await searchParams;
   const timeline = view === 'timeline' || !!q; // 原始訊息表格降到深一層視圖（U2）；有搜尋詞時當然要顯示結果

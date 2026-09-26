@@ -485,7 +485,7 @@ html {
    （越南文「Tôi｜Quản lý＋Chấm công」在 375／360 寬會把地球推出畫面，T10 第 1 輪） */
 .id-bar--light .id-menu { flex-shrink: 1; }
 @media (max-width: 400px) {
-  .id-bar--light .id-role svg { display: none; }
+  .id-role svg { display: none; } /* 兩側一致：同一支手機切來切去，開關寬度不變（T10 第 2 輪） */
 }
 .id-right { margin-left: auto; flex-shrink: 0; }
 .id-context + .id-right { margin-left: 0; }
@@ -723,7 +723,7 @@ body:has(.batch-box:checked) #batch {
   .id-bar--light { color: #e8edea; }
   .id-bar--light .id-toggle { background: #252d28; }
   .id-bar--light .id-role { color: #a7b3ac; }
-  .id-bar--light .id-role[aria-current] { background: #1a211e; color: #e8edea; box-shadow: inset 0 0 0 1px #3a443e; }
+  .id-bar--light .id-role[aria-current] { background: #46554d; color: #ffffff; box-shadow: none; } /* 對軌道 1.8:1，原本 1.16:1 看不出選中（T10 第 2 輪） */
   .id-bar--light .id-sep { background: #3a443e; }
   .id-bar--light .id-tile { background: #12312a; color: #34d399; }
   .id-bar--light .id-tool-org { color: #a7b3ac; }

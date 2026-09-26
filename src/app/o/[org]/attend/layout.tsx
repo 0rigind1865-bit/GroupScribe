@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { getDb } from '@/db';
 import { orgBySlug } from '@/org/orgs';
 import { orgAdminAccess } from '@/attend/auth';
-import { visibleModules } from '@/org/modules';
+import { moduleGate } from '@/org/modules';
 import { ShellHeader } from '../shell-header';
 import { BottomNav } from '../nav';
 import { EmployeeSwitcher } from './employee-switcher';
@@ -28,7 +28,7 @@ export default async function AttendLayout({
   const org = await orgBySlug(slug);
   if (!org) notFound();
   // 模組開關（migration 015）：考勤沒開給這個 org 就 404，與群組助理內殼對稱
-  if (!(await visibleModules(slug))?.modules.some((m) => m.id === 'attend')) notFound();
+  await moduleGate(slug, 'attend');
 
   const db = getDb();
   const [{ count: reviews }, { count: pendingEmps }, { data: emps }] = await Promise.all([

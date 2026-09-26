@@ -4,22 +4,26 @@ import { redirectTo } from '@/http';
 import { surfaces, type Surface } from '@/org/surfaces';
 import { goTarget, sideOf, type Side } from '@/org/surface-groups';
 
-// 換身分：記住這次選的（下次從 LINE 打開首頁直接進來），再導過去。
-// 只接受「你真的有」的身分——key 對不上清單就回你自己的落地頁，不能拿來跳到別人的後台。
+// 換身分：只接受「你真的有」的身分——key 對不上清單就回你自己的落地頁，不能拿來跳到別人的後台。
 //
-// 兩種用法：
-//   /go/<key>                 工具選單、首頁選單：直接去那個工具
-//   /go/@me?from=<key>        角色開關：去另一個角色，先找同一個工具的另一邊（打卡↔考勤…），
-//   /go/@admin?from=<key>     再找該角色上次用的，最後第一個（規則見 src/org/surface-groups.ts）
+// 用法：
+//   /go/<key>?home=1          首頁選單：去那個工具，並設成「下次打開首頁直接進來」
+//   /go/<key>?from=<key>      工具選單、琥珀小點：只是去那個工具（臨時切換不改首頁預設，T10 第 2 輪）
+//   /go/@me?from=<key>        角色開關：去另一個角色（規則見 src/org/surface-groups.ts resolveRoleJump）
+//   /go/@admin?from=<key>
 const YEAR = 365 * 86_400;
 const LAST: Record<Side, string> = { me: 'gs_last_me', admin: 'gs_last_admin' };
+const BACK: Record<Side, string> = { me: 'gs_back_me', admin: 'gs_back_admin' };
 
-function go(s: Surface) {
+function go(s: Surface, from: Surface | undefined, home: boolean) {
   const res = redirectTo(s.href, 302);
   const opt = { path: '/', maxAge: YEAR, sameSite: 'lax' as const, httpOnly: true };
-  res.cookies.set('gs_surface', s.key, opt);
+  if (home) res.cookies.set('gs_surface', s.key, opt);
   // 每次進一個工具就記下「這個角色上次用的」，角色開關的第三順位才有東西可用（審查 F31）
   res.cookies.set(LAST[sideOf(s.role)], s.key, opt);
+  // 跨角色時記「從哪一格離開、到了哪」：馬上按回去就回原處（resolveRoleJump 1.5）。
+  // ponytail: 12 小時，同一個工作天內有效；過了就回到同工具對應
+  if (from && sideOf(from.role) !== sideOf(s.role)) res.cookies.set(BACK[sideOf(from.role)], `${from.key}~${s.key}`, { ...opt, maxAge: 43_200 });
   return res;
 }
 
@@ -30,6 +34,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ key:
   const fallback = () => redirectTo(landing ?? '/?menu=1');
 
   const jar = await cookies();
-  const s = goTarget(list, key, req.nextUrl.searchParams.get('from'), (side) => jar.get(LAST[side])?.value);
-  return s ? go(s) : fallback();
+  const q = req.nextUrl.searchParams;
+  const from = q.get('from');
+  const s = goTarget(list, key, from, (side) => jar.get(LAST[side])?.value, (side) => jar.get(BACK[side])?.value);
+  return s ? go(s, list.find((x) => x.key === from), q.get('home') === '1') : fallback();
 }

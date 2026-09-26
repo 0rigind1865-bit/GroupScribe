@@ -39,8 +39,9 @@ export default async function SettingsPage({
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { saved, error, processed } = await searchParams;
-  const access = await requireModule((await params).org, 'gs');
-  if (!access) notFound();
+  const slug = (await params).org;
+  const access = await requireModule(slug, 'gs');
+  if (!access || slug === 'unclaimed') notFound(); // 未認領的群沒有設定（T10 第 2 輪）
   // 收訊／LINE 額度／AI 用量與模型是全站共用的平台數字（商業計劃 G1、U11）：只給平台擁有者看。
   // 公司管理員只看自己的進群告知與自己群組的抽取品質。
   const platform = access.via === 'platform';

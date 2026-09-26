@@ -209,3 +209,30 @@ test('首頁 / 的 LIFF 開機畫面品牌字是「群記」，不是員工端�
   assert.ok(boot.length > 0);
   for (const b of boot) assert.match(b, /brand="群記"/, b);
 });
+
+// ── T10 第 2 輪 ──
+const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
+
+test('只有首頁選單改「下次打開直接進來」：/go 只在 home=1 時寫 gs_surface，首頁選單列帶 home=1', () => {
+  const route = read('src/app/go/[key]/route.ts');
+  assert.match(route, /if \(home\) res\.cookies\.set\('gs_surface'/, '抽屜、角色開關不該改首頁預設');
+  assert.equal(route.match(/'gs_surface'/g)?.length, 1);
+  assert.match(read('src/app/page.tsx'), /\/go\/\$\{encodeURIComponent\(s\.key\)\}\?home=1/);
+});
+
+test('三個模組內殼用 moduleGate：成員打到沒開的模組轉到自己有的，不是英文 404', () => {
+  for (const f of ['src/app/o/[org]/(admin)/layout.tsx', 'src/app/o/[org]/attend/layout.tsx', 'src/app/o/[org]/expense/layout.tsx']) {
+    const src = read(f);
+    assert.match(src, /await moduleGate\(slug, '(gs|attend|expense)'\)/, f);
+    assert.doesNotMatch(src, /modules\.some\(/, `${f} 又自己判斷模組了`);
+  }
+  assert.ok(statSync(join(ROOT, 'src/app/not-found.tsx')).isFile(), '全站 404 頁不見了');
+});
+
+test('未認領的群不畫群組助理的分頁；更多頁與成員頁的字與身分列一致', () => {
+  assert.match(read('src/app/o/[org]/shell-header.tsx'), /navSlot=\{slug === 'unclaimed' \? undefined/);
+  assert.match(read('src/app/o/[org]/(admin)/layout.tsx'), /slug !== 'unclaimed' && \(\s*<Suspense/);
+  assert.doesNotMatch(read('src/app/o/[org]/more-list.tsx'), /看全部身分/, '更多頁要依有沒有角色開關選字');
+  assert.match(read('src/app/g/liff-init.tsx'), /brand: '群記'/);
+  assert.match(read('src/app/a/expense/page.tsx'), /<AttendLiffBoot[^>]*brand=\{tt\('TOOL_EXPENSE'\)\}/);
+});

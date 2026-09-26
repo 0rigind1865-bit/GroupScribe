@@ -191,3 +191,16 @@ test('homeMode：沒有身分——沒登入跑開機、登入了說明', () => 
   assert.equal(homeMode(0, false, false, false), 'boot');
   assert.equal(homeMode(0, true, true, false), 'none');
 });
+
+test('剛跨角色、還沒移動 → 按回去回到離開的那一格；移動過就照同工具對應（T10 第 2 輪）', () => {
+  const g = groupSurfaces([punch('a'), myexp('a'), groups, adm('gs', 'a'), adm('attend', 'a'), adm('expense', 'a')]);
+  // 打卡 →（琥珀小點）群組助理 → 個人：回打卡，不是對應到群組
+  assert.equal(resolveRoleJump(g, 'me', 'gs:a', null, 'punch~gs:a')?.key, 'punch');
+  // 在管理側換過工具（到了考勤）→ 不算「剛跳過來」，照舊對應
+  assert.equal(resolveRoleJump(g, 'me', 'gs:a', null, 'punch~attend:a')?.key, 'groups');
+  // 沒有來回紀錄 → 同工具對應
+  assert.equal(resolveRoleJump(g, 'me', 'gs:a')?.key, 'groups');
+  // goTarget 把 backOf 接進來
+  const list = [punch('a'), groups, adm('gs', 'a')];
+  assert.equal(goTarget(list, '@me', 'gs:a', () => undefined, (side) => (side === 'me' ? 'punch~gs:a' : undefined))?.key, 'punch');
+});

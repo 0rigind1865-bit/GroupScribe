@@ -1,5 +1,6 @@
 import { cache } from 'react';
-import { ATTEND_MODULE, EXPENSE_MODULE, GS_MODULE, type ModuleDef } from '@/app/o/[org]/routes';
+import { notFound, redirect } from 'next/navigation';
+import { ATTEND_MODULE, EXPENSE_MODULE, GS_MODULE, type ModuleDef, type ModuleId } from '@/app/o/[org]/routes';
 import { isPlatformOwner, orgBySlug, orgMember, orgSettings, type Org } from './orgs';
 import { enabledModuleIds, scopedModuleIds } from './module-ids';
 
@@ -35,3 +36,19 @@ export const visibleModules = cache(async (slug: string): Promise<OrgAccess | nu
   const ids = scopedModuleIds(enabledModuleIds((await orgSettings(org.id)).modules), member!.role, member!.modules);
   return { org, modules: modulesOf(ids), owner };
 });
+
+/**
+ * 模組內殼 layout 的把關：非成員 404（不洩漏）；是成員但沒這個模組 → 轉到他第一個有權的模組。
+ * 只管考勤的會計點開老闆貼的公司網址 /o/<slug>，原本撞 Next 內建英文 404、沒有路（T10 第 2 輪）。
+ * 各頁的 requireModule 照舊 404（RSC 可能跳過 layout，那條是安全線，這條只是給迷路的人一條路）。
+ */
+export async function moduleGate(slug: string, id: ModuleId): Promise<OrgAccess> {
+  const access = await visibleModules(slug);
+  if (!access) notFound();
+  if (!access.modules.some((m) => m.id === id)) {
+    const first = access.modules[0];
+    if (first) redirect(first.base(slug));
+    notFound();
+  }
+  return access;
+}

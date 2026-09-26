@@ -131,5 +131,7 @@
   "ORG_PLACEHOLDER": "管理員給你的代號",
   "OUT_OF_RANGE_NEAR": "離「{name}」還有 {m} 公尺",
   "MISS_ANY": "缺卡",
-  "SEE_ALL_TOOLS": "看全部工具 →"
+  "SEE_ALL_TOOLS": "看全部工具 →",
+  "NOT_FOUND": "找不到這一頁，或你沒有它的權限。",
+  "GO_HOME": "回首頁"
 }

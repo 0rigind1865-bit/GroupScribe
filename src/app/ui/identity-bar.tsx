@@ -97,7 +97,8 @@ export function IdentityBar({ groups, currentKey, side, tt, navSlot, contextSlot
                 <a
                   key={r}
                   className="id-role"
-                  href={r === 'admin' && typeof dot === 'string' ? `/go/${encodeURIComponent(dot)}` : `/go/@${r}?from=${encodeURIComponent(cur?.key ?? '')}`}
+                  // 小點直達也帶 from：回程按「個人」才回得到剛離開的那一格（T10 第 2 輪）
+                  href={`/go/${r === 'admin' && typeof dot === 'string' ? encodeURIComponent(dot) : `@${r}`}?from=${encodeURIComponent(cur?.key ?? '')}`}
                 >
                   <Svg size={15}>{ROLE_ICON[r]}</Svg>
                   {tt(r === 'me' ? 'ROLE_ME' : 'ROLE_ADMIN')}
@@ -112,12 +113,13 @@ export function IdentityBar({ groups, currentKey, side, tt, navSlot, contextSlot
 
       {cur &&
         (hasMenu ? (
-          <details className="id-menu">
-            <summary className="id-tool" aria-label={`${toolName(cur.id, tt)}${orgLine ? ` · ${orgLine}` : ''}，${tt('SWITCH_TOOL')}`}>
+          // data-no-swipe 掛在 details：遮罩是 summary::before，在遮罩上滑動不該換分頁（T10 第 2 輪）
+          <details className="id-menu" data-no-swipe="">
+            <summary className="id-tool" aria-label={`${toolName(cur.id, tt)}${orgLine ? ` · ${orgLine}` : ''}, ${tt('SWITCH_TOOL')}`}>
               {tool}
               <Chevron />
             </summary>
-            <div className="id-panel" data-no-swipe="">
+            <div className="id-panel">
               {/* 關閉＝收合、留在原頁（root layout 的一行腳本攔截）；沒有 JS 時連回目前完整網址（T10 第 1 輪 high） */}
               <a className="id-close" href={here}>
                 {tt('CLOSE')}

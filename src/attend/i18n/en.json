@@ -131,5 +131,7 @@
   "ORG_PLACEHOLDER": "Code from your manager",
   "OUT_OF_RANGE_NEAR": "{m} m from “{name}”",
   "MISS_ANY": "Missing punch",
-  "SEE_ALL_TOOLS": "All tools →"
+  "SEE_ALL_TOOLS": "All tools →",
+  "NOT_FOUND": "This page doesn't exist, or you don't have access to it.",
+  "GO_HOME": "Go to home"
 }
