@@ -55,17 +55,39 @@ html {
     font-family: system-ui, "PingFang TC", "Noto Sans TC", sans-serif;
   }
   /* 各殼（群組助理／考勤／報帳／員工端）裡的頁面大標；官方網站與登入頁不受影響 */
+  /* 字級也在這裡定（設計稿：手機 30px／桌機 42px），頁面 h1 不要再寫 text-* 大小 */
   .nav-gap h1 {
     font-family: var(--font-title);
     font-weight: 900;
-    letter-spacing: 0.02em;
+    letter-spacing: 1px;
+    font-size: 30px;
+    line-height: 1.2;
+  }
+  @media (min-width: 768px) {
+    .nav-gap h1 {
+      font-size: 42px;
+    }
   }
 }
 
 /* 共用元件樣式：頁面 markup 保持乾淨 */
 @layer components {
+  /* 以下尺寸都照設計畫布「GroupScribe 介面重新設計」（2026-09）：
+     卡片圓角 14、細框無陰影；按鈕與輸入框高 44、圓角 12、粗體；區塊標題 12px 寬字距。
+     改外觀請改這裡，頁面只套 class。 */
   .card {
-    @apply rounded-xl border border-gray-200 bg-white p-4 shadow-sm;
+    @apply rounded-[14px] border border-[#ebe3d2] bg-white p-4;
+  }
+  /* 頁面內容容器：桌機內容寬 880（設計稿所有電腦版畫板都是這個寬度） */
+  .page {
+    @apply mx-auto max-w-[944px] p-4 md:px-8 md:pt-9 md:pb-16;
+  }
+  /* 區塊小標（「需要你處理」「進行中」）與卡片標題（「邀請員工加入」） */
+  .section-title {
+    @apply text-xs font-bold tracking-[2px] text-gray-600;
+  }
+  .card-title {
+    @apply text-base font-bold;
   }
   /* Button（Component Gallery 同名）：四個 variant 共用一組骨架——高 36、圓角 8、medium 字重、
      3px 焦點環、disabled 半透明（Origin UI button.tsx 的 base class）。手機 44px 觸控目標見下方 media。 */
@@ -73,47 +95,47 @@ html {
   .btn-primary,
   .btn-danger,
   .btn-confirm {
-    @apply inline-flex h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-3 text-sm font-medium whitespace-nowrap transition-[color,background-color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex min-h-11 cursor-pointer items-center justify-center gap-1.5 rounded-xl border px-4 text-sm font-bold whitespace-nowrap transition-[color,background-color,box-shadow] outline-none focus-visible:ring-[3px] disabled:pointer-events-none disabled:opacity-50;
   }
   .btn {
-    @apply border-gray-300 bg-white shadow-xs hover:bg-gray-50 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30;
+    @apply border-gray-300 bg-white hover:bg-gray-50 focus-visible:border-emerald-500 focus-visible:ring-emerald-500/30;
   }
   .btn-primary {
-    @apply border-emerald-600 bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus-visible:ring-emerald-500/40;
+    @apply border-emerald-600 bg-emerald-600 text-white hover:bg-emerald-700 focus-visible:ring-emerald-500/40;
   }
   .btn-danger {
-    @apply border-red-300 bg-white text-red-700 shadow-xs hover:bg-red-50 focus-visible:border-red-500 focus-visible:ring-red-500/30;
+    @apply border-red-200 bg-white text-red-700 hover:bg-red-50 focus-visible:border-red-500 focus-visible:ring-red-500/30;
   }
   /* size=sm（Origin：h-8 px-3 text-xs）：列內動作鈕用 */
   .btn-sm {
-    @apply h-8 px-2.5 text-xs;
+    @apply min-h-8 rounded-[10px] px-3 text-xs;
   }
   /* 「確認」＝核可 AI 的判斷（對資料的判斷）；「完成」＝這件事做完了（對工作的狀態）。
      兩者語意完全不同卻長得一樣，是最容易按錯的一對。用琥珀＝AI 待確認的既有狀態色，
      跟綠色的「完成」在色彩層就分開（見 principles.md：別讓我想）。 */
   .btn-confirm {
-    @apply border-amber-300 bg-amber-50 font-semibold text-amber-900 shadow-xs hover:bg-amber-100 focus-visible:border-amber-500 focus-visible:ring-amber-500/30;
+    @apply border-amber-300 bg-amber-50 font-bold text-amber-900 hover:bg-amber-100 focus-visible:border-amber-500 focus-visible:ring-amber-500/30;
   }
   /* Text input / Select / Textarea：高 36、圓角 8、淡陰影、3px 焦點環（Origin UI input.tsx） */
   .input {
-    @apply min-h-9 rounded-md border border-gray-300 bg-white px-3 py-1 text-sm shadow-xs transition-[color,box-shadow] outline-none placeholder:text-gray-400 focus-visible:border-emerald-500 focus-visible:ring-[3px] focus-visible:ring-emerald-500/30 disabled:opacity-50;
+    @apply min-h-11 rounded-xl border border-gray-300 bg-white px-3 py-1 text-[15px] transition-[color,box-shadow] outline-none placeholder:text-gray-400 focus-visible:border-emerald-500 focus-visible:ring-[3px] focus-visible:ring-emerald-500/30 disabled:opacity-50;
   }
   input.input,
   select.input {
-    @apply h-9;
+    @apply h-11;
   }
   /* Label（Origin UI label.tsx）：表單欄位名 */
   .label {
-    @apply text-sm leading-4 font-medium;
+    @apply text-[13px] leading-4 font-bold;
   }
   /* Segmented control（Component Gallery 名；別名 toggle button group）：
      月曆的月／週／日／議程與議程範圍用。選中格白底浮起，與面向切換器同一語言。 */
   .segmented {
-    @apply inline-flex rounded-lg bg-gray-100 p-0.5 text-sm;
+    @apply inline-flex rounded-xl bg-[#e9e5da] p-[3px] text-[13px];
   }
   .segmented > a,
   .segmented > button {
-    @apply rounded-md px-3 py-1.5 text-center font-medium whitespace-nowrap text-gray-600 hover:text-gray-900;
+    @apply flex min-h-9 items-center justify-center rounded-[10px] px-3 text-center font-bold whitespace-nowrap text-gray-600 hover:text-gray-900;
   }
   .segmented > [aria-current='page'] {
     @apply bg-white text-gray-900 shadow-xs;
@@ -378,21 +400,8 @@ html {
   }
 }
 
-/* 手機觸控目標 ≥44px（Apple HIG 建議值；桌機維持緊湊） */
+/* 按鈕與輸入框已全尺寸 44px（設計稿桌機也是 44）；這裡只剩手機放大勾選框 */
 @media (max-width: 767px) {
-  .btn,
-  .btn-primary,
-  .btn-danger,
-  .btn-confirm {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-  }
-  .input,
-  select.input {
-    min-height: 44px;
-  }
   input[type="checkbox"] {
     width: 1.15rem;
     height: 1.15rem;

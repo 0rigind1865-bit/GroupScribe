@@ -44,8 +44,8 @@ export default async function GroupsPage({
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-4 md:p-8">
-      <h1 className="mb-5 text-3xl md:text-4xl">群組管理</h1>
+    <main className="page">
+      <h1 className="mb-5">群組管理</h1>
 
       {profile_error === 'quota' ? (
         <p className="card mb-3 border-red-200 bg-red-50 text-sm text-red-700">
@@ -92,7 +92,7 @@ export default async function GroupsPage({
       <div className="space-y-5">
         {[...byCat.entries()].map(([cat, gs]) => (
           <section key={cat}>
-            <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">{cat}</h2>
+            <h2 className="mb-2 section-title">{cat}</h2>
             <div className="space-y-2">
               {gs.map((g: any) => {
                 const p = profileOf.get(g.group_id);

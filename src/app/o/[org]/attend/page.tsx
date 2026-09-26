@@ -36,9 +36,9 @@ export default async function AttendOverview({ params }: { params: Promise<{ org
   const withIssues = abnormal.filter((a) => a.days.length > 0);
 
   return (
-    <main className="mx-auto max-w-4xl p-4 md:p-8">
+    <main className="page">
       <div className="mb-5 flex items-baseline gap-3">
-        <h1 className="text-3xl md:text-4xl">考勤總覽</h1>
+        <h1>考勤總覽</h1>
         <span className="text-sm text-gray-500">{month}</span>
       </div>
 

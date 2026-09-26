@@ -35,13 +35,13 @@ export default async function LocationsPage({
     .order('created_at');
 
   return (
-    <main className="mx-auto max-w-4xl p-4 md:p-8">
-      <h1 className="mb-5 text-3xl md:text-4xl">打卡地點</h1>
+    <main className="page">
+      <h1 className="mb-5">打卡地點</h1>
       {ok && <Banner>地點已新增 ✓</Banner>}
       {err && <Banner tone="err">{ERR[err] ?? err}</Banner>}
 
       <section className="card mb-5">
-        <h2 className="mb-3 text-base font-bold">新增地點</h2>
+        <h2 className="mb-3 card-title">新增地點</h2>
         <form action="/api/attend/location" method="post" className="flex flex-wrap items-end gap-2 text-sm" id="add-loc">
           <input type="hidden" name="org" value={slug} />
           <input type="hidden" name="action" value="add" />

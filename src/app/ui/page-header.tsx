@@ -27,7 +27,7 @@ export function PageHeader({
         </a>
       )}
       <div className="min-w-0 flex-1">
-        <h1 className="truncate text-2xl md:text-3xl">{title}</h1>
+        <h1 className="truncate">{title}</h1>
         {desc && <p className="truncate text-xs text-gray-500">{desc}</p>}
       </div>
       {right && <div className="flex flex-none items-center gap-2">{right}</div>}

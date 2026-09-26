@@ -52,7 +52,7 @@ export default async function AdminLayout({
       <div className="nav-gap md:!pb-0">
         {/* 停權（A8）：每一頁都要看得到為什麼不再整理 */}
         {(await orgAiBudget(org.id)).suspended && (
-          <div className="mx-auto max-w-3xl px-4 pt-4 md:px-5">
+          <div className="mx-auto max-w-[944px] px-4 pt-4 md:px-8">
             <Banner tone="warn">此公司的服務已暫停：訊息照常保存，但 AI 整理、問答與讀圖都先停下。請聯絡群記恢復。</Banner>
           </div>
         )}

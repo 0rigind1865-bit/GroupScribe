@@ -1,11 +1,11 @@
 import { TONE_SOFT, type Tone } from './tone';
 
 // Badge（Component Gallery 同名；別名 Tag / Label / Chip）：非互動、只標狀態或身分。
-// 形態採 Origin UI badge.tsx：膠囊（rounded-full）、px-2、text-xs、medium 字重。
+// 形態照設計稿（2026-09）：膠囊、px-2、11px 粗體。
 // 取代 7 份各自手刻的 `rounded px-1.5 py-0.5 text-xs font-bold bg-*`。
 export function Badge({ tone = 'neutral', children }: { tone?: Tone; children: React.ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${TONE_SOFT[tone]}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${TONE_SOFT[tone]}`}>
       {children}
     </span>
   );

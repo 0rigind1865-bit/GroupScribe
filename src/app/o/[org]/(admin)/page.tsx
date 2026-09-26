@@ -157,7 +157,7 @@ export default async function Today({
   return (
     <main className="mx-auto max-w-3xl p-4 md:max-w-5xl md:p-8">
       <div className="mb-4 flex items-baseline gap-3">
-        <h1 className="text-3xl md:text-4xl">今天</h1>
+        <h1>今天</h1>
         <span className="text-sm text-gray-500">
           {monthOf(today)} 月 {dayNum(today)} 日 · {dayWeek(today)}
         </span>
@@ -180,7 +180,7 @@ export default async function Today({
           <div className="md:grid md:grid-cols-[minmax(0,1fr)_300px] md:gap-10">
           {attention.length > 0 && (
             <section className="mb-5 md:order-2 md:mb-0">
-              <h2 className="mb-2 text-xs font-bold tracking-widest text-amber-700">需要你處理</h2>
+              <h2 className="mb-2 section-title text-amber-700">需要你處理</h2>
               <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
                 {attention.map((a) => {
                   // 逾期是唯一的「已經出事」，用紅；其餘是「等你動手」，白卡就好
@@ -212,7 +212,7 @@ export default async function Today({
 
           {/* 日期大字軌：事件與待辦混排 */}
           <section className="md:order-1">
-          <h2 className="mb-3 text-xs font-bold tracking-widest text-gray-500">未來 7 天</h2>
+          <h2 className="mb-3 section-title">未來 7 天</h2>
           {days.length ? (
             <div className="space-y-3">
               {days.map((iso) => (
@@ -289,7 +289,7 @@ export default async function Today({
       )}
       {group && timeline && (
         <>
-          <h2 className="mb-3 text-xl font-semibold tracking-tight">{q ? `搜尋「${q}」` : '原始訊息（最近 100 則）'}</h2>
+          <h2 className="mb-3 card-title">{q ? `搜尋「${q}」` : '原始訊息（最近 100 則）'}</h2>
           <div className="card overflow-x-auto p-0">
             <table className="w-full text-sm">
               <thead>

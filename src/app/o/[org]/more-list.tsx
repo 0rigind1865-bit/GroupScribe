@@ -18,8 +18,8 @@ export async function MoreList({
   // 手機頂欄拿掉面向切換器後，「換身分」的入口在這裡（桌機頂欄仍有）
   const others = (await surfaces()).list.filter((s) => !(s.id === module.id && s.slug === slug));
   return (
-    <main className="mx-auto max-w-3xl p-4 md:p-8">
-      <h1 className="mb-5 text-3xl md:text-4xl">更多</h1>
+    <main className="page">
+      <h1 className="mb-5">更多</h1>
       <div className="space-y-2">
         {moreItems(module).map((i) => (
           <a
@@ -44,7 +44,7 @@ export async function MoreList({
       </div>
       {others.length > 0 && (
         <>
-          <h2 className="mt-6 mb-2 text-xs font-bold tracking-widest text-gray-500">切換身分</h2>
+          <h2 className="mt-6 mb-2 section-title">切換身分</h2>
           <div className="space-y-2">
             {others.map((s) => (
               <a key={s.key} href={`/go/${encodeURIComponent(s.key)}`} className="card flex items-center gap-4 hover:bg-gray-50">

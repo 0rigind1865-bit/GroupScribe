@@ -45,8 +45,8 @@ export default async function ImportPage({
   const pendingOf = new Map(pendings);
 
   return (
-    <main className="mx-auto max-w-3xl p-5">
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">匯入 LINE 聊天記錄</h1>
+    <main className="page">
+      <h1 className="mb-4">匯入 LINE 聊天記錄</h1>
       <ol className="mb-3 list-decimal space-y-1 pl-6 text-sm text-gray-700">
         <li>手機 LINE → 群組右上選單 → 其他設定 → 傳送聊天記錄，取得 .txt（可整檔上傳，或打開複製內容直接貼上）</li>
         <li>群組：從下拉選既有群組，或在下方補一個新群組（純匯入、bot 還沒進的群組用得到）</li>
@@ -132,7 +132,7 @@ export default async function ImportPage({
 
       {groups?.length ? (
         <section>
-          <h2 className="mb-2 text-xl font-semibold tracking-tight">提取狀態</h2>
+          <h2 className="mb-2 card-title">提取狀態</h2>
           <p className="mb-3 text-sm text-gray-500">
             已提取的訊息會被標記（不會重複提取），這裡只需要處理「未提取」的部分。bot 在線收到的新訊息會自動提取。
           </p>

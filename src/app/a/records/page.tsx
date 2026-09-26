@@ -48,7 +48,7 @@ export default async function RecordsPage({
     <AttendShell emp={emp} current="records" loc={loc} tt={tt} back={`/a/records?month=${month}`}>
       <div className="mb-3 flex items-center justify-between">
         <a className="btn px-3 py-1 text-sm" href={`/a/records?month=${shiftMonth(month, -1)}`}>←</a>
-        <h1 className="text-2xl">{tt('MONTH_TITLE', { y, m })}</h1>
+        <h1>{tt('MONTH_TITLE', { y, m })}</h1>
         <a className="btn px-3 py-1 text-sm" href={`/a/records?month=${shiftMonth(month, 1)}`}>→</a>
       </div>
 
@@ -75,7 +75,7 @@ export default async function RecordsPage({
 
       {sel && (
         <section className="card mt-4">
-          <h2 className="mb-1 text-base font-bold">
+          <h2 className="mb-1 card-title">
             {sel.date}｜{tt(sel.status)}
           </h2>
           {sel.punches.length ? (

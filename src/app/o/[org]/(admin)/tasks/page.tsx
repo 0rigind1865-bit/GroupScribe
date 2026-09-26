@@ -148,9 +148,9 @@ export default async function TasksPage({
   const back = `/o/${slug}/tasks?group=${g}${archived ? `&view=${archived}` : ''}`;
 
   return (
-    <main className="mx-auto max-w-3xl p-4 md:p-8">
+    <main className="page">
       <div className="mb-5 flex flex-wrap items-center gap-4">
-        <h1 className="text-3xl md:text-4xl">待辦</h1>
+        <h1>待辦</h1>
         {archived && (
           <span className="rounded bg-gray-100 px-2 py-0.5 text-sm text-gray-600">
             {archived === 'done' ? '已完成' : '已忽略'}
@@ -204,7 +204,7 @@ export default async function TasksPage({
           {pending.length > 0 && (
             <section>
               <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                <h2 className="text-xs font-bold tracking-widest text-amber-700">待確認 · AI 抽取</h2>
+                <h2 className="section-title text-amber-700">待確認 · AI 抽取</h2>
                 <ul className="space-y-2">
                   {pending.map((t) => (
                     <TaskRow key={t.id} t={t} back={back} />
@@ -214,7 +214,7 @@ export default async function TasksPage({
             </section>
           )}
           <section>
-            <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">進行中</h2>
+            <h2 className="mb-2 section-title">進行中</h2>
             {open.length ? (
               <ul className="space-y-2">
                 {open.map((t) => (
@@ -246,7 +246,7 @@ export default async function TasksPage({
       {detail && (
         <div className="card mt-5">
           <div className="mb-3 flex items-center gap-3">
-            <h2 className="text-lg font-bold">編輯待辦</h2>
+            <h2 className="card-title">編輯待辦</h2>
             {detail.needs_confirmation && (
               <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">⚠ AI 抽取，待確認</span>
             )}

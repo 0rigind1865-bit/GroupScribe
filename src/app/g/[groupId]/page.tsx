@@ -515,12 +515,12 @@ export default async function MemberView({
           <>
             {myTasks.length > 0 && (
               <section>
-                <h2 className="mb-2 text-xs font-bold tracking-widest text-sky-700">我的待辦</h2>
+                <h2 className="mb-2 section-title text-sky-700">我的待辦</h2>
                 <div className="space-y-1.5">{myTasks.map(TaskCard)}</div>
               </section>
             )}
             <section>
-              <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">本週起的行程</h2>
+              <h2 className="mb-2 section-title">本週起的行程</h2>
               {byDay.size ? (
                 <div className="space-y-3">
                   {[...byDay.entries()].map(([iso, evs]) => (
@@ -535,7 +535,7 @@ export default async function MemberView({
               )}
             </section>
             <section>
-              <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">
+              <h2 className="mb-2 section-title">
                 {myTasks.length > 0 ? '其他人的待辦' : '進行中的待辦'}
               </h2>
               {otherTasks.length ? (
@@ -549,7 +549,7 @@ export default async function MemberView({
             {/* 只留置頂公告：公告是低頻參考、有自己的分頁，常駐在今天頁是噪音 */}
             {notes.length > 0 && (
               <section>
-                <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">置頂公告</h2>
+                <h2 className="mb-2 section-title">置頂公告</h2>
                 <div className="space-y-1.5">{notes.map(NoteCard)}</div>
               </section>
             )}
@@ -613,7 +613,7 @@ export default async function MemberView({
         {tab === 'tasks' && (
           <>
             <section>
-              <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">
+              <h2 className="mb-2 section-title">
                 {archived ? '已完成' : `進行中（${tasks.length}）`}
                 {!archived && mineCount > 0 && (
                   <span className="ml-2 font-normal text-sky-700">可能是你的 {mineCount} 件</span>

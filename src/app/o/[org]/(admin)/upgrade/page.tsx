@@ -35,8 +35,8 @@ export default async function UpgradePage({
   const ai = await orgAiBudget(org.id, true);
 
   return (
-    <main className="mx-auto max-w-3xl p-4 md:p-5">
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight">方案</h1>
+    <main className="page">
+      <h1 className="mb-1">方案</h1>
       <p className="mb-4 text-sm text-gray-500">
         目前：<strong>{PLANS.find((p) => p.id === plan)?.name ?? plan}</strong> · 已認領 {used} / {max} 個群 · 本月 AI 呼叫 {ai.used}
         {ai.cap !== null ? ` / ${ai.cap}` : ''} 次

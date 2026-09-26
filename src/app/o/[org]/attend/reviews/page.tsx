@@ -43,8 +43,8 @@ export default async function ReviewsPage({
   type Row = { id: string; type: string; requested_at: string; reason?: string | null; created_at?: string; status?: string; reviewed_at?: string | null; employees: { display_name: string; dept?: string | null } | null };
 
   return (
-    <main className="mx-auto max-w-4xl p-4 md:p-8">
-      <h1 className="mb-5 text-3xl md:text-4xl">補卡審核</h1>
+    <main className="page">
+      <h1 className="mb-5">補卡審核</h1>
       {ok === 'approved' && <Banner>已核准，打卡紀錄已生成 ✓</Banner>}
       {ok === 'rejected' && <Banner tone="neutral">已拒絕。</Banner>}
       {err && <Banner tone="err">操作失敗或申請已被處理，請重新整理。</Banner>}
@@ -75,7 +75,7 @@ export default async function ReviewsPage({
 
       {((recent ?? []) as unknown as Row[]).length > 0 && (
         <section className="mt-6">
-          <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">最近處理</h2>
+          <h2 className="mb-2 section-title">最近處理</h2>
           <ul className="space-y-1 text-sm text-gray-600">
             {((recent ?? []) as unknown as Row[]).map((r) => (
               <li key={r.id} className="flex items-center gap-2">

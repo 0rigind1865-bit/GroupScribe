@@ -1,8 +1,8 @@
 // 首次啟動、尚未設定外部服務時的指引頁
 export function SetupNotice() {
   return (
-    <main className="mx-auto max-w-3xl p-5">
-      <h1 className="mb-3 text-2xl font-semibold tracking-tight">還差幾步就能開始 🔧</h1>
+    <main className="page">
+      <h1 className="mb-3">還差幾步就能開始 🔧</h1>
       <p className="mb-4 text-sm text-gray-700">
         GroupScribe 需要兩個外部服務才能運作，請在 <code className="rounded bg-gray-100 px-1">.env.local</code>{' '}
         填入後重新整理：

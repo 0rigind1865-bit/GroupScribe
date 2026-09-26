@@ -314,9 +314,9 @@ export default async function CalendarPage({
   const agendaTruncated = view === 'agenda' && range === 'all' && events.length === AGENDA_LIMIT;
 
   return (
-    <main className="mx-auto max-w-5xl p-4 md:p-8">
+    <main className="page">
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h1 className="text-3xl md:text-4xl">月曆</h1>
+        <h1>月曆</h1>
         {group && <span className="text-gray-500">{groupName}</span>}
         {/* 視圖切換器：手機四等分、桌機 inline */}
         <div className="segmented grid w-full grid-cols-4 md:ml-auto md:inline-flex md:w-auto">
@@ -499,7 +499,7 @@ export default async function CalendarPage({
       {detail && (
         <div className="card mt-4">
           <div className="mb-3 flex items-center gap-3">
-            <h2 className="text-lg font-bold">事件詳情</h2>
+            <h2 className="card-title">事件詳情</h2>
             {detail.needs_confirmation ? (
               <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">⚠ AI 抽取，待確認</span>
             ) : (

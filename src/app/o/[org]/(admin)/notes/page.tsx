@@ -132,9 +132,9 @@ export default async function NotesPage({
   const back = `/o/${slug}/notes?group=${g}${archived ? '&view=ignored' : ''}`;
 
   return (
-    <main className="mx-auto max-w-3xl p-4 md:p-8">
+    <main className="page">
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <h1 className="text-3xl md:text-4xl">公告 / 決議</h1>
+        <h1>公告 / 決議</h1>
         {archived && <span className="rounded bg-gray-100 px-2 py-0.5 text-sm text-gray-600">已忽略</span>}
         {group && <span className="text-gray-500">{groupName}</span>}
       </div>
@@ -183,7 +183,7 @@ export default async function NotesPage({
           {pending.length > 0 && (
             <section>
               <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-              <h2 className="text-xs font-bold tracking-widest text-amber-700">待確認 · AI 抽取</h2>
+              <h2 className="section-title text-amber-700">待確認 · AI 抽取</h2>
               <ul className="space-y-2">
                 {pending.map((n) => (
                   <NoteRow key={n.id} n={n} back={back} />
@@ -193,7 +193,7 @@ export default async function NotesPage({
             </section>
           )}
           <section>
-            <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">有效</h2>
+            <h2 className="mb-2 section-title">有效</h2>
             {active.length ? (
               <ul className="space-y-1.5">
                 {active.map((n) => (
@@ -217,7 +217,7 @@ export default async function NotesPage({
       {detail && (
         <div className="card mt-5">
           <div className="mb-3 flex items-center gap-3">
-            <h2 className="text-lg font-bold">編輯</h2>
+            <h2 className="card-title">編輯</h2>
             {detail.needs_confirmation && (
               <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">⚠ AI 抽取，待確認</span>
             )}

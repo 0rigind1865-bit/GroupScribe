@@ -188,9 +188,9 @@ export default async function FilesPage({
   );
 
   return (
-    <main className="mx-auto max-w-5xl p-4 md:p-8">
+    <main className="page">
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <h1 className="text-3xl md:text-4xl">檔案</h1>
+        <h1>檔案</h1>
         {group && <span className="text-gray-500">{groupName}</span>}
       </div>
 

@@ -86,9 +86,9 @@ export default async function InboxPage({
   const back = `/o/${slug}/inbox${group ? `?group=${encodeURIComponent(group)}` : ''}`;
 
   return (
-    <main className="mx-auto max-w-2xl p-4 md:p-8">
+    <main className="page">
       <div className="mb-2 flex items-center gap-3">
-        <h1 className="text-3xl md:text-4xl">收件匣</h1>
+        <h1>收件匣</h1>
         {group && <span className="text-gray-500">{nameOf.get(group) ?? group}</span>}
         {total > 0 && <span className="ml-auto text-sm font-bold text-amber-700">還剩 {total} 筆</span>}
         {rows.length > 0 && <SelectMode />}
