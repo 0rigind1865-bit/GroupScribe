@@ -1,6 +1,7 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
+import { Chevron, PILL } from '@/app/ui/group-switcher';
 
 // 全域員工選擇器：跨考勤各分頁保持選擇（?emp=）。
 //
@@ -49,27 +50,14 @@ export function EmployeeSwitcher({ employees }: { employees: EmpOption[] }) {
     </>
   );
 
+  // 與群組膠囊同一顆外觀（PILL）；原生 <select> 透明疊在上面叫出選單
   return (
-    <>
-      <div className="relative flex min-w-0 items-center gap-2 md:hidden">
-        <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-gray-200 text-sm font-bold text-gray-700">
-          {cur ? cur.display_name.slice(0, 1) : '全'}
-        </span>
-        <span className="min-w-0">
-          <span className="block truncate text-sm leading-tight font-bold">{label}</span>
-          <span className="block text-[11px] text-gray-500">點擊切換員工</span>
-        </span>
-        <svg viewBox="0 0 24 24" className="h-4 w-4 flex-none text-gray-400" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-        <select value={current} onChange={onChange} aria-label="切換員工" className="absolute inset-0 cursor-pointer opacity-0">
-          {options}
-        </select>
-      </div>
-
-      <select value={current} onChange={onChange} className="input hidden max-w-44 text-sm md:block">
+    <label className={`relative ${PILL}`}>
+      <span className="max-w-40 truncate">{label}</span>
+      <Chevron />
+      <select value={current} onChange={onChange} aria-label="切換員工" className="absolute inset-0 cursor-pointer opacity-0">
         {options}
       </select>
-    </>
+    </label>
   );
 }

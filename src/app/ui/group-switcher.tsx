@@ -42,93 +42,51 @@ export function GroupSwitcher({ groups }: { groups: GroupOption[] }) {
     }
     return params.toString() ? `${pathname}?${params.toString()}` : pathname;
   }
-  function onChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    // location.assign 維持 MPA 整頁載入，layout 每次重渲染、群組清單不過期
-    location.assign(hrefFor(e.target.value));
-  }
   const rowCls = (on: boolean) =>
     `block truncate rounded-md px-2.5 py-2 text-sm ${on ? 'bg-emerald-50 font-medium text-emerald-900' : 'hover:bg-gray-50'}`;
 
-  const options = (
-    <>
-      {supportsAll ? (
-        <option value="">全部群組</option>
-      ) : (
-        !current && (
-          <option value="" disabled>
-            選擇群組…
-          </option>
-        )
-      )}
-      {[...byCat.entries()].map(([cat, gs]) => (
-        <optgroup key={cat} label={cat}>
-          {gs.map((g) => (
-            <option key={g.group_id} value={g.group_id}>
-              {g.name ?? g.group_id}
-            </option>
-          ))}
-        </optgroup>
-      ))}
-    </>
-  );
-
+  // 設計稿（2026-09）：一顆「群組名 ▾」膠囊，手機在頂端右側、桌機在深色頂欄上。
+  // 點開是真正的清單（<details>，純 HTML）：LINE 內建瀏覽器不一定叫得出原生 <select>。
   return (
-    <>
-      {/* 手機：context 欄——頭像＋群組名，點開是真正的清單（<details>，純 HTML）。
-          原本是透明 <select> 疊在上面叫原生選單：在 LINE 內建瀏覽器不一定會開，
-          而且「點擊切換群組」這行字不會告訴你到底開了沒（principles.md：別讓我想）。 */}
-      <details className="group relative md:hidden">
-        <summary className="flex min-w-0 cursor-pointer list-none items-center gap-2 rounded-md py-1 [&::-webkit-details-marker]:hidden">
-          {cur?.picture_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={cur.picture_url} alt="" className="h-8 w-8 flex-none rounded-full" />
-          ) : (
-            <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-emerald-600 text-sm font-semibold text-white">
-              {cur ? label.slice(0, 1) : '全'}
-            </span>
-          )}
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm leading-tight font-semibold">{label}</span>
-            <span className="block text-[11px] text-gray-500">{cur?.category ?? (cur ? '未分類' : '切換群組')}</span>
-          </span>
-          <svg
-            viewBox="0 0 24 24"
-            className="h-4 w-4 flex-none text-gray-400 transition-transform group-open:rotate-180"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
-        </summary>
-        <div className="absolute right-0 left-0 z-40 mt-2 max-h-[70vh] overflow-y-auto rounded-xl border border-gray-200 bg-white p-1 shadow-lg">
-          {supportsAll && (
-            <a href={hrefFor('')} aria-current={!current ? 'page' : undefined} className={rowCls(!current)}>
-              全部群組
-            </a>
-          )}
-          {[...byCat.entries()].map(([cat, gs]) => (
-            <div key={cat}>
-              <p className="px-2.5 pt-2.5 pb-1 text-[11px] font-medium text-gray-500">{cat}</p>
-              {gs.map((g) => (
-                <a
-                  key={g.group_id}
-                  href={hrefFor(g.group_id)}
-                  aria-current={g.group_id === current ? 'page' : undefined}
-                  className={rowCls(g.group_id === current)}
-                >
-                  {g.name ?? g.group_id}
-                </a>
-              ))}
-            </div>
-          ))}
-        </div>
-      </details>
+    <details className="group relative">
+      <summary className={PILL}>
+        <span className="max-w-40 truncate">{label}</span>
+        <Chevron />
+      </summary>
+      <div className="absolute right-0 z-40 mt-2 max-h-[70vh] w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1 text-gray-900 shadow-lg">
+        {supportsAll && (
+          <a href={hrefFor('')} aria-current={!current ? 'page' : undefined} className={rowCls(!current)}>
+            全部群組
+          </a>
+        )}
+        {[...byCat.entries()].map(([cat, gs]) => (
+          <div key={cat}>
+            <p className="px-2.5 pt-2.5 pb-1 text-[11px] font-medium text-gray-500">{cat}</p>
+            {gs.map((g) => (
+              <a
+                key={g.group_id}
+                href={hrefFor(g.group_id)}
+                aria-current={g.group_id === current ? 'page' : undefined}
+                className={rowCls(g.group_id === current)}
+              >
+                {g.name ?? g.group_id}
+              </a>
+            ))}
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
 
-      {/* 桌面：一般下拉 */}
-      <select value={current} onChange={onChange} className="input hidden max-w-44 text-sm md:block">
-        {options}
-      </select>
-    </>
+/** 頂端 context 膠囊（群組／員工共用）：淺底細框；桌機在深色頂欄上改透明底白字 */
+export const PILL =
+  'flex min-h-9 cursor-pointer list-none items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 text-[13px] [&::-webkit-details-marker]:hidden md:border-[#3d4a43] md:bg-transparent md:text-white';
+
+export function Chevron() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 flex-none transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path d="M6 9l6 6 6-6" />
+    </svg>
   );
 }

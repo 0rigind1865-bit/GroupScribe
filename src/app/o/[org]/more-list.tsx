@@ -15,7 +15,7 @@ export async function MoreList({
   ctx?: Record<string, string | undefined>;
   extra?: React.ReactNode;
 }) {
-  // 手機頂欄拿掉面向切換器後，「換身分」的入口在這裡（桌機頂欄仍有）
+  // 「換身分」的入口：手機在這裡，桌機與手機頂端的「公司名 ▾」也有
   const others = (await surfaces()).list.filter((s) => !(s.id === module.id && s.slug === slug));
   return (
     <main className="page">

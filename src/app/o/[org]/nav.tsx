@@ -77,7 +77,7 @@ export function TopNav({ moduleId, counts = {} }: { moduleId: ModuleId; counts?:
   const module = modOf(moduleId);
   const { href, isActive } = useNav(module);
   return (
-    <nav className="hidden gap-1 text-sm md:flex">
+    <nav className="hidden gap-0.5 text-sm md:flex">
       {module.items.map((i: NavItem) => {
         const n = i.badge ? (counts[i.badge] ?? 0) : 0;
         return (
@@ -85,13 +85,13 @@ export function TopNav({ moduleId, counts = {} }: { moduleId: ModuleId; counts?:
             key={i.key}
             href={href(i.path)}
             aria-current={isActive(i.path) ? 'page' : undefined}
-            className={`relative rounded-lg px-2.5 py-1.5 font-medium whitespace-nowrap ${
-              isActive(i.path) ? 'bg-white/15 font-bold text-white' : 'text-white/70 hover:bg-white/10 hover:text-white'
+            className={`flex items-center gap-1.5 rounded-[10px] px-3 py-2 whitespace-nowrap ${
+              isActive(i.path) ? 'bg-[#2e3a34] font-bold text-white' : 'text-[#b8c2bc] hover:bg-white/10 hover:text-white'
             }`}
           >
             {i.label}
             {n > 0 && (
-              <span className="ml-1 rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+              <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e0a43a] px-1 text-[11px] font-bold text-[#1c2420]">
                 {n > 99 ? '99+' : n}
               </span>
             )}
