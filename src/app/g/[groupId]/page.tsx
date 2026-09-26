@@ -7,6 +7,7 @@ import { mediaForItems } from '@/core/media';
 import { monthGrid } from '@/core/grid';
 import { ItemPhotos } from '@/app/ui/item-photos';
 import { LiffInit } from '../liff-init';
+import { logFunnel, parseLiffEntry } from '@/core/funnel';
 import { SubscribeToggle } from '../subscribe-toggle';
 import { FloatingNav } from '@/app/ui/floating-nav';
 
@@ -76,6 +77,7 @@ export default async function MemberView({
     cat?: string;
     error?: string;
     suberror?: string;
+    src?: string;
   }>;
 }) {
   const { groupId: raw } = await params;
@@ -99,6 +101,11 @@ export default async function MemberView({
         </p>
       </main>
     );
+
+  // 漏斗（L1）：只在從觸點進來（帶 src）時記——頁內切分頁也是整頁重載，每次都記會灌水。
+  // org_id 不另查：分析時經 group_id join groups 即可
+  const { src } = parseLiffEntry(sp);
+  if (src) await logFunnel({ group_id: groupId, line_user_id: uid, step: 'liff_open', source: src });
 
   // 「我的待辦」最小版：tasks.assignee 是自由文字暱稱、與 LINE userId 沒有對應表，
   // 所以拿群成員 API 的 displayName 做寬鬆雙向比對就好——不建表、不改 schema。

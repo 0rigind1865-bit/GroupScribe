@@ -1,5 +1,7 @@
 import { dbConfigured } from '@/db';
-import { liffId, liffUser, myGroups } from '@/core/liff';
+import { redirect } from 'next/navigation';
+import { isGroupMember, liffId, liffUser, myGroups } from '@/core/liff';
+import { logFunnel, parseLiffEntry } from '@/core/funnel';
 import { SurfaceSwitcher } from '@/app/ui/surface-switcher';
 import { LiffInit } from './liff-init';
 
@@ -10,10 +12,16 @@ export const dynamic = 'force-dynamic';
 // 其他面向（打卡、管理後台）的入口統一由 SurfaceSwitcher 提供，本頁不再手刻導覽卡。
 // ⚠ 可見性是權限邊界：LINE 群組裡可能有別家公司的人（協力廠商、客戶），他們該看得到
 // 本群的整理，但完全不該知道考勤系統存在——判定在 src/org/surfaces.ts。
-export default async function LiffHome() {
+export default async function LiffHome({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const uid = await liffUser();
   if (!uid) return <LiffInit liffId={liffId()} />;
   if (!dbConfigured()) return <main className="p-6 text-gray-500">系統尚未設定資料庫。</main>;
+
+  // 單群深連結（L1）：?g=<groupId> 且本人是成員 → 直接進該群（由群組頁記漏斗）；不是成員就忽略 g
+  const entry = parseLiffEntry(await searchParams);
+  if (entry.g && (await isGroupMember(entry.g, uid)))
+    redirect(`/g/${encodeURIComponent(entry.g)}${entry.src ? `?src=${entry.src}` : ''}`);
+  await logFunnel({ line_user_id: uid, step: 'liff_open', source: entry.src });
 
   const adminUnset = !process.env.ADMIN_LINE_USER_ID?.trim();
   const mine = await myGroups(uid); // 排除未認領與群記已離開的群（core/liff.ts）

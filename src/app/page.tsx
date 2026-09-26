@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { dbConfigured } from '@/db';
-import { liffId, liffUser } from '@/core/liff';
+import { isGroupMember, liffId, liffUser } from '@/core/liff';
+import { parseLiffEntry } from '@/core/funnel';
 import { surfaces } from '@/org/surfaces';
 import { BrandBar } from '@/app/ui/intro';
 import { LiffInit } from './g/liff-init';
@@ -16,12 +17,18 @@ export const dynamic = 'force-dynamic';
 //
 // 原本是系統「猜」：有員工身分就一律先進打卡。老闆同時是員工的話，每次點開都先跑到打卡頁，
 // 而頁首那排切換膠囊不顯眼，很多人不知道還有別的頁面（principles.md：別讓我想）。
-export default async function Root({ searchParams }: { searchParams: Promise<{ menu?: string }> }) {
+export default async function Root({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!dbConfigured()) redirect('/login');
 
   const uid = await liffUser();
+  const sp = await searchParams;
+  // LIFF endpoint 設在 / 時，觸點連結的 ?g=／?src=（或包在 liff.state 裡）會先到這裡；
+  // 下面的 redirect 會丟掉 query，所以單群深連結要先處理（L1）
+  const entry = parseLiffEntry(sp);
+  if (uid && entry.g && (await isGroupMember(entry.g, uid)))
+    redirect(`/g/${encodeURIComponent(entry.g)}${entry.src ? `?src=${entry.src}` : ''}`);
   const { list } = await surfaces();
-  const { menu } = await searchParams;
+  const menu = typeof sp.menu === 'string' ? sp.menu : undefined;
 
   if (list.length === 1 && !menu) redirect(list[0].href);
   if (list.length > 1) {

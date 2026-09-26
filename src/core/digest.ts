@@ -116,6 +116,6 @@ async function buildDigest(groupId: string, today: string, isAdmin: boolean): Pr
   if (!lines.length) return null; // 今天真的沒事，不打擾
 
   const name = g?.name ?? groupId;
-  const url = liffUrl();
+  const url = liffUrl({ g: groupId, src: 'digest' });
   return [`【${name}】今日摘要`, '', ...lines, ...(url ? ['', `詳細內容 👉 ${url}`] : [])].join('\n');
 }

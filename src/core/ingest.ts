@@ -68,15 +68,22 @@ export async function leaveStaleUnclaimed(days = 7): Promise<number> {
 // v2（2026-09-26，G7）：改三段、明寫「由認領的公司管理、可匯出」——措辭變了，consent_log 要分得出來
 const NOTICE_VERSION = 'v2';
 // LIFF 成員入口網址；未設定 LIFF_ID 時回 null，所有引用處自然省略該行
-export const liffUrl = (): string | null =>
-  process.env.LIFF_ID ? `https://liff.line.me/${process.env.LIFF_ID}` : null;
+// q：觸點來源（src）與單群深連結（g），給漏斗量測用（L1，src/core/funnel.ts）
+export const liffUrl = (q?: { g?: string; src?: string }): string | null => {
+  if (!process.env.LIFF_ID) return null;
+  const p = new URLSearchParams();
+  if (q?.g) p.set('g', q.g);
+  if (q?.src) p.set('src', q.src);
+  const qs = p.toString();
+  return `https://liff.line.me/${process.env.LIFF_ID}${qs ? `?${qs}` : ''}`;
+};
 
 // 進群告知的內建預設；各 org 可在 /settings 改寫（org_settings.join_notice_text）
 export const DEFAULT_NOTICE = `大家好，我是群記 🦉（群組工作助理）
-我會安靜記錄本群的訊息（文字、圖片、PDF），自動整理成行程、待辦和公告。平常不說話，要查資料就 @我（例如「上次報價多少」）。
+我會安靜記錄本群的文字、圖片、PDF，整理成行程、待辦和公告。平常不說話，要查資料就 @我（例如「上次報價多少」）。
 
 【誰看得到】
-本群的整理由認領這個群的公司管理，管理者可以查看與匯出；成員也能從下方連結查看。
+本群整理由認領此群的公司管理，管理者可以查看與匯出；成員也能從下方連結查看。
 
 【隱私】
 ・把我移出群組就停止記錄
@@ -88,7 +95,7 @@ export const DEFAULT_NOTICE = `大家好，我是群記 🦉（群組工作助�
 // 加好友的說明用「點頭像」而非搜尋 ID：在群組裡點 bot 頭像就有「加入好友」，不必知道帳號 ID。
 // G7：整段（含預設告知）控制在 400 字內，tests/core.test.ts 有守
 export const withLiffEntry = (text: string): string => {
-  const url = liffUrl();
+  const url = liffUrl({ src: 'notice' });
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '');
   const legal = base ? `\n\n服務條款 ${base}/terms ・ 隱私權政策 ${base}/privacy` : '';
   if (!url) return text + legal;
@@ -96,7 +103,7 @@ export const withLiffEntry = (text: string): string => {
 
 【看整理、訂閱提醒】
 👉 ${url}
-想每天收到提醒：先點我的頭像「加入好友」，再從上面連結打開提醒。只有你收得到，群裡不會出現任何訊息。${legal}`;
+想每天收到提醒：先點我的頭像「加入好友」，再從上面連結打開提醒。只有你收得到，群裡不會出現訊息。${legal}`;
 };
 
 // 低資訊過濾（規劃書第 1 節推論 3）：只留原始紀錄，不進解析與向量化
@@ -468,7 +475,7 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
         })
       : '請在 @我 之後接著輸入問題。';
     // 尾端附成員入口：問答是唯一天然到達全體成員的觸點，順手把兩個入口接起來
-    const url = liffUrl();
+    const url = liffUrl({ g: m.groupId, src: 'answer' });
     await connector.reply(m.replyToken, url ? `${a}\n\n📋 完整行程／待辦 👉 ${url}` : a);
   }
 

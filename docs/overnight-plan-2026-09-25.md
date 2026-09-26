@@ -84,7 +84,7 @@
 | 2 | P1 | ✅ | 1 | （本 commit） | 13:56 | 14:02 | manifest.webmanifest 未登入可取、合法 JSON；icon-192 由 mark-512 以 sips 縮出；themeColor 亮暗兩色 |
 | 3 | G7 | ✅ | 2 | （本 commit） | 14:03 | 14:12 | 告知改三段（做什麼／誰看得到含管理與匯出／隱私），完整輸出 392 字，有測試守 ≤400；NOTICE_VERSION 升 v2 |
 | 4 | A7 | ✅ | 2 | （本 commit） | 14:13 | 14:35 | 上手卡抽成 src/app/ui/onboarding-card.tsx；有沒有群改看 groups 表；新增「已收到 N 則」狀態；3 支 renderToStaticMarkup 測試；截圖略（main 已有群） |
-| 5 | L1 | LIFF 每次開啟落表＋source＋`?g=` 深連結 | A | 是 | 中 |
+| 5 | L1 | ✅ | 1 | （本 commit） | 14:36 | 14:58 | migration 021 funnel_events；/g 每次進入與群組頁帶 src 時記一筆；三觸點帶 src（回答與提醒另帶 g）；/ 與 /g 處理 ?g= 與 liff.state |
 | 6 | G8b | **只驗證並記錄**（不寫程式） | A | 否 | — |
 | 7 | X1 | 報帳 v1：私訊收據照 → 自動記一筆＋管理頁＋CSV | D | 是 | 中 |
 | 8 | X2 | 報帳 v2：Snaptab 其餘功能搬家（逐子項） | D | 是 | 中 |
@@ -348,8 +348,8 @@
 
 ## 5. 進度回寫區（agent 每個任務更新）
 
-**目前狀態**：執行中（任務 5 L1）
-**最後更新**：2026-09-26 14:35
+**目前狀態**：執行中（任務 6 G8b）
+**最後更新**：2026-09-26 14:58
 **起始 commit**：`de67eae`
 
 | 順序 | 代號 | 狀態 | 嘗試 | commit | 開始 | 結束 | 一句話結果 |
@@ -357,6 +357,9 @@
 | 1 | A9 | ⬜ | 0 | 13:44|開工|開工時工作樹乾淨、無未追蹤檔；退回時不需額外排除|git status --short 為空 |
 | 14:10|G7|NOTICE_VERSION 由 v1 升 v2|告知措辭改變，consent_log 需分得出成員看到的是哪一版 |
 | 14:30|A7|測 .tsx 元件用 tests/react-global.ts 把 React 放全域；react-dom/server 用 @ts-expect-error|jsx: preserve 下 tsx 走傳統 createElement；不加 @types/react-dom（R7） |
+| 14:50|L1|群組頁只在帶 src 時記漏斗；/g 清單頁每次都記；org_id 不另查（分析時 join groups）|群組頁切分頁是整頁重載，每次都記會灌水；少一次查詢 |
+| 14:52|L1|深連結處理 / 與 /g 兩個入口，且同時認 ?g= 與 liff.state 內的 g|已有 session 的人不跑 liff.init，query 會留在 liff.state |
+| 14:55|L1|進群告知只帶 ?src=notice 不帶 g，並再精簡告知 11 字維持 ≤400|帶 g 的深連結會讓告知超過 400 字；告知本來就在該群，成員點進去會看到群清單 |
 | | | | |
 | 2 | P1 | ⬜ | 0 | | | | |
 | 3 | G7 | ⬜ | 0 | | | | |
