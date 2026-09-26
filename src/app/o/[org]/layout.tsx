@@ -3,15 +3,16 @@ import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { dbConfigured } from '@/db';
 import { visibleModules } from '@/org/modules';
-import { orgBySlug } from '@/org/orgs';
 
 export const dynamic = 'force-dynamic';
 
-// 瀏覽器分頁標題帶公司名：頂欄右邊的公司名拿掉後，同時開兩家的分頁要靠這個分（審查 F41）
+// 瀏覽器分頁標題帶公司名：頂欄右邊的公司名拿掉後，同時開兩家的分頁要靠這個分（審查 F41）。
+// 一定要先過 visibleModules：metadata 在 notFound() 之前就解析，只查 orgBySlug 的話，
+// 非成員猜 slug 打 /o/<slug> 會看到 404、分頁標題卻寫著那家公司的名字——等於能枚舉租戶（T10 第 1 輪 critical）
 export async function generateMetadata({ params }: { params: Promise<{ org: string }> }): Promise<Metadata> {
   if (!dbConfigured()) return {};
-  const org = await orgBySlug((await params).org);
-  return org ? { title: { default: org.name, template: `%s · ${org.name}` } } : {};
+  const access = await visibleModules((await params).org);
+  return access ? { title: { default: access.org.name, template: `%s · ${access.org.name}` } } : {};
 }
 
 // org 層外殼：唯一的權限閘門。

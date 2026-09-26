@@ -191,3 +191,13 @@ test('成員頁（src/app/g）不出現後台入口、環境變數名或 LINE us
   }
   assert.deepEqual(bad, [], `成員頁不該出現這些：\n${bad.join('\n')}`);
 });
+
+// ── 分頁標題不得洩漏公司名（T10 第 1 輪 critical）──
+test('o/[org]/layout.tsx 的 generateMetadata 先過 visibleModules 才放公司名', () => {
+  const src = readFileSync(join(ROOT, 'src/app/o/[org]/layout.tsx'), 'utf8');
+  const i = src.indexOf('export async function generateMetadata');
+  assert.ok(i >= 0, '找不到 generateMetadata');
+  const body = src.slice(i, src.indexOf('\n}\n', i));
+  assert.match(body, /visibleModules\(/, 'generateMetadata 沒有先驗權限——非成員會從分頁標題看到公司名');
+  assert.doesNotMatch(body, /orgBySlug\(/, '不要直接用 orgBySlug 取名字');
+});
