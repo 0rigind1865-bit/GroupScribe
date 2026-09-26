@@ -353,7 +353,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 | T6 | 個人端 | P0 | ◐ | 09-27 夜 | 0 | （本 commit） | 164 pass；身分列接上 /a、/a/expense、/g；地球規則測試（AttendHeader）；素材 B 假非成員 /a 無管理字（只有「請向管理員索取加入碼」）、/go 亂打回落地頁、/o/main 404。**報帳 App 最小版五語系未做**，併入 D2 |
 | T7 | 首頁選單 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 167 pass（homeMode 3 個）；素材 A：/?menu=1 手機截圖照 IdHome（深色段頭、上次使用、無開關提示、地球） |
 | T8 | 清理 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 167 pass；grep SurfaceSwitcher／IdentityMenu 無結果；更多頁只留「看全部身分 →」（≥2 身分才顯示）；README 介面架構改寫 |
-| T9 | 視覺驗收 | P0 | ⬜ | | 0 | | |
+| T9 | 視覺驗收 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 見下方「T9 對照表」 |
 | C4 | 既有畫板修改 | P1 | ⬜ | | 0 | | |
 | D2 | 報帳改名＋專案 | P1 | ⬜ | | 0 | | |
 | D3 | 打卡主鈕 | P1 | ⬜ | | 0 | | |
@@ -368,6 +368,26 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 | T11 | 收尾 | P0 | ⬜ | | 0 | | |
 
 狀態：⬜ 未開始／⏳ 進行中／✅ 完成／◐ 部分完成／⏭ 跳過＋原因／❌ 失敗＋原因
+
+### T9 對照表
+
+| 頁面／角色 | 頂列（對 Id 畫板） | 內容（對原畫板） | 處置 |
+|---|---|---|---|
+| /o/main/attend 手機（平台擁有者＝多家） | OK：兩行按鈕「考勤／預設組織 ▾」、深色列（IdAdminMulti） | OK | — |
+| 抽屜（手機） | OK：分段＋平台段＋打勾＋關閉（IdDrawer）；遮罩底下是 summary（點了會關）、蓋住底部膠囊 | — | 真機點擊待驗 |
+| /o/demo 電腦 | OK：群記｜工具 · 公司 ▾｜五分頁｜群組膠囊（IdDesktopGs）；下拉照 IdDesktopMenu | OK | — |
+| /o/main/attend/report 1024 | OK 不溢出 | 膠囊寫「選擇員工…」但頁面是林杰 | D5 修 |
+| /platform 電腦暗色 | OK：綠底（F27） | 公司卡仍是按鈕列，IdPlatform 是工具列 | 記「發現但沒做」 |
+| /?menu=1 手機 | OK：照 IdHome | — | — |
+| /o/main/expense 手機 | OK | 「報帳」三重撞名 | D2 修 |
+| 快照 P1 vi | OK：無身分列、地球在姓名列（IdSingleRole） | — | — |
+| 快照 P3 vi | OK：「Chấm công ▾」＋地球 | — | — |
+| 快照 P4me | OK：開關＋琥珀點＋「打卡 ▾」＋地球（IdMePunch） | — | — |
+| 快照 P4gs 375 | 原本群組膠囊超出畫面 12px | — | **已修**：手機間距 12px／gap 8px，實測不溢出 |
+| 快照 P4gs 電腦 | OK（IdDesktopGs） | — | — |
+| 快照 P5 | OK：(c) 態「考勤／頂好餐飲」無 ▾（IdAdminAttendSingle；手機公司名在第二行） | — | — |
+| 快照 P6、P7 | OK | — | — |
+| 暗色 P4me／P4gs | OK：個人無色帶、管理綠色帶，分得出來 | — | — |
 
 ### 決策紀錄（自行判斷的事都記這裡）
 
@@ -388,6 +408,8 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 - F53 成員頁 `/g`、`/g/[groupId]` 五語系。
 - F37 延伸：加入時自動帶 LINE 顯示名稱。
 - 報帳 App 其餘文案五語系（F20 最小版以外）。
+- 平台頁公司卡改成 IdPlatform 的「工具列」樣式（目前是一排按鈕，功能相同）。
+- 開發伺服器重新編譯時分頁標題會短暫顯示 404（/login、/platform 實測 200），只在開發環境。
 - 工具選單列的待處理數字徽章。
 - 個人側多家公司的「切換公司」（F32 只做顯示）。
 

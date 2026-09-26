@@ -407,8 +407,9 @@ html {
 .id-bar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
+  gap: 8px;
+  /* 手機左右 12px：375 寬＋角色開關＋「群組助理」＋群組膠囊剛好放得下（T9 快照實測） */
+  padding: 10px 12px;
   min-height: 64px;
   box-sizing: border-box;
 }
@@ -467,7 +468,7 @@ html {
 .id-nav { display: none; }
 /* 空間不夠時的先後（手機 390 寬＋角色開關＋群組名膠囊會超出）：工具名永遠不縮——那是「我在哪個工具」
    唯一的答案；情境膠囊先縮成「全…▾」，群組名在頁標題旁本來就看得到（畫布 IdAdminGs） */
-.id-context { margin-left: auto; flex-shrink: 1; min-width: 56px; }
+.id-context { margin-left: auto; flex-shrink: 1; min-width: 48px; }
 .id-context .ctx-pill { max-width: min(100%, 128px); }
 .id-tool--title { flex-shrink: 0; }
 .id-right { margin-left: auto; flex-shrink: 0; }
