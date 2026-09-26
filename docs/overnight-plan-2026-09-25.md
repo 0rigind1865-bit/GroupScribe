@@ -423,7 +423,7 @@
 
 ### 一句話
 
-16 項全部處理完（14 項完成、G8b 驗證後不需改程式、X2 的 QR 掃描與舊資料搬移等你決定）；測試 112 項全綠、型別與建置都通過；**正式站與正式資料庫都沒動**。你要貼 6 段 SQL、加 1～2 個環境變數、部署一次、push 一次。
+16 項全部處理完（14 項完成、G8b 驗證後不需改程式、X2 的 QR 掃描與舊資料搬移等你決定）；測試 112 項全綠、型別與建置都通過；**正式站與正式資料庫都沒動**。你要貼 7 段 SQL（含之前漏貼的 020）、加 1～2 個環境變數、部署一次、push 一次。
 
 ### 你醒來要做的事（照順序，指令一字不差）
 
@@ -432,6 +432,7 @@
    git log de67eae..HEAD --oneline
    ```
 2. 到 Supabase SQL Editor **照這個順序**貼（每段可先包在 `begin;` … `rollback;` 試一次語法，沒錯再正式貼；本機沒有 psql，今晚沒實際跑過）：
+   0. `supabase/migrations/020_embeddings_group_idx.sql`（小；2026-09-26 唯讀查過正式庫：019 已貼、020 還沒貼）
    1. `supabase/migrations/021_funnel_events.sql`（小）
    2. `supabase/migrations/024_webhook_events.sql`（小、關鍵）
    3. `supabase/migrations/022_expenses.sql`（報帳；會幫 main 公司開報帳模組）
