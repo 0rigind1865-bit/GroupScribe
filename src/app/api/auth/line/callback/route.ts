@@ -45,17 +45,8 @@ export async function GET(req: NextRequest) {
 
   const db = getDb();
 
-  // 平台擁有者自動種子（冪等）：ADMIN_LINE_USER_ID 登入即成為預設 org 的 owner，
-  // 免去部署者手動跑 SQL 的一次性步驟
-  if (isAdminLineUser(user.userId)) {
-    const { data: main } = await db.from('orgs').select('id').eq('slug', 'main').maybeSingle();
-    if (main) {
-      await db.from('org_members').upsert(
-        { org_id: main.id, line_user_id: user.userId, role: 'owner', display_name: user.name ?? null },
-        { onConflict: 'org_id,line_user_id' },
-      );
-    }
-  }
+  // 原本這裡有「平台擁有者自動種子」（ADMIN_LINE_USER_ID 登入即成為 main 的 owner）——A6 拿掉了：
+  // 等於一把後門。要加 owner 用 scripts/seed-owner.ts。平台擁有者身分（isPlatformOwner）不受影響。
 
   // 落地頁：第一個所屬 org 的考勤管理；無任何 org 身分＝不是管理員
   const { data: memberships } = await db

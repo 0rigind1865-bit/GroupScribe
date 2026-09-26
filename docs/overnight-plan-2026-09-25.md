@@ -92,7 +92,7 @@
 | 10 | G4 | ✅ | 2 | （本 commit） | 18:41 | 19:20 | migration 024 webhook_events＋claim_webhook_events（skip locked、租約 10 分、最多 5 次）；存原始 event；表不存在走舊路徑；輪詢只在 production＋WEBHOOK_WORKER=1；dev 確認未啟動 |
 | 11 | G3 | ✅ | 1 | （本 commit） | 19:21 | 19:40 | migration 025：7 張內容表加 org_id、insert 觸發器帶入、groups 換公司時觸發器連動、backfill 可重跑；應用程式零改動 |
 | 12 | G5 | ✅ | 1 | （本 commit） | 19:46 | 20:00 | createLineConnector(creds)＋envCreds；line.ts 內 env 只剩 envCreds 一處；lineConnector 與 getConnector 呼叫點不變；驗簽測試 |
-| 13 | A6 | seed-owner 腳本；有條件移除 callback 自動種子 | B | 否 | 中 |
+| 13 | A6 | ✅ | 1 | （本 commit） | 20:01 | 20:12 | scripts/seed-owner.ts（未執行）；唯讀查詢 main 有 1 位 owner → 移除 callback 自動種子 |
 | 14 | A8 | suspended 狀態擋 AI＋橫幅 | C | 是 | 中 |
 | 15 | E1 | 抽取回歸集：fixture＋比對器（不跑） | C | 否 | 低 |
 | 16 | A10 | 設計夥伴一頁合約草稿 | C | 否 | 低 |
@@ -348,8 +348,8 @@
 
 ## 5. 進度回寫區（agent 每個任務更新）
 
-**目前狀態**：執行中（任務 13 A6）
-**最後更新**：2026-09-26 20:00
+**目前狀態**：執行中（任務 14 A8）
+**最後更新**：2026-09-26 20:12
 **起始 commit**：`de67eae`
 
 | 順序 | 代號 | 狀態 | 嘗試 | commit | 開始 | 結束 | 一句話結果 |
@@ -376,6 +376,7 @@
 | 19:15|G4|instrumentation 用 if (NEXT_RUNTIME === 'nodejs') 包住動態 import（提早 return 寫法會讓 build 失敗）|第一次 build 報 UnhandledSchemeError node:crypto；改寫後 edge-instrumentation.js 不含任何 node 模組 |
 | 19:35|G3|改用 groups 表觸發器連動 org_id，不寫 transfer_group() 也不改三個歸戶入口|觸發器涵蓋所有入口（認領、平台移轉、claimGroup、個人筆記歸戶、手動 SQL）；函式版只涵蓋改過的入口，且 claimGroup 的「不覆蓋」語意本來就不能換成 transfer。代價：無法用 node:test 驗證（純 SQL），今晚也沒 psql 可跑 |
 | 19:45|X1 修正|migration 022 開報帳模組改指定 slug 'main'，不用 default_org_id()|016 之後 default_org_id() 回傳 unclaimed；原寫法會把報帳開給「未認領」而不是 jielin 的公司。025 的 coalesce 刻意沿用 default_org_id()，與 groups_view 一致 |
+| 20:08|A6|唯讀 count：main 的 owner 數＝1（execute_sql 連線專案與 .env.local 的 SUPABASE_URL 相同）→ 移除自動種子|計劃條件 ≥1 即移除；請 jielin 早上確認那位 owner 是本人 |
 | | | | |
 | 2 | P1 | ⬜ | 0 | | | | |
 | 3 | G7 | ⬜ | 0 | | | | |
@@ -409,6 +410,7 @@
 
 ### 發現但沒做的事（R8：不順手做，記下來給 jielin）
 
+- scripts/new-org.ts 的模組參數只認 gs、attend，還不能建立開報帳（expense）的公司
 - G4 補處理舊事件時，進群告知／收據回覆的 replyToken 多半已過期（LINE 回覆失敗只記 log、不重試），這類回覆會沒送出；訊息本身與記帳不受影響
 - 未實測登入後的員工記帳畫面（需要真實 LINE 身分，今晚不偽造 session）；早上請用員工 LINE 打開「我的報帳」記一筆試試
 - 刪除有網頁上傳照片的報帳時，Storage 裡的照片檔不會一起刪（私訊的收據照隨 media_assets 管理）
