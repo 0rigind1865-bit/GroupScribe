@@ -83,7 +83,7 @@
 | 1 | A9 | ✅ | 1 | （本 commit） | 13:45 | 13:55 | health 端點未登入回 JSON {ok:true}；HEALTHCHECK 未實測（本機無 docker）；心跳警示門檻 24h→6h 改用 Banner |
 | 2 | P1 | ✅ | 1 | （本 commit） | 13:56 | 14:02 | manifest.webmanifest 未登入可取、合法 JSON；icon-192 由 mark-512 以 sips 縮出；themeColor 亮暗兩色 |
 | 3 | G7 | ✅ | 2 | （本 commit） | 14:03 | 14:12 | 告知改三段（做什麼／誰看得到含管理與匯出／隱私），完整輸出 392 字，有測試守 ≤400；NOTICE_VERSION 升 v2 |
-| 4 | A7 | 改寫既有上手卡：抽元件＋已認領未發言狀態 | A | 否 | 低 |
+| 4 | A7 | ✅ | 2 | （本 commit） | 14:13 | 14:35 | 上手卡抽成 src/app/ui/onboarding-card.tsx；有沒有群改看 groups 表；新增「已收到 N 則」狀態；3 支 renderToStaticMarkup 測試；截圖略（main 已有群） |
 | 5 | L1 | LIFF 每次開啟落表＋source＋`?g=` 深連結 | A | 是 | 中 |
 | 6 | G8b | **只驗證並記錄**（不寫程式） | A | 否 | — |
 | 7 | X1 | 報帳 v1：私訊收據照 → 自動記一筆＋管理頁＋CSV | D | 是 | 中 |
@@ -348,14 +348,15 @@
 
 ## 5. 進度回寫區（agent 每個任務更新）
 
-**目前狀態**：執行中（任務 4 A7）
-**最後更新**：2026-09-26 14:12
+**目前狀態**：執行中（任務 5 L1）
+**最後更新**：2026-09-26 14:35
 **起始 commit**：`de67eae`
 
 | 順序 | 代號 | 狀態 | 嘗試 | commit | 開始 | 結束 | 一句話結果 |
 |---|---|---|---|---|---|---|---|
 | 1 | A9 | ⬜ | 0 | 13:44|開工|開工時工作樹乾淨、無未追蹤檔；退回時不需額外排除|git status --short 為空 |
 | 14:10|G7|NOTICE_VERSION 由 v1 升 v2|告知措辭改變，consent_log 需分得出成員看到的是哪一版 |
+| 14:30|A7|測 .tsx 元件用 tests/react-global.ts 把 React 放全域；react-dom/server 用 @ts-expect-error|jsx: preserve 下 tsx 走傳統 createElement；不加 @types/react-dom（R7） |
 | | | | |
 | 2 | P1 | ⬜ | 0 | | | | |
 | 3 | G7 | ⬜ | 0 | | | | |

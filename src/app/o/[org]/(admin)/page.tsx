@@ -8,6 +8,7 @@ import { addDays } from '@/core/grid';
 import { isOverdue, todayISO } from '@/core/date';
 import { orgAiBudget } from '@/core/quota';
 import { Banner } from '@/app/ui/banner';
+import { OnboardingCard } from '@/app/ui/onboarding-card';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,7 +54,16 @@ export default async function Today({
   const in7 = addDays(today, 7);
   // 群組清單先撈：?group= 不在本 org 就當沒帶（別家的 group id 貼進網址也查不到），
   // 沒帶則跨群聚合綁本 org 全部群（商業計劃 2.1 節 A3）
-  const { data: groups } = await db.from('groups_view').select('group_id, name').eq('org_id', org.id).order('last_at', { ascending: false });
+  const { data: groups } = await db.from('groups_view').select('group_id, name, message_count').eq('org_id', org.id).order('last_at', { ascending: false });
+  // 上手卡（A7）要看「認領了幾個群」，groups_view 看不到剛認領、還沒訊息的群
+  const { count: claimedCount } = await db
+    .from('groups')
+    .select('group_id', { count: 'exact', head: true })
+    .eq('org_id', org.id)
+    .is('left_at', null)
+    .not('group_id', 'like', 'dm:%');
+  const hasGroups = (claimedCount ?? 0) > 0 || !!groups?.length;
+  const messageCount = (groups ?? []).reduce((n: number, g: any) => n + (g.message_count ?? 0), 0);
   const ids = (groups ?? []).map((g: any) => g.group_id as string);
   const group = groupParam && ids.includes(groupParam) ? groupParam : undefined;
   const only = (qb: any) => (group ? qb.eq('group_id', group) : qb.in('group_id', ids));
@@ -154,33 +164,11 @@ export default async function Today({
         </Banner>
       )}
 
-      {!groups?.length ? (
-        // 上手卡（U1）：第一次進來的人需要的是「接下來做什麼」，不是一句「還沒有資料」。
-        // 三步都是他自己能做的事；第三步回到這一頁，資料一進來這張卡就自動讓位。
-        <div className="card">
-          <p className="mb-3 font-semibold">三步開始</p>
-          <ol className="space-y-3 text-sm">
-            <li className="flex gap-3">
-              <span className="grid h-6 w-6 flex-none place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white">1</span>
-              <span>把 <strong>GroupScribe</strong> 官方帳號加進你的 LINE 工作群（跟加朋友一樣，從群組「邀請」）。它會發一次告知，之後就安靜記錄。</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="grid h-6 w-6 flex-none place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white">2</span>
-              <span>照常在群裡講話。有日期、有人名、有交辦的句子（例如「小林週三前把報價單給我」）會被整理成待辦與行程。</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="grid h-6 w-6 flex-none place-items-center rounded-full bg-emerald-600 text-xs font-semibold text-white">3</span>
-              <span>回到這裡，到「收件匣」把關 AI 整理的結果。確認過的才算數。</span>
-            </li>
-          </ol>
-          <p className="mt-4 text-xs text-gray-500">
-            已經有一段時間的聊天記錄？先{' '}
-            <a className="text-emerald-700 underline" href={`/o/${slug}/import`}>匯入 LINE 匯出的 txt</a>，
-            近 30 天的內容會直接整理出來。
-          </p>
-        </div>
+      {!hasGroups ? (
+        <OnboardingCard slug={slug} botBasicId={process.env.LINE_BOT_BASIC_ID} hasGroups={false} messageCount={0} />
       ) : (
         <>
+          <OnboardingCard slug={slug} botBasicId={process.env.LINE_BOT_BASIC_ID} hasGroups messageCount={messageCount} />
           {/* 「需要你處理」：管理者的主畫面該回答「有什麼要我介入」，而不是再列一次清單。
               四項全部是例外——正常運作時都是 0，整區消失，版面讓給日期軌。 */}
           {attention.length > 0 && (
