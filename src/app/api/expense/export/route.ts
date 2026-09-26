@@ -25,10 +25,12 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: '報帳資料表還沒建立（migration 022）' }, { status: 500 });
   const rows = (data ?? []) as unknown as ExpenseRow[];
 
-  const lines = [row('日期', '分類', '店家', '用途', '金額', '發票號碼', '專案', '報帳狀態', '人')];
+  const lines = [row('日期', '分類', '店家', '用途', '金額', '付款方式', '發票號碼', '專案', '地點', '報帳狀態', '人')];
   for (const r of [...rows].reverse())
-    lines.push(row(r.spent_on, r.category, r.vendor, r.note, r.amount, r.invoice_no, r.project, r.reimbursed_at ? '已報帳' : '未報帳', r.person_name ?? ''));
-  lines.push('', row('合計', '', '', '', rows.reduce((n, r) => n + r.amount, 0)));
+    lines.push(row(r.spent_on, r.category, r.vendor, r.note, r.amount, r.pay_method ?? '代墊', r.invoice_no, r.project, r.place_name ?? '', r.reimbursed_at ? '已報帳' : '未報帳', r.person_name ?? ''));
+  // 代墊（請款）與公司卡（核銷）分開小計，會計流程不同（照 Snaptab）
+  const sum = (p?: string) => rows.filter((r) => !p || (r.pay_method ?? '代墊') === p).reduce((n, r) => n + r.amount, 0);
+  lines.push('', row('合計', '', '', '', sum()), row('代墊請款', '', '', '', sum('代墊')), row('公司卡核銷', '', '', '', sum('公司卡')), row('現金', '', '', '', sum('現金')));
 
   const name = `報帳${f.project ? `-${f.project}` : ''}${f.month ? `-${f.month}` : ''}.csv`;
   return new NextResponse('﻿' + lines.join('\r\n'), {

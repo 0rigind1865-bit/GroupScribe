@@ -109,6 +109,8 @@ export default async function ExpenseReport({
               { n: rows.length, label: '筆數' },
             ]}
           />
+          {/* 代墊要請款、公司卡要核銷，流程不同所以分開看（Snaptab） */}
+          <SumTable title="依付款方式" rows={sumBy(rows, (r) => r.pay_method ?? '代墊')} />
           <SumTable title="依分類" rows={sumBy(rows, (r) => r.category)} />
           <SumTable title="依人" rows={sumBy(rows, (r) => r.person_name ?? '')} />
           {!f.project && <SumTable title="依專案" rows={sumBy(rows, (r) => r.project)} />}

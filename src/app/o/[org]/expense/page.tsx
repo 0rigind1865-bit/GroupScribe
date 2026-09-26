@@ -6,7 +6,7 @@ import { Banner, Flash } from '@/app/ui/banner';
 import { Badge } from '@/app/ui/badge';
 import { Empty } from '@/app/ui/empty';
 import { StatGrid } from '@/app/ui/stat';
-import { EXPENSE_CATEGORIES } from '@/expense/receipt';
+import { EXPENSE_CATEGORIES, PAY_METHODS } from '@/expense/receipt';
 import { expenseQuery, type ExpenseFilter, type ExpenseRow } from '@/expense/query';
 import { SetupNotice } from '../(admin)/setup-notice';
 
@@ -150,6 +150,7 @@ export default async function ExpenseList({
                     <div className="flex flex-wrap items-baseline gap-x-2">
                       <span className="text-lg font-semibold tabular-nums">{money(r.amount)}</span>
                       <span className="text-sm text-gray-600">{r.category}</span>
+                      {r.pay_method && r.pay_method !== '代墊' && <span className="text-xs text-gray-500">{r.pay_method}</span>}
                       {r.reimbursed_at ? <Badge tone="ok">已報帳</Badge> : <Badge tone="warn">還沒報</Badge>}
                     </div>
                     <p className="truncate text-sm text-gray-600">
@@ -186,6 +187,14 @@ export default async function ExpenseList({
                       <select className="input" name="category" defaultValue={r.category}>
                         {EXPENSE_CATEGORIES.map((c) => (
                           <option key={c}>{c}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-gray-500">付款方式</span>
+                      <select className="input" name="pay_method" defaultValue={r.pay_method ?? '代墊'}>
+                        {PAY_METHODS.map((p) => (
+                          <option key={p}>{p}</option>
                         ))}
                       </select>
                     </label>

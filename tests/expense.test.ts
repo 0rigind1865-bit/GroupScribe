@@ -66,3 +66,27 @@ test('receiptReply：日期、分類、金額千分位、店家', () => {
   assert.match(t, /^🧾 記好了：9\/5 餐飲 \$1,280（全家）/);
   assert.doesNotMatch(receiptReply({ amount: 5, spent_on: '2026-09-05', vendor: '', category: '雜支', invoice_no: '' }), /（/);
 });
+
+// ── v2 欄位（migration 023）的向後相容寫入 ──
+import { isMissingColumn, stripV2, withV2Fallback } from '../src/expense/store';
+
+test('isMissingColumn：Postgres 42703、PostgREST PGRST204、訊息比對；其他錯誤不算', () => {
+  assert.ok(isMissingColumn({ code: '42703', message: 'column "pay_method" does not exist' }));
+  assert.ok(isMissingColumn({ code: 'PGRST204', message: "Could not find the 'pay_method' column of 'expenses'" }));
+  assert.ok(!isMissingColumn({ code: '23505', message: 'duplicate key' }));
+  assert.ok(!isMissingColumn(null));
+});
+
+test('withV2Fallback：欄位不存在時拿掉 v2 欄位重寫一次；其他錯誤不重試', async () => {
+  const seen: object[] = [];
+  const r = await withV2Fallback({ amount: 1, pay_method: '現金', lat: 1 }, async (row) => {
+    seen.push(row);
+    return { error: 'pay_method' in row ? { code: 'PGRST204', message: 'x' } : null };
+  });
+  assert.equal(r.error, null);
+  assert.deepEqual(seen, [{ amount: 1, pay_method: '現金', lat: 1 }, { amount: 1 }]);
+  let n = 0;
+  await withV2Fallback({ amount: 1 }, async () => (n++, { error: { code: '23505' } }));
+  assert.equal(n, 1);
+  assert.deepEqual(stripV2({ a: 1, source: 'web', photo_path: 'p' }), { a: 1 });
+});

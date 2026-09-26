@@ -4,6 +4,10 @@
 export const EXPENSE_CATEGORIES = ['交通', '餐飲', '住宿', '停車過路', '材料耗材', '雜支'] as const;
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
+// 付款方式（Snaptab）：代墊要請款、公司卡要核銷，流程不同，加總時分開
+export const PAY_METHODS = ['代墊', '公司卡', '現金'] as const;
+export type PayMethod = (typeof PAY_METHODS)[number];
+
 export type Receipt = {
   amount: number;
   spent_on: string; // YYYY-MM-DD

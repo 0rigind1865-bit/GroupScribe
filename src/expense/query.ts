@@ -17,6 +17,13 @@ export type ExpenseRow = {
   invoice_no: string;
   reimbursed_at: string | null;
   media_assets: { storage_path: string } | null;
+  // v2（migration 023）；還沒跑時不存在
+  pay_method?: string;
+  source?: string;
+  photo_path?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  place_name?: string;
 };
 
 export const isMonth = (m?: string): m is string => !!m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
@@ -30,7 +37,8 @@ export function nextMonth(m: string): string {
 export function expenseQuery(db: SupabaseClient, orgId: string, f: ExpenseFilter) {
   let q = db
     .from('expenses')
-    .select('id, line_user_id, person_name, media_asset_id, spent_on, amount, category, vendor, note, project, invoice_no, reimbursed_at, media_assets(storage_path)')
+    // * 而非列欄位名：v2 欄位（migration 023）還沒建時查詢也不會失敗
+    .select('*, media_assets(storage_path)')
     .eq('org_id', orgId);
   if (f.status === 'done') q = q.not('reimbursed_at', 'is', null);
   else if (f.status !== 'all') q = q.is('reimbursed_at', null); // 預設：還沒報的

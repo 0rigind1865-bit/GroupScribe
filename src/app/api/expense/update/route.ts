@@ -3,7 +3,8 @@ import { getDb } from '@/db';
 import { redirectTo } from '@/http';
 import { orgAdminAccess } from '@/org/orgs';
 import { oh } from '@/org/href';
-import { EXPENSE_CATEGORIES, parseAmount, parseDate } from '@/expense/receipt';
+import { EXPENSE_CATEGORIES, PAY_METHODS, parseAmount, parseDate } from '@/expense/receipt';
+import { withV2Fallback } from '@/expense/store';
 
 // 報帳寫入（X1）：改欄位、標已報帳／改回、刪除。
 // 把關：orgAdminAccess(表單 org) → 每個查詢都 .eq('org_id')，拿到別家的 id 也改不到。
@@ -37,17 +38,18 @@ export async function POST(req: NextRequest) {
     const category = String(form.get('category') ?? '');
     if (amount === null || !spent_on || !(EXPENSE_CATEGORIES as readonly string[]).includes(category)) return go('err=bad');
     const text = (k: string, max: number) => String(form.get(k) ?? '').trim().slice(0, max);
-    await scoped(
-      db.from('expenses').update({
-        amount,
-        spent_on,
-        category,
-        vendor: text('vendor', 80),
-        project: text('project', 60),
-        note: text('note', 200),
-        updated_at: now,
-      }),
-    );
+    const pay = String(form.get('pay_method') ?? '代墊');
+    const patch = {
+      amount,
+      spent_on,
+      category,
+      vendor: text('vendor', 80),
+      project: text('project', 60),
+      note: text('note', 200),
+      updated_at: now,
+      pay_method: (PAY_METHODS as readonly string[]).includes(pay) ? pay : '代墊',
+    };
+    await withV2Fallback(patch, (p) => scoped(db.from('expenses').update(p)));
     return go('ok=saved');
   }
   return go('err=bad');
