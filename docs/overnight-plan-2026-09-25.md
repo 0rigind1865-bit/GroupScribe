@@ -80,22 +80,22 @@
 
 | 順序 | 代號 | 名稱 | 層 | 需 migration | 風險 |
 |---|---|---|---|---|---|
-| 1 | A9 | ✅ | 1 | （本 commit） | 13:45 | 13:55 | health 端點未登入回 JSON {ok:true}；HEALTHCHECK 未實測（本機無 docker）；心跳警示門檻 24h→6h 改用 Banner |
-| 2 | P1 | ✅ | 1 | （本 commit） | 13:56 | 14:02 | manifest.webmanifest 未登入可取、合法 JSON；icon-192 由 mark-512 以 sips 縮出；themeColor 亮暗兩色 |
-| 3 | G7 | ✅ | 2 | （本 commit） | 14:03 | 14:12 | 告知改三段（做什麼／誰看得到含管理與匯出／隱私），完整輸出 392 字，有測試守 ≤400；NOTICE_VERSION 升 v2 |
-| 4 | A7 | ✅ | 2 | （本 commit） | 14:13 | 14:35 | 上手卡抽成 src/app/ui/onboarding-card.tsx；有沒有群改看 groups 表；新增「已收到 N 則」狀態；3 支 renderToStaticMarkup 測試；截圖略（main 已有群） |
-| 5 | L1 | ✅ | 1 | （本 commit） | 14:36 | 14:58 | migration 021 funnel_events；/g 每次進入與群組頁帶 src 時記一筆；三觸點帶 src（回答與提醒另帶 g）；/ 與 /g 處理 ?g= 與 liff.state |
-| 6 | G8b | ✅ | 1 | （本 commit） | 14:59 | 15:02 | 已驗證：AI 抽出的項目一律需確認，無需寫程式 |
-| 7 | X1 | ✅ | 1 | （本 commit） | 15:03 | 16:05 | migration 022；AI 同次讀收據欄位；1:1 收據自動記一筆並回覆；員工退路限開報帳的公司；清單／加總頁＋CSV；未建表時頁面顯示提示非 500。375px 畫面未實測（瀏覽器面板未顯示） |
+| 1 | A9 | ✅ | 1 | 4587787 | 13:45 | 13:55 | health 端點未登入回 JSON {ok:true}；HEALTHCHECK 未實測（本機無 docker）；心跳警示門檻 24h→6h 改用 Banner |
+| 2 | P1 | ✅ | 1 | 5af636b | 13:56 | 14:02 | manifest.webmanifest 未登入可取、合法 JSON；icon-192 由 mark-512 以 sips 縮出；themeColor 亮暗兩色 |
+| 3 | G7 | ✅ | 2 | 06be265 | 14:03 | 14:12 | 告知改三段（做什麼／誰看得到含管理與匯出／隱私），完整輸出 392 字，有測試守 ≤400；NOTICE_VERSION 升 v2 |
+| 4 | A7 | ✅ | 2 | a0371d3 | 14:13 | 14:35 | 上手卡抽成 src/app/ui/onboarding-card.tsx；有沒有群改看 groups 表；新增「已收到 N 則」狀態；3 支 renderToStaticMarkup 測試；截圖略（main 已有群） |
+| 5 | L1 | ✅ | 1 | 05e351f | 14:36 | 14:58 | migration 021 funnel_events；/g 每次進入與群組頁帶 src 時記一筆；三觸點帶 src（回答與提醒另帶 g）；/ 與 /g 處理 ?g= 與 liff.state |
+| 6 | G8b | ✅ | 1 | 7ba524e | 14:59 | 15:02 | 已驗證：AI 抽出的項目一律需確認，無需寫程式 |
+| 7 | X1 | ✅ | 1 | bf25704、4e41171 | 15:03 | 16:05 | migration 022；AI 同次讀收據欄位；1:1 收據自動記一筆並回覆；員工退路限開報帳的公司；清單／加總頁＋CSV；未建表時頁面顯示提示非 500。375px 畫面未實測（瀏覽器面板未顯示） |
 | 8 | X2 | 報帳 v2：Snaptab 其餘功能搬家（逐子項） | D | 是 | 中 |
-| 9 | B7 | ✅ | 1 | （本 commit） | 18:26 | 18:40 | createDebouncer（可注入時鐘）＋scheduleExtract：安靜 45 秒、最多 3 分鐘；webhook 改排進合批；3 支假時鐘測試 |
-| 10 | G4 | ✅ | 2 | （本 commit） | 18:41 | 19:20 | migration 024 webhook_events＋claim_webhook_events（skip locked、租約 10 分、最多 5 次）；存原始 event；表不存在走舊路徑；輪詢只在 production＋WEBHOOK_WORKER=1；dev 確認未啟動 |
-| 11 | G3 | ✅ | 1 | （本 commit） | 19:21 | 19:40 | migration 025：7 張內容表加 org_id、insert 觸發器帶入、groups 換公司時觸發器連動、backfill 可重跑；應用程式零改動 |
-| 12 | G5 | ✅ | 1 | （本 commit） | 19:46 | 20:00 | createLineConnector(creds)＋envCreds；line.ts 內 env 只剩 envCreds 一處；lineConnector 與 getConnector 呼叫點不變；驗簽測試 |
-| 13 | A6 | ✅ | 1 | （本 commit） | 20:01 | 20:12 | scripts/seed-owner.ts（未執行）；唯讀查詢 main 有 1 位 owner → 移除 callback 自動種子 |
-| 14 | A8 | ✅ | 1 | （本 commit） | 20:13 | 20:30 | migration 026 org_settings.status；suspended 時 aiScope 丟 QuotaError（整理、讀圖、問答、記帳解析都停，訊息照存）；後台每頁橫幅；欄位未建視為 active |
-| 15 | E1 | ✅ | 1 | （本 commit） | 20:31 | 20:45 | 餐飲門市／室內裝修／補習班各 30 則＋期望項目；compare() 比對器有測試；腳本缺測試專案 env 即退出，抽取入口留 TODO |
-| 16 | A10 | ✅ | 1 | （本 commit） | 20:46 | 20:55 | docs/legal/design-partner-agreement.md：半價 6 個月、無 SLA、資料歸屬與匯出、LINE 規範變動免費遷移、30 天刪除、72 小時通報；無「符合 LINE」字樣 |
+| 9 | B7 | ✅ | 1 | f8b885c | 18:26 | 18:40 | createDebouncer（可注入時鐘）＋scheduleExtract：安靜 45 秒、最多 3 分鐘；webhook 改排進合批；3 支假時鐘測試 |
+| 10 | G4 | ✅ | 2 | f502ed7 | 18:41 | 19:20 | migration 024 webhook_events＋claim_webhook_events（skip locked、租約 10 分、最多 5 次）；存原始 event；表不存在走舊路徑；輪詢只在 production＋WEBHOOK_WORKER=1；dev 確認未啟動 |
+| 11 | G3 | ✅ | 1 | d425fb5 | 19:21 | 19:40 | migration 025：7 張內容表加 org_id、insert 觸發器帶入、groups 換公司時觸發器連動、backfill 可重跑；應用程式零改動 |
+| 12 | G5 | ✅ | 1 | b65c5c5 | 19:46 | 20:00 | createLineConnector(creds)＋envCreds；line.ts 內 env 只剩 envCreds 一處；lineConnector 與 getConnector 呼叫點不變；驗簽測試 |
+| 13 | A6 | ✅ | 1 | 51d36e0 | 20:01 | 20:12 | scripts/seed-owner.ts（未執行）；唯讀查詢 main 有 1 位 owner → 移除 callback 自動種子 |
+| 14 | A8 | ✅ | 1 | c47cfd4 | 20:13 | 20:30 | migration 026 org_settings.status；suspended 時 aiScope 丟 QuotaError（整理、讀圖、問答、記帳解析都停，訊息照存）；後台每頁橫幅；欄位未建視為 active |
+| 15 | E1 | ✅ | 1 | ded629d | 20:31 | 20:45 | 餐飲門市／室內裝修／補習班各 30 則＋期望項目；compare() 比對器有測試；腳本缺測試專案 env 即退出，抽取入口留 TODO |
+| 16 | A10 | ✅ | 1 | 92191f9 | 20:46 | 20:55 | docs/legal/design-partner-agreement.md：半價 6 個月、無 SLA、資料歸屬與匯出、LINE 規範變動免費遷移、30 天刪除、72 小時通報；無「符合 LINE」字樣 |
 
 **migration 編號規則**：每次新增前 `ls supabase/migrations`，取「已存在的最大編號 +1」（目前最大是 `020`，所以第一支是 `021`）。檔名 `0NN_<英文短名>.sql`。SQL 一律可重跑（`if not exists`、`create or replace`、`drop trigger if exists`、backfill 加 `where ... is null`）。本機沒有 psql，SQL 今晚無法執行驗證——這點要寫進報告。
 
@@ -348,13 +348,42 @@
 
 ## 5. 進度回寫區（agent 每個任務更新）
 
-**目前狀態**：收尾中
-**最後更新**：2026-09-26 20:55
+**目前狀態**：✅ 全部處理完（2026-09-26 21:05）
+**最後更新**：2026-09-26 21:05
 **起始 commit**：`de67eae`
 
 | 順序 | 代號 | 狀態 | 嘗試 | commit | 開始 | 結束 | 一句話結果 |
 |---|---|---|---|---|---|---|---|
-| 1 | A9 | ⬜ | 0 | 13:44|開工|開工時工作樹乾淨、無未追蹤檔；退回時不需額外排除|git status --short 為空 |
+| 1 | A9 | ✅ | 1 | 4587787 | 13:45 | 13:55 | health 端點未登入回 JSON {ok:true}；HEALTHCHECK 未實測（本機無 docker）；心跳警示門檻 24h→6h 改用 Banner |
+| 2 | P1 | ✅ | 1 | 5af636b | 13:56 | 14:02 | manifest.webmanifest 未登入可取、合法 JSON；icon-192 由 mark-512 以 sips 縮出；themeColor 亮暗兩色 |
+| 3 | G7 | ✅ | 2 | 06be265 | 14:03 | 14:12 | 告知改三段，完整輸出 ≤400 字有測試守；NOTICE_VERSION 升 v2（第一次 419 字超標，精簡後通過） |
+| 4 | A7 | ✅ | 2 | a0371d3 | 14:13 | 14:35 | 上手卡抽成元件；有沒有群改看 groups 表；「已收到 N 則」；3 支 renderToStaticMarkup 測試（第一次測試環境缺 React 全域） |
+| 5 | L1 | ✅ | 1 | 05e351f | 14:36 | 14:58 | migration 021；/g 進入與群組頁帶 src 時落表；三觸點帶 src；/ 與 /g 處理 ?g= 與 liff.state |
+| 6 | G8b | ✅ | 1 | 7ba524e | 14:59 | 15:02 | 已驗證：AI 抽出的項目一律需確認，不需寫程式 |
+| 7 | X1 | ✅ | 1 | bf25704、4e41171 | 15:03 | 16:05 | migration 022；1:1 收據自動記一筆並回覆；員工退路限開報帳公司；清單／加總／CSV；未建表顯示提示非 500 |
+| 8 | X2-1 網頁記一筆 | ✅ | 1 | ec01894 | 16:56 | 17:40 | /a/expense 大字金額、分類一點選、專案記住上次、付款方式、收據照上傳；身分由 session 反查；身分選單加「我的報帳」 |
+| 8 | X2-2 我的清單 | ✅ | 1 | ec01894 | 16:56 | 17:40 | 同頁依專案分組＋小計；已報帳鎖定；可改可刪（只限自己、同公司、未報帳）；照片點開看原圖 |
+| 8 | X2-3 付款方式 | ✅ | 1 | f1b4571 | 16:06 | 16:25 | migration 023 一次加齊 X2 欄位；付款方式進編輯、清單、加總、CSV（代墊／公司卡／現金小計）；v2 欄位不存在時寫入自動退回 |
+| 8 | X2-4 自訂分類 | ✅ | 1 | 713d63a | 16:26 | 16:55 | 分類存 org_settings.expense_categories；管理頁一行一個；AI 讀 1:1 收據時用該公司分類；編輯下拉保留舊分類值 |
+| 8 | X2-5 統計 | ✅ | 1 | d309bef | 17:41 | 17:55 | /expense/stats：近 12 月每月合計 CSS 長條、月份×分類與專案×人交叉表；pivot 有測試 |
+| 8 | X2-6 文字語音記帳 | ✅ | 2 | a09f89f | 17:56 | 18:15 | 1:1 傳「午餐 120」或語音→記一筆並回覆；12 句不該中的測試全擋下；公司自訂分類時品項等於分類名直接用 |
+| 8 | X2-7 地點 | ✅ | 1 | ec01894 | 16:56 | 17:40 | 「附上目前位置」按鈕存座標（成對且範圍內才存），地名手填；不串 Google 反查 |
+| 9 | B7 | ✅ | 1 | f8b885c | 18:26 | 18:40 | 安靜 45 秒、最多 3 分鐘；3 支假時鐘測試 |
+| 10 | G4 | ✅ | 2 | f502ed7 | 18:41 | 19:20 | migration 024＋認領函式；表不存在走舊路徑；輪詢只在 production＋WEBHOOK_WORKER=1（第一次 build 因 edge 打包 node:crypto 失敗，改寫後通過） |
+| 11 | G3 | ✅ | 1 | d425fb5 | 19:21 | 19:40 | migration 025：觸發器連動 org_id、backfill 可重跑；應用程式零改動 |
+| 12 | G5 | ✅ | 1 | b65c5c5 | 19:46 | 20:00 | createLineConnector(creds)＋envCreds；驗簽測試 |
+| 13 | A6 | ✅ | 1 | 51d36e0 | 20:01 | 20:12 | seed-owner 腳本（未執行）；main 有 1 位 owner → 移除自動種子 |
+| 14 | A8 | ✅ | 1 | c47cfd4 | 20:13 | 20:30 | migration 026；suspended 停所有 AI、後台橫幅；欄位未建視為 active |
+| 15 | E1 | ✅ | 1 | ded629d | 20:31 | 20:45 | 三行業各 30 則＋比對器；腳本缺測試專案 env 即退出 |
+| 16 | A10 | ✅ | 1 | 92191f9 | 20:46 | 20:55 | 合約草稿；無「符合 LINE」字樣 |
+
+狀態圖例：⬜ 未開始／⏳ 進行中／✅ 完成／◐ 部分完成／⏭ 跳過（寫原因）／❌ 失敗（寫原因）
+
+### 決策紀錄（自行判斷的事都記這裡）
+
+| 時間 | 任務 | 決定 | 理由／證據 |
+|---|---|---|---|
+| 13:44|開工|開工時工作樹乾淨、無未追蹤檔；退回時不需額外排除|git status --short 為空 |
 | 14:10|G7|NOTICE_VERSION 由 v1 升 v2|告知措辭改變，consent_log 需分得出成員看到的是哪一版 |
 | 14:30|A7|測 .tsx 元件用 tests/react-global.ts 把 React 放全域；react-dom/server 用 @ts-expect-error|jsx: preserve 下 tsx 走傳統 createElement；不加 @types/react-dom（R7） |
 | 14:50|L1|群組頁只在帶 src 時記漏斗；/g 清單頁每次都記；org_id 不另查（分析時 join groups）|群組頁切分頁是整頁重載，每次都記會灌水；少一次查詢 |
@@ -377,36 +406,6 @@
 | 19:35|G3|改用 groups 表觸發器連動 org_id，不寫 transfer_group() 也不改三個歸戶入口|觸發器涵蓋所有入口（認領、平台移轉、claimGroup、個人筆記歸戶、手動 SQL）；函式版只涵蓋改過的入口，且 claimGroup 的「不覆蓋」語意本來就不能換成 transfer。代價：無法用 node:test 驗證（純 SQL），今晚也沒 psql 可跑 |
 | 19:45|X1 修正|migration 022 開報帳模組改指定 slug 'main'，不用 default_org_id()|016 之後 default_org_id() 回傳 unclaimed；原寫法會把報帳開給「未認領」而不是 jielin 的公司。025 的 coalesce 刻意沿用 default_org_id()，與 groups_view 一致 |
 | 20:08|A6|唯讀 count：main 的 owner 數＝1（execute_sql 連線專案與 .env.local 的 SUPABASE_URL 相同）→ 移除自動種子|計劃條件 ≥1 即移除；請 jielin 早上確認那位 owner 是本人 |
-| | | | |
-| 2 | P1 | ⬜ | 0 | | | | |
-| 3 | G7 | ⬜ | 0 | | | | |
-| 4 | A7 | ⬜ | 0 | | | | |
-| 5 | L1 | ⬜ | 0 | | | | |
-| 6 | G8b | ⬜ | 0 | | | | |
-| 7 | X1 | ⬜ | 0 | | | | |
-| 8 | X2-1 網頁記一筆 | ✅ | 1 | （本 commit） | 16:56 | 17:40 | /a/expense 大字金額、分類一點選、專案記住上次、付款方式、收據照上傳；身分由 session 反查；身分選單加「我的報帳」 |
-| 8 | X2-2 我的清單 | ✅ | 1 | （本 commit） | 16:56 | 17:40 | 同頁依專案分組＋小計；已報帳鎖定；可改可刪（只限自己、同公司、未報帳）；照片點開看原圖 |
-| 8 | X2-3 付款方式 | ✅ | 1 | （本 commit） | 16:06 | 16:25 | migration 023 一次加齊 X2 欄位；付款方式進編輯、清單、加總、CSV（代墊／公司卡／現金小計）；v2 欄位不存在時寫入自動退回 |
-| 8 | X2-4 自訂分類 | ✅ | 1 | （本 commit） | 16:26 | 16:55 | 分類存 org_settings.expense_categories；管理頁一行一個；AI 讀 1:1 收據時用該公司分類；編輯下拉保留舊分類值 |
-| 8 | X2-5 統計 | ✅ | 1 | （本 commit） | 17:41 | 17:55 | /expense/stats：近 12 月每月合計 CSS 長條、月份×分類與專案×人交叉表；pivot 有測試 |
-| 8 | X2-6 文字語音記帳 | ✅ | 2 | （本 commit） | 17:56 | 18:15 | 1:1 傳「午餐 120」或語音→記一筆並回覆；12 句不該中的測試全擋下；公司自訂分類時品項等於分類名直接用 |
-| 8 | X2-7 地點 | ✅ | 1 | （本 commit） | 16:56 | 17:40 | 「附上目前位置」按鈕存座標（成對且範圍內才存），地名手填；不串 Google 反查 |
-| 9 | B7 | ⬜ | 0 | | | | |
-| 10 | G4 | ⬜ | 0 | | | | |
-| 11 | G3 | ⬜ | 0 | | | | |
-| 12 | G5 | ⬜ | 0 | | | | |
-| 13 | A6 | ⬜ | 0 | | | | |
-| 14 | A8 | ⬜ | 0 | | | | |
-| 15 | E1 | ⬜ | 0 | | | | |
-| 16 | A10 | ⬜ | 0 | | | | |
-
-狀態圖例：⬜ 未開始／⏳ 進行中／✅ 完成／◐ 部分完成／⏭ 跳過（寫原因）／❌ 失敗（寫原因）
-
-### 決策紀錄（自行判斷的事都記這裡）
-
-| 時間 | 任務 | 決定 | 理由／證據 |
-|---|---|---|---|
-| | | | |
 
 ### 發現但沒做的事（R8：不順手做，記下來給 jielin）
 
@@ -416,7 +415,7 @@
 - 刪除有網頁上傳照片的報帳時，Storage 裡的照片檔不會一起刪（私訊的收據照隨 media_assets 管理）
 - 員工記帳頁只有繁中；外籍員工需要時接 src/attend/i18n.ts
 - ~~報帳模組只有兩個分頁、沒有「更多」頁，手機上無法切換身分~~ → X2-4 加分類頁時一併有了「更多」頁，已解決
-- 
+- 夜間進度小工具（scratchpad 的 prog.py）有 bug：第一筆決策被塞進進度表、多數任務列沒更新；收尾時已依 commit 紀錄重建（本段與決策紀錄內容正確）
 
 ---
 
@@ -424,37 +423,83 @@
 
 ### 一句話
 
-（例：16 項做完 12 項、跳過 4 項；測試全綠；你需要貼 5 段 SQL、改 1 個環境變數、部署一次。）
+16 項全部處理完（14 項完成、G8b 驗證後不需改程式、X2 的 QR 掃描與舊資料搬移等你決定）；測試 112 項全綠、型別與建置都通過；**正式站與正式資料庫都沒動**。你要貼 6 段 SQL、加 1～2 個環境變數、部署一次、push 一次。
 
 ### 你醒來要做的事（照順序，指令一字不差）
 
-1. 看這份報告與 `git log de67eae..HEAD --oneline`
-2. 到 Supabase SQL Editor 依序貼：（列出檔案路徑與建議順序）
-3. （若有）執行：（指令）
-4. 部署（照 NAS 部署流程；G4 要加 `WEBHOOK_WORKER=1` 並 `docker rm -f` ＋ `docker run`）
-5. 報帳驗收：用員工 LINE 私訊群記一張收據，看有沒有回「記好了」、`/o/main/expense` 有沒有出現
-6. `git push`
+1. 看這份報告與 commit 清單：
+   ```bash
+   git log de67eae..HEAD --oneline
+   ```
+2. 到 Supabase SQL Editor **照這個順序**貼（每段可先包在 `begin;` … `rollback;` 試一次語法，沒錯再正式貼；本機沒有 psql，今晚沒實際跑過）：
+   1. `supabase/migrations/021_funnel_events.sql`（小）
+   2. `supabase/migrations/024_webhook_events.sql`（小、關鍵）
+   3. `supabase/migrations/022_expenses.sql`（報帳；會幫 main 公司開報帳模組）
+   4. `supabase/migrations/023_expenses_v2.sql`（要在 022 之後）
+   5. `supabase/migrations/026_org_status.sql`（小）
+   6. `supabase/migrations/025_content_org_id.sql`（**最後、離峰**：會回填 messages／embeddings 大表）
+3. NAS 的 `/opt/groupscribe/.env.local` 加兩行：
+   - `WEBHOOK_WORKER=1`（開 webhook 補處理輪詢）
+   - `LINE_BOT_BASIC_ID=@057qvdrh`（上手卡的「加好友」按鈕；不加也行，只是不顯示按鈕）
+4. 同步程式到 NAS：
+   ```bash
+   rsync -av --exclude '.env*' src public supabase scripts package.json package-lock.json next.config.mjs postcss.config.mjs tsconfig.json Dockerfile root@100.74.41.94:/opt/groupscribe/
+   ```
+5. 重建容器（改了 `.env.local` 一定要 rm＋run，restart 不會重讀；重啟那幾秒 webhook 會漏接）：
+   ```bash
+   ssh root@100.74.41.94 'cd /opt/groupscribe && docker build -t groupscribe . && docker rm -f groupscribe && docker run -d --name groupscribe --restart always -p 3000:3000 --env-file /opt/groupscribe/.env.local groupscribe'
+   ```
+6. 驗收：
+   - 打開 `https://jielinnas.taild29d9a.ts.net/api/health`，應看到 `{"ok":true}`
+   - 用**員工**的 LINE 私訊群記一張收據照 → 應回「🧾 記好了…」；再傳「午餐 120」→ 也應回記好了
+   - 後台 `/o/main/expense` 看得到那兩筆；「報帳」分頁能匯出 CSV
+   - 用員工 LINE 打開首頁，身分選單應多一個「我的報帳」
+7. 確認 main 公司那位 owner 是你本人（A6 已拿掉「管理員 LINE 登入自動變 owner」的後門）
+8. 都沒問題再：
+   ```bash
+   git push
+   ```
 
-### 要你決定的事（最多兩項）
+### 要你決定的事
 
-1. X2 的 QR 掃電子發票：加 `jsqr` 套件，還是只靠 AI 讀照片？
-2. Snaptab 舊資料要不要搬（搬移步驟說明寫在：＿＿）
+1. **QR 掃電子發票**：要加 `jsqr` 套件做掃描嗎？（解析邏輯已經搬好在 `src/expense/invoice.ts`，只差相機掃描）。我建議**先不加**：AI 讀照片已經能拿到金額與發票號，等員工真的抱怨再加。
+2. **Snaptab 舊資料要不要搬**：步驟寫在 `docs/snaptab-migration.md`。卡點是 Snaptab 用匿名登入、對不上 LINE 身分，要你指定算在誰名下。
 
 ### 測試結果
 
-- npm test：
-- typecheck：
-- build：
+- npm test：112 項全過（今晚新增 36 項）
+- typecheck：通過
+- build：通過
 
 ### 各任務結果
 
-（每項一到兩行）
+- **A9** 健康檢查：`/api/health`＋Docker HEALTHCHECK；設定頁靜默 6 小時警示。HEALTHCHECK 本機沒 docker 未實測。
+- **P1** 加到主畫面：manifest、192 icon、亮暗主題色。
+- **G7** 進群告知：三段、講明「由認領的公司管理、可匯出」，含入口 393 字。
+- **A7** 上手卡：剛認領、還沒訊息的群不再被當成「沒群」；多了「已收到 N 則」。
+- **L1** 開啟漏斗：記成員從告知／回答／提醒哪個入口打開；回答與提醒的連結直接進該群。
+- **G8b**：不需改，AI 抽出的東西本來就全部要確認。
+- **X1** 報帳 v1：私訊收據照自動記一筆並回覆；管理頁清單、加總、CSV。
+- **X2** 報帳 v2：付款方式、自訂分類、員工網頁記一筆與我的清單、統計、文字／語音記帳、附上位置。QR 掃描與舊資料搬移待決。
+- **B7** 合批：群組安靜 45 秒才整理，最多 3 分鐘，省 AI 呼叫。
+- **G4** webhook 先存再處理：失敗或重啟不漏；表沒建時自動走舊路徑。
+- **G3** 內容表帶 org_id：用觸發器，任何換公司的方式都會跟著改。
+- **G5** LINE 金鑰收成參數：行為不變，為「一家公司一個 LINE 帳號」留門。
+- **A6** 拿掉登入自動變 owner 的後門，改用 `scripts/seed-owner.ts`。
+- **A8** 停權：公司被停權時停所有 AI、訊息照存，後台有橫幅。
+- **E1** 回歸題目：三個行業各 30 則＋比對器；抽取要先拆出純函式才能跑。
+- **A10** 設計夥伴合約草稿：`docs/legal/design-partner-agreement.md`。
 
 ### 風險與注意
 
-（至少包含：SQL 今晚未實際執行過；HEALTHCHECK 未實測；B7 計時器重啟會掉；G4 補處理時 replyToken 已過期）
-
----
+- **SQL 今晚沒實際執行過**（本機沒有 psql），貼之前先 `begin; … rollback;` 試。
+- **程式可以先部署、後貼 SQL**：所有新功能在表／欄位還沒建時都會照舊運作或顯示「請先執行 migration」。
+- **修了一個會出事的 bug**：`default_org_id()` 在 016 之後回傳「未認領」，原本 022 會把報帳開給錯的公司，已改成指定 main（4e41171）。
+- B7 計時器在記憶體：重啟時還沒整理的群，要等該群下一則訊息或手動 `POST /api/extract`。
+- G4 補處理舊事件時 replyToken 多半已過期，那類回覆（告知、記帳回覆）會送不出去；資料本身不受影響。
+- 員工端的登入後畫面（我的報帳）今晚沒實測：需要真的 LINE 身分，沒有偽造 session。
+- 手機 375px 版面沒截圖驗證（瀏覽器面板沒顯示），只驗了頁面能開（200）。
+- 發現但沒做的事見第 5 節「發現但沒做」。
 
 ## 7. 審查修正對照（v1 → v2）
 
