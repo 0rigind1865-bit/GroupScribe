@@ -122,5 +122,5 @@ export const config = {
   // 要進來走上面的 rewrite。群組 id 以 a 開頭的 /g/abc 仍會被排除（負向前瞻只認 a/ 與 a 結尾）。
   // /claim 為認領頁：從群組連結點進來的人還沒有 cookie，由頁面自己導去 LINE Login
   // /start 自助註冊、/api/org 建組織：由頁面／端點自己驗 LINE 身分
-  matcher: ['/((?!api/health|api/webhook|api/login|api/liff|api/digest|api/attend|api/auth|api/org|login|start|about|brand/|shots/|icon|apple-icon|privacy|terms|claim/|g/(?!a/|a$)|g$|a/|a$|_next|favicon.ico).*)'],
+  matcher: ['/((?!api/health|api/webhook|api/login|api/liff|api/digest|api/attend|api/auth|api/org|login|start|about|brand/|shots/|icon|apple-icon|manifest|privacy|terms|claim/|g/(?!a/|a$)|g$|a/|a$|_next|favicon.ico).*)'],
 };

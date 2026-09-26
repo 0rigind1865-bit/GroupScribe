@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 import './globals.css';
 
@@ -18,6 +18,14 @@ export async function generateMetadata(): Promise<Metadata> {
     openGraph: { siteName: '群記', locale: 'zh_TW', type: 'website', title: '群記：群裡講過的，都記得', description, images: ['/brand/og.png'] },
   };
 }
+
+// 手機瀏覽器網址列／PWA 標題列顏色，跟頁面底色一致（亮：gray-50，暗：globals.css 的 body 底色）
+export const viewport: Viewport = {
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#f9fafb' },
+    { media: '(prefers-color-scheme: dark)', color: '#101513' },
+  ],
+};
 
 // root layout 只包 html/body：nav 與群組切換器在 (admin) 殼，讓 /login（及未來 LIFF /g/）天然在殼外
 export default function RootLayout({ children }: { children: ReactNode }) {
