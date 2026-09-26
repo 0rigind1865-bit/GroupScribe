@@ -46,8 +46,8 @@ export default async function RulesPage({
   };
 
   return (
-    <main className="mx-auto max-w-4xl p-5">
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight">薪資規則</h1>
+    <main className="mx-auto max-w-4xl p-4 md:p-8">
+      <h1 className="mb-2 text-3xl md:text-4xl">薪資規則</h1>
       <p className="mb-4 text-sm text-gray-500">
         目前版本：v{ruleSet.version}
         {ruleSet.version === 0 && '（預設勞基法模板，尚未自訂）'}｜每次存檔會建立新版本；已結算月份不受影響。
@@ -59,7 +59,7 @@ export default async function RulesPage({
         <input type="hidden" name="org" value={slug} />
 
         <section className="card">
-          <h2 className="mb-2 font-bold text-gray-700">結構化規則（JSON）</h2>
+          <h2 className="mb-3 text-base font-bold">結構化規則（JSON）</h2>
           <p className="mb-2 text-xs text-gray-500">
             倍率一律寫成分數 {'{"num":4,"den":3}'}（4/3）避免浮點誤差。breaks＝休息時段（重疊分鐘自動扣除）；
             tiers 的 upToHours＝累計時數門檻，null＝無上限。
@@ -73,7 +73,7 @@ export default async function RulesPage({
         </section>
 
         <section className="card">
-          <h2 className="mb-2 font-bold text-gray-700">自訂計算腳本（進階，選用）</h2>
+          <h2 className="mb-3 text-base font-bold">自訂計算腳本（進階，選用）</h2>
           <p className="mb-2 text-xs text-gray-500">
             沙箱執行（無網路/檔案，記憶體 32MB、單日 100ms）。輸入：全域 <code>ctx</code>（date, dayType, inTime,
             outTime, netMinutes, breakMinutes, hourlyRate, monthlySalary, rules）。輸出：最後一個運算式，格式{' '}
@@ -97,7 +97,7 @@ export default async function RulesPage({
       </form>
 
       <section className="card mt-6">
-        <h2 className="mb-2 font-bold text-gray-700">假日表（{thisYear} 年，{yearHolidays.length} 筆）</h2>
+        <h2 className="mb-3 text-base font-bold">假日表（{thisYear} 年，{yearHolidays.length} 筆）</h2>
         <p className="mb-2 text-xs text-gray-500">
           國定假日＝出勤加給；補班日＝強制按平日計。初始資料可用 <code>npx tsx scripts/seed-holidays.ts {slug}</code> 匯入台灣假日。
         </p>
@@ -142,7 +142,7 @@ export default async function RulesPage({
 
       {(versions ?? []).length > 0 && (
         <section className="mt-6">
-          <h2 className="mb-2 text-sm font-bold text-gray-500">版本歷史</h2>
+          <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">版本歷史</h2>
           <ul className="space-y-1 text-sm text-gray-600">
             {(versions ?? []).map((v) => (
               <li key={v.version}>

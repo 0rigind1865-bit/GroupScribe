@@ -35,13 +35,13 @@ export default async function LocationsPage({
     .order('created_at');
 
   return (
-    <main className="mx-auto max-w-4xl p-5">
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">打卡地點</h1>
+    <main className="mx-auto max-w-4xl p-4 md:p-8">
+      <h1 className="mb-5 text-3xl md:text-4xl">打卡地點</h1>
       {ok && <Banner>地點已新增 ✓</Banner>}
       {err && <Banner tone="err">{ERR[err] ?? err}</Banner>}
 
       <section className="card mb-5">
-        <h2 className="mb-2 text-sm font-bold text-gray-700">新增地點</h2>
+        <h2 className="mb-3 text-base font-bold">新增地點</h2>
         <form action="/api/attend/location" method="post" className="flex flex-wrap items-end gap-2 text-sm" id="add-loc">
           <input type="hidden" name="org" value={slug} />
           <input type="hidden" name="action" value="add" />
@@ -82,7 +82,7 @@ export default async function LocationsPage({
             <span className="text-xs text-gray-500">
               ({l.lat.toFixed(5)}, {l.lng.toFixed(5)})｜{l.radius_m}m
             </span>
-            {!l.enabled && <span className="rounded bg-gray-200 px-1.5 text-xs">停用中</span>}
+            {!l.enabled && <span className="rounded-full bg-gray-200 px-2 py-0.5 text-xs font-medium">停用中</span>}
             <form action="/api/attend/location" method="post" className="ml-auto flex gap-2">
               <input type="hidden" name="org" value={slug} />
               <input type="hidden" name="id" value={l.id} />

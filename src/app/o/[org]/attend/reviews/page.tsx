@@ -43,25 +43,30 @@ export default async function ReviewsPage({
   type Row = { id: string; type: string; requested_at: string; reason?: string | null; created_at?: string; status?: string; reviewed_at?: string | null; employees: { display_name: string; dept?: string | null } | null };
 
   return (
-    <main className="mx-auto max-w-4xl p-5">
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">補卡審核</h1>
+    <main className="mx-auto max-w-4xl p-4 md:p-8">
+      <h1 className="mb-5 text-3xl md:text-4xl">補卡審核</h1>
       {ok === 'approved' && <Banner>已核准，打卡紀錄已生成 ✓</Banner>}
       {ok === 'rejected' && <Banner tone="neutral">已拒絕。</Banner>}
       {err && <Banner tone="err">操作失敗或申請已被處理，請重新整理。</Banner>}
 
       <section className="space-y-2">
         {((pending ?? []) as unknown as Row[]).map((r) => (
-          <div key={r.id} className="card flex flex-wrap items-center gap-2 text-sm">
-            <span className="font-bold">{r.employees?.display_name ?? '—'}</span>
-            <span className="text-xs text-gray-500">{r.employees?.dept ?? ''}</span>
-            <PunchBadge type={r.type as 'in' | 'out'} label={r.type === 'in' ? '補上班卡' : '補下班卡'} />
-            <span>{fmt(r.requested_at)}</span>
-            {r.reason && <span className="text-xs text-gray-500">「{r.reason}」</span>}
-            <form action="/api/attend/review" method="post" className="ml-auto flex gap-2">
+          // 設計稿：誰＋哪種卡 → 大字時間與原因 → 拒絕｜核准（核准較寬、靠拇指）
+          <div key={r.id} className="card space-y-3 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-[15px] font-bold">{r.employees?.display_name ?? '—'}</span>
+              <span className="flex-1 text-xs text-gray-500">{r.employees?.dept ?? ''}</span>
+              <PunchBadge type={r.type as 'in' | 'out'} label={r.type === 'in' ? '補上班卡' : '補下班卡'} />
+            </div>
+            <div className="flex flex-wrap items-baseline gap-3">
+              <span className="text-xl font-bold tabular-nums">{fmt(r.requested_at)}</span>
+              {r.reason && <span className="text-xs text-gray-500">「{r.reason}」</span>}
+            </div>
+            <form action="/api/attend/review" method="post" className="flex gap-2">
               <input type="hidden" name="org" value={slug} />
               <input type="hidden" name="id" value={r.id} />
-              <button className="btn-confirm px-3 py-1" name="action" value="approve">核准</button>
-              <button className="btn-danger px-3 py-1" name="action" value="reject">拒絕</button>
+              <button className="btn-danger" name="action" value="reject">拒絕</button>
+              <button className="btn-confirm flex-1" name="action" value="approve">核准</button>
             </form>
           </div>
         ))}
@@ -70,7 +75,7 @@ export default async function ReviewsPage({
 
       {((recent ?? []) as unknown as Row[]).length > 0 && (
         <section className="mt-6">
-          <h2 className="mb-2 text-sm font-bold text-gray-500">最近處理</h2>
+          <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">最近處理</h2>
           <ul className="space-y-1 text-sm text-gray-600">
             {((recent ?? []) as unknown as Row[]).map((r) => (
               <li key={r.id} className="flex items-center gap-2">

@@ -43,14 +43,14 @@ export default async function EmployeesPage({
   const joinLink = liff && joinCode ? `${liff}/a/join?org=${slug}&code=${joinCode}` : null;
 
   return (
-    <main className="mx-auto max-w-4xl p-5">
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">員工管理</h1>
+    <main className="mx-auto max-w-4xl p-4 md:p-8">
+      <h1 className="mb-5 text-3xl md:text-4xl">員工管理</h1>
       {err && <Banner tone="err">操作失敗，請重試。</Banner>}
 
       {/* 加入邀請：員工端的打卡入口只對「已是員工」的人顯示（見 src/app/g/page.tsx 檔頭），
           所以這條連結是新員工唯一的入口——發連結這個動作本身就是授權。 */}
       <section className="card mb-5">
-        <h2 className="mb-1 text-sm font-bold text-gray-700">邀請員工加入</h2>
+        <h2 className="mb-2 text-base font-bold">邀請員工加入</h2>
         {joinCode ? (
           <>
             <p className="mb-2 text-xs text-gray-500">

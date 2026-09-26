@@ -55,8 +55,8 @@ export default async function AttendCalendar({
 
   if (!emp) {
     return (
-      <main className="mx-auto max-w-4xl p-5">
-        <h1 className="mb-4 text-2xl font-semibold tracking-tight">月曆與薪資</h1>
+      <main className="mx-auto max-w-4xl p-4 md:p-8">
+        <h1 className="mb-5 text-3xl md:text-4xl">月曆與薪資</h1>
         <p className="text-gray-500">還沒有已啟用的員工。</p>
       </main>
     );
@@ -90,7 +90,7 @@ export default async function AttendCalendar({
   const [y, m] = month.split('-').map(Number);
 
   return (
-    <main className="mx-auto max-w-4xl p-5">
+    <main className="mx-auto max-w-4xl p-4 md:p-8">
       <PageHeader
         title={`${emp.display_name}｜${y} 年 ${m} 月`}
         desc={emp.dept ?? undefined}

@@ -36,8 +36,11 @@ export default async function AttendOverview({ params }: { params: Promise<{ org
   const withIssues = abnormal.filter((a) => a.days.length > 0);
 
   return (
-    <main className="mx-auto max-w-4xl p-5">
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">考勤總覽（{month}）</h1>
+    <main className="mx-auto max-w-4xl p-4 md:p-8">
+      <div className="mb-5 flex items-baseline gap-3">
+        <h1 className="text-3xl md:text-4xl">考勤總覽</h1>
+        <span className="text-sm text-gray-500">{month}</span>
+      </div>
 
       {/* 待處理區：只渲染 n > 0 的格（principles.md 規則二——「顯示 0 的統計卡」是呈現層噪音，
           一個永遠寫著 0 的格子每天消耗一次判斷卻從不需要行動）。
@@ -67,7 +70,7 @@ export default async function AttendOverview({ params }: { params: Promise<{ org
               </div>
               <ul className="flex flex-wrap gap-2 text-xs">
                 {days.map((d) => (
-                  <li key={d.date} className="rounded bg-red-50 px-2 py-0.5 text-red-700">
+                  <li key={d.date} className="rounded-full bg-red-50 px-2.5 py-0.5 font-bold text-red-700">
                     {d.date}
                   </li>
                 ))}

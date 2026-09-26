@@ -1,4 +1,4 @@
-import { TONE_TEXT, type Tone } from './tone';
+import { TONE_BANNER, TONE_BORDER, TONE_TEXT, type Tone } from './tone';
 
 export type StatItem = {
   n: number | string;
@@ -31,20 +31,27 @@ export function StatGrid({
   return (
     <div className={`grid gap-3 ${grid}`}>
       {shown.map((i) => {
-        // Origin UI 的 stat 卡：標籤在上、數字在下靠左、tabular-nums 對齊——掃一列數字時眼睛不用跳
+        // 設計稿（2026-09）：襯線大數字在上、粗體標籤在下；warn/err 整格上淡底色，一眼分出「要處理的」
+        const tone = i.tone ?? 'neutral';
+        const tint = tone === 'warn' || tone === 'err' ? `${TONE_BANNER[tone]} ${TONE_BORDER[tone]}` : '';
         const inner = (
           <>
-            <span className="block text-xs font-medium text-gray-500">{i.label}</span>
-            <span className={`mt-1 block text-2xl font-semibold tracking-tight tabular-nums ${TONE_TEXT[i.tone ?? 'neutral']}`}>{i.n}</span>
+            <span
+              className={`block text-3xl leading-none font-black tabular-nums ${TONE_TEXT[tone]}`}
+              style={{ fontFamily: 'var(--font-title)' }}
+            >
+              {i.n}
+            </span>
+            <span className="mt-1.5 block text-xs font-bold text-gray-600">{i.label}</span>
             {i.hint && <span className="mt-0.5 block text-xs text-gray-400">{i.hint}</span>}
           </>
         );
         return i.href ? (
-          <a key={i.label} href={i.href} className="card hover:bg-gray-50">
+          <a key={i.label} href={i.href} className={`card hover:opacity-80 ${tint}`}>
             {inner}
           </a>
         ) : (
-          <div key={i.label} className="card">
+          <div key={i.label} className={`card ${tint}`}>
             {inner}
           </div>
         );
