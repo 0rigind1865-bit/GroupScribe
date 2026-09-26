@@ -89,7 +89,7 @@
 | 7 | X1 | ✅ | 1 | （本 commit） | 15:03 | 16:05 | migration 022；AI 同次讀收據欄位；1:1 收據自動記一筆並回覆；員工退路限開報帳的公司；清單／加總頁＋CSV；未建表時頁面顯示提示非 500。375px 畫面未實測（瀏覽器面板未顯示） |
 | 8 | X2 | 報帳 v2：Snaptab 其餘功能搬家（逐子項） | D | 是 | 中 |
 | 9 | B7 | ✅ | 1 | （本 commit） | 18:26 | 18:40 | createDebouncer（可注入時鐘）＋scheduleExtract：安靜 45 秒、最多 3 分鐘；webhook 改排進合批；3 支假時鐘測試 |
-| 10 | G4 | webhook 先落地再回 200 | B | 是 | 高 |
+| 10 | G4 | ✅ | 2 | （本 commit） | 18:41 | 19:20 | migration 024 webhook_events＋claim_webhook_events（skip locked、租約 10 分、最多 5 次）；存原始 event；表不存在走舊路徑；輪詢只在 production＋WEBHOOK_WORKER=1；dev 確認未啟動 |
 | 11 | G3 | 內容表 org_id＋`transfer_group()` | B | 是 | 中 |
 | 12 | G5 | line connector 收成工廠（僅 line.ts 內） | B | 否 | 低 |
 | 13 | A6 | seed-owner 腳本；有條件移除 callback 自動種子 | B | 否 | 中 |
@@ -348,8 +348,8 @@
 
 ## 5. 進度回寫區（agent 每個任務更新）
 
-**目前狀態**：執行中（任務 10 G4）
-**最後更新**：2026-09-26 18:40
+**目前狀態**：執行中（任務 11 G3）
+**最後更新**：2026-09-26 19:20
 **起始 commit**：`de67eae`
 
 | 順序 | 代號 | 狀態 | 嘗試 | commit | 開始 | 結束 | 一句話結果 |
@@ -372,6 +372,8 @@
 | 18:10|X2-6|文字記帳只認「≤30 字、單行、品項在前金額在最後」，沒寫元／$ 時金額要 ≥10；品項是時間／日期／數量詞就不算|寧可漏記不要誤記：誤記會讓員工不信任 |
 | 18:25|X2 待決|QR 掃描跳過（需 jsqr）；先把 Snaptab 發票 QR 解析搬成 src/expense/invoice.ts＋測試；舊資料只寫 docs/snaptab-migration.md|計劃規定的做法；R7 不加依賴、R10 不讀 Firestore |
 | 18:35|B7|沒有定期補抽機制；計時器掉了由該群下一則訊息或手動 /api/extract 接手，寫進 ponytail 註解|grep 確認 extractGroup 只有 webhook 與 /api/extract 兩個呼叫點 |
+| 19:05|G4|認領改用資料庫函式 claim_webhook_events（update…returning＋for update skip locked），不在應用層拼 update|PostgREST 的 update 做不到 attempts+1 與原子認領 |
+| 19:15|G4|instrumentation 用 if (NEXT_RUNTIME === 'nodejs') 包住動態 import（提早 return 寫法會讓 build 失敗）|第一次 build 報 UnhandledSchemeError node:crypto；改寫後 edge-instrumentation.js 不含任何 node 模組 |
 | | | | |
 | 2 | P1 | ⬜ | 0 | | | | |
 | 3 | G7 | ⬜ | 0 | | | | |
@@ -405,6 +407,7 @@
 
 ### 發現但沒做的事（R8：不順手做，記下來給 jielin）
 
+- G4 補處理舊事件時，進群告知／收據回覆的 replyToken 多半已過期（LINE 回覆失敗只記 log、不重試），這類回覆會沒送出；訊息本身與記帳不受影響
 - 未實測登入後的員工記帳畫面（需要真實 LINE 身分，今晚不偽造 session）；早上請用員工 LINE 打開「我的報帳」記一筆試試
 - 刪除有網頁上傳照片的報帳時，Storage 裡的照片檔不會一起刪（私訊的收據照隨 media_assets 管理）
 - 員工記帳頁只有繁中；外籍員工需要時接 src/attend/i18n.ts

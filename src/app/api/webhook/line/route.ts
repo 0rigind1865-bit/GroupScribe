@@ -3,17 +3,20 @@ import { getDb } from '@/db';
 import { getConnector } from '@/core/config';
 import { getChannelId, handleEvent } from '@/core/ingest';
 import { scheduleExtract } from '@/core/schedule';
+import { landWebhook, processPendingWebhooks, rawEventRows } from '@/core/webhook-store';
 
-// LINE Webhook：驗簽 → 立刻回 200 → 回應後非同步處理（規劃書 4.1）
+// LINE Webhook：驗簽 → 原始事件先落地（webhook_events）→ 回 200 → 回應後處理（商業計劃 G4）。
+// 落地失敗（migration 024 還沒跑）→ 走舊路徑：回 200 後直接處理（規劃書 4.1）。
 export async function POST(req: NextRequest) {
   const raw = await req.text();
   const connector = getConnector();
   if (!connector.verifyWebhook(raw, req.headers.get('x-line-signature') ?? '')) {
     return new NextResponse('簽章驗證失敗', { status: 401 });
   }
-  const events = connector.parseEvents(JSON.parse(raw));
+  const body = JSON.parse(raw);
+  const channelId = await getChannelId();
+  const landed = await landWebhook(rawEventRows(body, channelId));
 
-  // 重送去重靠 messages 的 (channel_id, message_id) 唯一索引
   after(async () => {
     // 健康心跳：漏收的訊息不可回補，靜默流失必須看得見（E 節約束；設定頁顯示此時間）
     await getDb()
@@ -22,7 +25,12 @@ export async function POST(req: NextRequest) {
       .then(({ error }) => {
         if (error) console.warn('webhook 心跳寫入失敗（migration 009 跑了嗎？）', error.message);
       });
-    const channelId = await getChannelId();
+    if (landed === 'landed') {
+      await processPendingWebhooks(); // 也會順手處理先前失敗、租約過期的事件
+      return;
+    }
+    // 舊路徑：重送去重靠 messages 的 (channel_id, message_id) 唯一索引
+    const events = connector.parseEvents(body);
     for (const ev of events) {
       try {
         await handleEvent(ev, channelId);
