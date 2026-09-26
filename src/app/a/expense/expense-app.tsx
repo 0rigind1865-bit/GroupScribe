@@ -10,7 +10,6 @@ import type { ExpenseItem } from '@/expense/types';
 import { dataUrlToBlob } from '@/expense/compress';
 import { flushOutbox, readOutbox } from '@/expense/outbox';
 import { Sheet, Toast } from '@/app/ui/expense/sheet';
-import { CategoryManager } from '@/app/ui/expense/category-manager';
 import { AnalyticsView } from '@/app/ui/expense/analytics-view';
 import { AddView, type Loc } from './add-view';
 import { ListView } from './list-view';
@@ -56,7 +55,9 @@ export function ExpenseApp({
   items,
   hasNearby,
   L = ZH_LABELS,
+  manageHref,
 }: {
+  manageHref?: string;
   tab: Tab;
   header: React.ReactNode;
   L?: ExpenseLabels;
@@ -75,7 +76,6 @@ export function ExpenseApp({
   const [locating, setLocating] = useState(true);
   const [candidates, setCandidates] = useState<string[]>([]);
   const [showPlaces, setShowPlaces] = useState(false);
-  const [showCats, setShowCats] = useState(false);
   const [pending, setPending] = useState(0);
 
   useEffect(() => setCategories(initialCats), [initialCats]);
@@ -186,7 +186,7 @@ export function ExpenseApp({
               setProjects((p) => [...new Set(p.map((x) => (x === from ? to : x)))]);
               router.refresh();
             }}
-            onManageCategories={() => setShowCats(true)}
+            manageHref={manageHref}
           />
         </div>
         <div hidden={tab !== 'list'}>
@@ -223,18 +223,6 @@ export function ExpenseApp({
             手動輸入地點
           </button>
         </Sheet>
-      )}
-      {showCats && (
-        <CategoryManager
-          initial={categories}
-          endpoint="/api/liff/expense/categories"
-          onSaved={(c) => {
-            setCategories(c);
-            router.refresh();
-          }}
-          onClose={() => setShowCats(false)}
-          onToast={showToast}
-        />
       )}
       <FloatingNav
         tabs={TABS.map(([k, label, icon]) => ({

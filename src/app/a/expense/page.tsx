@@ -46,6 +46,9 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
     const it = rowToItem(r, urlOf.get(photoPathOf(r) ?? '') ?? null);
     return { ...it, person: it.person || me.display_name };
   });
+  // 能管這家公司報帳（管理側有同一家的報帳）才給「去管理端改分類」的連結
+  const mySlug = sd.groups.me.find((s) => s.id === 'myexpense')?.slugs?.[0];
+  const manageHref = mySlug && sd.groups.admin.some((o) => o.slug === mySlug && o.items.some((i) => i.id === 'expense')) ? `/o/${mySlug}/expense/categories` : undefined;
   const projects = [...new Set([...(named ?? []).map((p) => p.name as string), ...(used ?? []).map((p) => p.project as string)])];
 
   return (
@@ -70,6 +73,7 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
         save: tt('EXP_SAVE'),
       }}
       canManage={me.canManage}
+      manageHref={manageHref}
       categories={categories}
       projects={projects}
       items={error ? [] : items}

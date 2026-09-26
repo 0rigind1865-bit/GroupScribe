@@ -34,7 +34,7 @@ export function AddView({
   onSaved,
   onNewProject,
   onRenamed,
-  onManageCategories,
+  manageHref,
   L = ZH_LABELS,
 }: {
   L?: ExpenseLabels;
@@ -46,7 +46,8 @@ export function AddView({
   onSaved: (queued: boolean) => void;
   onNewProject: (name: string) => void;
   onRenamed: (from: string, to: string) => void;
-  onManageCategories: () => void;
+  /** 能管這家公司報帳的人才有：管理端分類頁 */
+  manageHref?: string;
 }) {
   const [expr, setExpr] = useState('');
   const [category, setCategory] = useState<string | null>(null);
@@ -319,17 +320,13 @@ export function AddView({
               <Icon name="sparkles" size={22} />
               AI 分類
             </button>
-            {canManage && (
-              <button
-                type="button"
-                onClick={onManageCategories}
-                className="flex flex-col items-center gap-1 rounded-xl border border-dashed border-gray-300 px-1 py-2 text-xs text-gray-500"
-              >
-                <Icon name="sliders" size={22} />
-                管理
-              </button>
-            )}
           </div>
+          {/* 分類是全公司共用的設定：個人頁不放管理格，只給一條去管理端的路（淡色＝個人，審查 F35） */}
+          {manageHref && (
+            <a href={manageHref} className="mt-2 block text-xs text-gray-500 underline">
+              分類不夠？到管理端「報帳 · 分類」新增
+            </a>
+          )}
         </div>
       ) : (
         <button type="button" onClick={() => setCatOpen(true)} className="card flex w-full items-center gap-3 text-left">
