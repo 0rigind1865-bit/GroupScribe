@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { getDb } from '@/db';
 import { getConnector } from '@/core/config';
-import { extractGroup } from '@/core/extract';
-import { getChannelId, handleEvent, retryPendingMedia } from '@/core/ingest';
+import { getChannelId, handleEvent } from '@/core/ingest';
+import { scheduleExtract } from '@/core/schedule';
 
 // LINE Webhook：驗簽 → 立刻回 200 → 回應後非同步處理（規劃書 4.1）
 export async function POST(req: NextRequest) {
@@ -30,12 +30,9 @@ export async function POST(req: NextRequest) {
         console.error('事件處理失敗', ev.kind, e);
       }
     }
-    // 本批觸及的群組：先補解析積壓的媒體（解析完才進得了抽取），再跑結構化抽取
+    // 本批觸及的群組：排進合批（B7）——安靜 45 秒後補解析媒體、再跑結構化抽取
     const gids = [...new Set(events.flatMap((e) => (e.kind === 'message' ? [e.message.groupId] : [])))];
-    for (const gid of gids) {
-      await retryPendingMedia(gid).catch((e) => console.error('媒體重試失敗（下次再試）', gid, e));
-      await extractGroup(gid).catch((e) => console.error('抽取失敗（留待下次補抽）', gid, e));
-    }
+    for (const gid of gids) scheduleExtract(gid);
   });
   return NextResponse.json({ ok: true });
 }
