@@ -1,4 +1,4 @@
-import { parseAmount } from './receipt';
+import { EXPENSE_CATEGORIES, parseAmount } from './receipt';
 import { classifyNote } from './classify';
 
 // 文字／語音記帳（X2-6）：1:1 裡傳「午餐 120」「停車費150元」→ 記一筆。
@@ -22,7 +22,14 @@ export function parseTextExpense(text: string, categories: readonly string[]): {
   const item = m.groups.item.trim();
   if (NOT_ITEM.test(item)) return null;
   const amount = parseAmount(m.groups.amt);
-  // 沒寫「元／$」時要 ≥10，避免「房間 3」這種編號被當成錢
-  if (amount === null || (!m.groups.unit && !/[$＄]/.test(t) && amount < 10)) return null;
-  return { item, amount, category: guessCategory(item, categories) };
+  if (amount === null) return null;
+  // 要有「這是錢」的證據才記：寫了元／塊／$，或品項看得出是花費（AI 分類認得，例如午餐、計程車）。
+  // 只有「某某＋數字」不算——「測試456」「房號 305」曾被誤記成報帳（2026-09-26）
+  const hasUnit = !!m.groups.unit || /[$＄]/.test(t);
+  const known = classifyNote(item, categories);
+  // 公司自訂分類裡沒有對應類別時（例如沒有「餐飲」），用預設分類判斷「這是不是花費」，分類則歸雜支
+  const isSpend = !!known || !!classifyNote(item, EXPENSE_CATEGORIES);
+  if (!hasUnit && !isSpend) return null;
+  if (!hasUnit && amount < 10) return null; // 「午餐 3」多半不是錢
+  return { item, amount, category: known ?? '雜支' };
 }

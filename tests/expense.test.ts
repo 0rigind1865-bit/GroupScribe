@@ -164,11 +164,13 @@ test('parseTextExpense：品項＋金額要中，分類猜得出來', () => {
   assert.deepEqual(parseTextExpense('停車費150元', EXPENSE_CATEGORIES), { item: '停車費', amount: 150, category: '停車過路' });
   assert.deepEqual(parseTextExpense('計程車 $350', EXPENSE_CATEGORIES), { item: '計程車', amount: 350, category: '交通' });
   assert.deepEqual(parseTextExpense('膠帶 1,200', EXPENSE_CATEGORIES), { item: '膠帶', amount: 1200, category: '材料耗材' });
-  assert.equal(parseTextExpense('郵資 8元', EXPENSE_CATEGORIES)?.category, '雜支');
+  assert.equal(parseTextExpense('郵資 8元', EXPENSE_CATEGORIES)?.category, '雜支'); // 看不出分類但寫了「元」：記、歸雜支
+  assert.equal(parseTextExpense('午餐120', EXPENSE_CATEGORIES)?.amount, 120); // 沒空格也行：品項認得
+  assert.equal(parseTextExpense('測試 $456', EXPENSE_CATEGORIES)?.amount, 456); // 看不出分類但寫了 $：記
 });
 
 test('parseTextExpense：不是花費的句子不能中', () => {
-  for (const t of ['明天 3 點開會', '明天 3', '會議室 3', '開會 2 點', '第 3', '上次報價多少？', '分機 123', '3 個人', '好', '120', '週五 10', '電話 0912345678 請回電'])
+  for (const t of ['明天 3 點開會', '明天 3', '會議室 3', '開會 2 點', '第 3', '上次報價多少？', '分機 123', '3 個人', '好', '120', '週五 10', '電話 0912345678 請回電', '測試456', '測試 456', '房號 305', '明天早上13.到現場'])
     assert.equal(parseTextExpense(t, EXPENSE_CATEGORIES), null, t);
 });
 
