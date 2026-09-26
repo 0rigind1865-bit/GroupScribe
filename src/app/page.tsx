@@ -45,7 +45,7 @@ export default async function Root({ searchParams }: { searchParams: Promise<Rec
 
   if (mode === 'redirect') redirect((list.length === 1 ? list[0] : hit!).href);
   // 開機畫面走員工端語系：越南籍員工第一眼不該是中文（審查 F44）
-  if (mode === 'boot') return <AttendLiffBoot liffId={liffId()} tt={tt} />;
+  if (mode === 'boot') return <AttendLiffBoot liffId={liffId()} tt={tt} brand="群記" />;
 
   if (mode === 'none')
     // 沒有任何身分：中性文案，不對可能是協力廠商的人講打卡與管理員（審查 F52）
@@ -85,14 +85,16 @@ export default async function Root({ searchParams }: { searchParams: Promise<Rec
 
   return (
     <div className="mx-auto max-w-md pb-8">
-      <BrandBar right={<LangMenu loc={loc} back="/?menu=1" />} />
+      <BrandBar link={false} right={<LangMenu loc={loc} back="/?menu=1" />} />
       <main className="px-4">
         <h1 className="mt-2 text-[30px] leading-tight font-black tracking-[1px]" style={{ fontFamily: 'var(--font-title)' }}>
           {tt('HOME_TITLE')}
         </h1>
         <p className="mt-1 mb-5 text-sm text-gray-600">
           {tt('HOME_HINT')}
-          {toggle ? tt('HOME_HINT_TOGGLE', { me: tt('ROLE_ME'), admin: tt('ROLE_ADMIN') }) : tt('HOME_HINT_TOOL')}
+          {/* 只有一個工具的人沒有換法可說（他的頁面沒有 ▾，T10 第 1 輪）；兩句之間留空白給拉丁語系 */}
+          {list.length > 1 && ' '}
+          {list.length > 1 && (toggle ? tt('HOME_HINT_TOGGLE', { me: tt('ROLE_ME'), admin: tt('ROLE_ADMIN') }) : tt('HOME_HINT_TOOL'))}
         </p>
         <div className="space-y-5">
           {g.me.length > 0 && section('me', toggle ? tt('ROLE_ME') : tt('YOUR_TOOLS'), g.me, false)}

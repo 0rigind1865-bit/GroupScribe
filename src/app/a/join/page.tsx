@@ -2,7 +2,7 @@ import { liffId, liffUser } from '@/core/liff';
 import { locale, t, type MsgKey } from '@/attend/i18n';
 import { Banner } from '@/app/ui/banner';
 import { PageHeader } from '@/app/ui/page-header';
-import { AttendLiffBoot } from '../shell';
+import { AttendLiffBoot, LangMenu } from '../shell';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,11 +24,17 @@ export default async function JoinPage({
   const uid = await liffUser();
   if (!uid) return <AttendLiffBoot liffId={liffId()} tt={tt} />;
   const { org, code, err } = await searchParams;
+  const qs = new URLSearchParams(Object.entries({ org, code }).filter((e): e is [string, string] => !!e[1])).toString();
 
   return (
     <main className="mx-auto max-w-md p-5">
       {/* 返回打卡頁：拿加入連結的員工多半不在任何已認領的群，回 /g 是一頁中文空白（審查 F34） */}
-      <PageHeader back="/a" title={tt('JOIN_TITLE')} />
+      <PageHeader
+        back="/a"
+        title={tt('JOIN_TITLE')}
+        // 語言地球：外籍新員工加入流程的第一個表單（T10 第 1 輪）；切語言後保留代號與加入碼
+        right={<LangMenu loc={loc} back={`/a/join${qs ? `?${qs}` : ''}`} />}
+      />
       <p className="mb-4 text-sm text-gray-600">{tt('JOIN_DESC')}</p>
       {err && <Banner tone="err">{ERR[err] ? tt(ERR[err]) : err}</Banner>}
       <form action="/api/attend/join" method="post" className="card space-y-3">

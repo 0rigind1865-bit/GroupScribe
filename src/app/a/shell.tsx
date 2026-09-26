@@ -74,8 +74,8 @@ export function AttendShell({
   children: React.ReactNode;
   /** surfaces() 分好組的身分（頁面層取好傳進來；沒傳就不畫身分列） */
   groups?: Grouped;
-  /** 管理那一邊有事等你（琥珀小點，src/org/pending.ts） */
-  dot?: boolean;
+  /** 管理那一邊有事等你（琥珀小點＋直達那個工具，src/org/pending.ts） */
+  dot?: string;
   /** 在兩家以上公司當員工時，姓名下方顯示「公司名 · 部門」（審查 F32） */
   org?: string;
   /** 頁標題（襯線大標）＋副標（日期） */
@@ -120,7 +120,7 @@ type HeaderProps = {
   tt: (k: MsgKey, p?: Record<string, string | number>) => string;
   back: string;
   groups?: Grouped;
-  dot?: boolean;
+  dot?: string;
   org?: string;
 };
 
@@ -132,7 +132,7 @@ export function AttendHeader({ emp, loc, tt, back, groups, dot, org }: HeaderPro
     <>
       {bar && (
         <div className="-mx-4">
-          <IdentityBar groups={groups!} currentKey="punch" side="me" tt={tt} rightSlot={lang} dot={dot} />
+          <IdentityBar groups={groups!} currentKey="punch" side="me" tt={tt} rightSlot={lang} dot={dot} closeHref={back} />
         </div>
       )}
 
@@ -188,12 +188,13 @@ export function LangMenu({ loc, back }: { loc: Locale; back: string }) {
 }
 
 /** 尚未取得 LINE 身分時的開機畫面（品牌與文案走員工端語系） */
-export function AttendLiffBoot({ liffId, tt }: { liffId: string; tt: (k: MsgKey) => string }) {
+// brand：預設是「打卡」（/a 系列）；全站入口 / 要傳「群記」——群組外部成員第一眼不該看到「打卡」（T10 第 1 輪）
+export function AttendLiffBoot({ liffId, tt, brand }: { liffId: string; tt: (k: MsgKey) => string; brand?: string }) {
   return (
     <LiffInit
       liffId={liffId}
       msgs={{
-        brand: tt('APP_TITLE'),
+        brand: brand ?? tt('APP_TITLE'),
         connecting: tt('LIFF_CONNECTING'),
         noId: tt('LIFF_NO_ID'),
         noIdentity: tt('LIFF_NO_IDENTITY'),

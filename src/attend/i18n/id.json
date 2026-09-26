@@ -130,5 +130,6 @@
   "EXP_NOT_ENABLED": "Perusahaan Anda belum mengaktifkan fitur biaya, atau Anda belum karyawan aktif. Hubungi pengelola.",
   "ORG_PLACEHOLDER": "Kode dari pengelola",
   "OUT_OF_RANGE_NEAR": "{m} m lagi dari “{name}”",
-  "MISS_ANY": "Absen kurang"
+  "MISS_ANY": "Absen kurang",
+  "SEE_ALL_TOOLS": "Semua alat →"
 }

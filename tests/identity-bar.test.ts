@@ -105,11 +105,29 @@ test('所有連結只有 /go/…、目前頁（關閉）與 /?menu=1——不直
   }
 });
 
-test('無障礙：選單按鈕有 aria-label、角色開關是 nav 並有 aria-label、目前選單列有 aria-current', () => {
-  const html = render([punch('a'), myexp('a'), adm('attend', 'a', 'A')], 'myexpense', 'me');
-  assert.ok(html.includes('<summary class="id-tool" aria-label="切換工具">'));
+test('無障礙：選單按鈕的 aria-label 說出工具名、角色開關是 nav、目前選單列有 aria-current', () => {
+  const html = render([punch('a'), myexp('a'), adm('attend', 'a', 'A')], 'myexpense', 'me', 'zh-TW', { closeHref: '/a/expense?tab=list' });
+  assert.ok(html.includes('<summary class="id-tool" aria-label="報帳，切換工具">'));
   assert.ok(html.includes('<nav class="id-toggle" aria-label="切換角色">'));
-  assert.match(html, /<a class="id-row" href="\/go\/myexpense" aria-current="page">/);
+  // 目前那列＝關閉、留在原頁（不經 /go/；補進來的 key 走 /go/ 會落到別家，T10 第 1 輪）
+  assert.match(html, /<a class="id-row" href="\/a\/expense\?tab=list" aria-current="page">/);
+  assert.ok(html.includes('<a class="id-close" href="/a/expense?tab=list">'));
+});
+
+test('琥珀小點給工具 key：點「管理」直達有待辦的工具，不走同工具對應（T10 第 1 輪）', () => {
+  const list = [punch('a'), adm('gs', 'a', 'A'), adm('attend', 'a', 'A')];
+  const html = render(list, 'punch', 'me', 'zh-TW', { dot: 'gs:a' });
+  assert.ok(html.includes('href="/go/gs%3Aa"'));
+  assert.ok(html.includes('role="img"'));
+  assert.ok(!html.includes('/go/@admin'));
+});
+
+test('工具畫成純標題（沒有選單）時帶公司名；沒有角色開關時抽屜底部寫「看全部工具」（T10 第 1 輪）', () => {
+  // P6：管理側只有 A 考勤 → 純標題，要看得到「A」
+  assert.ok(render([punch('b'), adm('attend', 'a', '頂好')], 'attend:a', 'admin').includes('<span class="id-tool-org">頂好</span>'));
+  // P3：沒有開關
+  const html = render([punch('a'), myexp('a')], 'punch', 'me');
+  assert.ok(html.includes('看全部工具') && !html.includes('看全部身分'));
 });
 
 test('五語系：角色名照語系（越南文 Tôi／Quản lý）', () => {

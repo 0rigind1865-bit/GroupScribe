@@ -33,12 +33,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="zh-Hant">
       <body className="min-h-screen bg-gray-50 text-gray-900">
         {children}
-        {/* 全站唯一的 client 增強：表單送出後按鈕轉圈＋鎖住（防連點）。純 CSS 做不到「已送出」狀態，
-            所以用 3 行原生 JS，不引任何套件；樣式在 globals.css 的 .is-submitting */}
+        {/* 全站唯一的 client 增強（原生 JS，不引套件）：
+            1. 表單送出後按鈕轉圈＋鎖住（防連點）；樣式在 globals.css 的 .is-submitting
+            2. 身分列選單的「關閉」與目前那列：只收合，不導頁——<details> 零 JS 關不掉，
+               連結本身只是沒有 JS 時的退路（T10 第 1 輪：原本會跳回工具首頁、丟掉 ?month／?emp） */}
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "addEventListener('submit',e=>{const f=e.target;if(!(f instanceof HTMLFormElement)||e.defaultPrevented)return;f.classList.add('is-submitting');e.submitter&&e.submitter.classList.add('is-clicked')})",
+              "addEventListener('submit',e=>{const f=e.target;if(!(f instanceof HTMLFormElement)||e.defaultPrevented)return;f.classList.add('is-submitting');e.submitter&&e.submitter.classList.add('is-clicked')});" +
+              "addEventListener('click',e=>{const a=e.target instanceof Element&&e.target.closest('.id-close,.id-row[aria-current]');if(!a)return;e.preventDefault();a.closest('details')?.removeAttribute('open')})",
           }}
         />
       </body>

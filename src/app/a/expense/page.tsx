@@ -1,7 +1,7 @@
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
 import { liffId, liffUser } from '@/core/liff';
 import { IdentityBar } from '@/app/ui/identity-bar';
-import { AttendLiffBoot } from '../shell';
+import { AttendLiffBoot, LangMenu } from '../shell';
 import { shellData } from '../shell-data';
 import { locale, t, type MsgKey } from '@/attend/i18n';
 import { myExpenseIdentity } from '@/expense/mine';
@@ -55,7 +55,18 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
     <ExpenseApp
       key={me.org_id}
       tab={tab}
-      header={<IdentityBar groups={sd.groups} currentKey="myexpense" side="me" tt={tt} dot={sd.dot} />}
+      header={
+        // 語言地球：個人側有身分列時在最右（T10 第 1 輪 high：這頁原本零顆，外籍員工被帶進來後無路可切）
+        <IdentityBar
+          groups={sd.groups}
+          currentKey="myexpense"
+          side="me"
+          tt={tt}
+          dot={sd.dot}
+          closeHref={`/a/expense?tab=${tab}`}
+          rightSlot={<LangMenu loc={loc} back={`/a/expense?tab=${tab}`} />}
+        />
+      }
       L={{
         tabAdd: tt('EXP_TAB_ADD'),
         tabList: tt('EXP_TAB_LIST'),

@@ -201,3 +201,11 @@ test('o/[org]/layout.tsx 的 generateMetadata 先過 visibleModules 才放公司
   assert.match(body, /visibleModules\(/, 'generateMetadata 沒有先驗權限——非成員會從分頁標題看到公司名');
   assert.doesNotMatch(body, /orgBySlug\(/, '不要直接用 orgBySlug 取名字');
 });
+
+// ── 全站入口不得寫「打卡」（T10 第 1 輪：群組外部成員第一眼就看到工具名）──
+test('首頁 / 的 LIFF 開機畫面品牌字是「群記」，不是員工端的 APP_TITLE', () => {
+  const src = readFileSync(join(ROOT, 'src/app/page.tsx'), 'utf8');
+  const boot = src.match(/<AttendLiffBoot[^>]*\/>/g) ?? [];
+  assert.ok(boot.length > 0);
+  for (const b of boot) assert.match(b, /brand="群記"/, b);
+});

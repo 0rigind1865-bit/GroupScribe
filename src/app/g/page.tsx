@@ -5,7 +5,7 @@ import { liffStatePath, logFunnel, parseLiffEntry } from '@/core/funnel';
 import { IdentityBar, identityBarShown } from '@/app/ui/identity-bar';
 import { surfaces } from '@/org/surfaces';
 import { groupSurfaces } from '@/org/surface-groups';
-import { hasAdminPending } from '@/org/pending';
+import { adminPendingKey } from '@/org/pending';
 import { locale, t, type MsgKey } from '@/attend/i18n';
 import { LiffInit } from './liff-init';
 
@@ -37,7 +37,7 @@ export default async function LiffHome({ searchParams }: { searchParams: Promise
   const tt = (key: MsgKey, params?: Record<string, string | number>) => t(loc, key, params);
   const groups = groupSurfaces((await surfaces()).list);
   const barShown = identityBarShown(groups, 'me');
-  const dot = barShown && (await hasAdminPending(groups, uid));
+  const dot = barShown ? ((await adminPendingKey(groups, uid)) ?? undefined) : undefined;
 
   return (
     <main className="mx-auto max-w-md p-5">
@@ -45,7 +45,7 @@ export default async function LiffHome({ searchParams }: { searchParams: Promise
           可見性由 src/org/surfaces.ts 單一判定，沒權限的東西 DOM 裡也不存在。 */}
       {barShown ? (
         <div className="-mx-5 -mt-5 mb-2">
-          <IdentityBar groups={groups} currentKey="groups" side="me" tt={tt} dot={dot} />
+          <IdentityBar groups={groups} currentKey="groups" side="me" tt={tt} dot={dot} closeHref="/g" />
         </div>
       ) : (
         <p className="mb-2 text-base font-black" style={{ fontFamily: 'var(--font-title)' }}>

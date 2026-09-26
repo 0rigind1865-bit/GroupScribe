@@ -481,6 +481,12 @@ html {
 .id-context { margin-left: auto; flex-shrink: 1; min-width: 48px; }
 .id-context .ctx-pill { max-width: min(100%, 128px); }
 .id-tool--title { flex-shrink: 0; }
+/* 個人側：語言地球固定在最右，放不下時讓工具名先出省略號；窄螢幕拿掉角色格的裝飾圖示
+   （越南文「Tôi｜Quản lý＋Chấm công」在 375／360 寬會把地球推出畫面，T10 第 1 輪） */
+.id-bar--light .id-menu { flex-shrink: 1; }
+@media (max-width: 400px) {
+  .id-bar--light .id-role svg { display: none; }
+}
 .id-right { margin-left: auto; flex-shrink: 0; }
 .id-context + .id-right { margin-left: 0; }
 /* 手機抽屜 */
@@ -509,7 +515,7 @@ html {
   font-weight: 400;
 }
 .id-panel::before { content: ''; display: block; width: 36px; height: 4px; margin: 4px auto 0; border-radius: 9999px; background: #d9d5c9; }
-.id-close { display: flex; justify-content: flex-end; align-items: center; min-height: 44px; padding: 0 4px; font-size: 13px; color: #5b665f; text-decoration: none; }
+.id-close { display: flex; justify-content: flex-end; align-items: center; min-height: 44px; padding: 0 4px; font-size: 14px; font-weight: 700; color: #5b665f; text-decoration: none; }
 .id-sec { margin: 10px 8px 4px; font-size: 12px; font-weight: 700; letter-spacing: 2px; color: #5b665f; }
 .id-row { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px; border-radius: 12px; color: #1c2420; text-decoration: none; }
 .id-row:hover { background: #f6f4ee; }
@@ -520,7 +526,7 @@ html {
 .id-row-name { font-size: 15px; font-weight: 700; }
 .id-row-desc { font-size: 12px; color: #5b665f; }
 .id-check { flex-shrink: 0; color: #0f5c46; }
-.id-all { display: block; padding: 12px 8px 4px; font-size: 13px; color: #5b665f; text-decoration: none; }
+.id-all { display: flex; align-items: center; min-height: 44px; margin-top: 4px; padding: 0 8px; font-size: 13px; color: #5b665f; text-decoration: none; }
 /* 情境膠囊（群組／員工）：淺色列白底細框；深色列透明底白字（審查 F17） */
 .ctx-pill {
   display: flex;
@@ -721,7 +727,9 @@ body:has(.batch-box:checked) #batch {
   .id-bar--light .id-sep { background: #3a443e; }
   .id-bar--light .id-tile { background: #12312a; color: #34d399; }
   .id-bar--light .id-tool-org { color: #a7b3ac; }
-  .id-bar--dark { background: #173a2e; }
+  /* 綠底對頁面底色只有約 1.4:1，加一條 2px 亮綠上緣線讓「管理」一眼可辨（T10 第 1 輪） */
+  .id-bar--dark { background: #173a2e; box-shadow: inset 0 2px 0 #34d399; }
+  .home-sec--dark { box-shadow: inset 0 2px 0 #34d399; }
   .id-bar--dark .id-toggle { background: rgb(0 0 0 / 0.25); }
   .id-bar--dark .id-role[aria-current] { background: rgb(255 255 255 / 0.14); }
   .id-bar--dark .id-tile { background: rgb(0 0 0 / 0.25); }

@@ -130,5 +130,6 @@
   "EXP_NOT_ENABLED": "Your company hasn’t turned on expenses, or you’re not an active employee yet. Please contact your manager.",
   "ORG_PLACEHOLDER": "Code from your manager",
   "OUT_OF_RANGE_NEAR": "{m} m from “{name}”",
-  "MISS_ANY": "Missing punch"
+  "MISS_ANY": "Missing punch",
+  "SEE_ALL_TOOLS": "All tools →"
 }

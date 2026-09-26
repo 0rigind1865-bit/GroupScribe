@@ -130,5 +130,6 @@
   "EXP_NOT_ENABLED": "你所屬的公司還沒開報帳功能，或你還不是在職員工。請聯絡管理者。",
   "ORG_PLACEHOLDER": "管理員給你的代號",
   "OUT_OF_RANGE_NEAR": "離「{name}」還有 {m} 公尺",
-  "MISS_ANY": "缺卡"
+  "MISS_ANY": "缺卡",
+  "SEE_ALL_TOOLS": "看全部工具 →"
 }

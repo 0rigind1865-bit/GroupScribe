@@ -130,5 +130,6 @@
   "EXP_NOT_ENABLED": "会社で経費機能が有効になっていないか、まだ在籍社員として登録されていません。管理者に連絡してください。",
   "ORG_PLACEHOLDER": "管理者から受け取った代号",
   "OUT_OF_RANGE_NEAR": "「{name}」まであと {m} m",
-  "MISS_ANY": "打刻漏れ"
+  "MISS_ANY": "打刻漏れ",
+  "SEE_ALL_TOOLS": "すべてのツール →"
 }

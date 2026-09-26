@@ -2,6 +2,7 @@
 
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Chevron, PANEL, PILL, rowCls } from '@/app/ui/group-switcher';
+import { oh } from '@/org/href';
 
 // 全域員工選擇器：跨考勤各分頁保持選擇（?emp=）。
 //
@@ -30,6 +31,11 @@ export function EmployeeSwitcher({ employees }: { employees: EmpOption[] }) {
 
   // 換人時月份要跟著走（換人看同一個月是常見動作）；其餘 entity 參數丟棄
   function hrefFor(id: string): string {
+    // 總覽、審核、員工、地點、規則這些頁不分人：選了某人只換膠囊字、內容不變，等於說謊——改成去看他的報表
+    if (supportsAll && id) {
+      const slug = pathname.match(/^\/o\/([^/]+)/)?.[1] ?? '';
+      return oh(slug, '/attend/report', { emp: id, month: search.get('month') ?? undefined });
+    }
     const params = new URLSearchParams();
     if (id) params.set('emp', id);
     const month = search.get('month');

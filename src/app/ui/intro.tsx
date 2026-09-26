@@ -9,17 +9,27 @@ const Eyebrow = ({ children }: { children: React.ReactNode }) => (
   <p className="mb-1 text-xs font-semibold tracking-widest text-emerald-700">{children}</p>
 );
 
-export function BrandBar({ right }: { right?: React.ReactNode }) {
+// link=false：首頁身分選單用——越南員工誤點品牌會掉進全中文的行銷頁（T10 第 1 輪）
+export function BrandBar({ right, link = true }: { right?: React.ReactNode; link?: boolean }) {
+  const mark = (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/brand/mark-512.png" alt="" className="h-9 w-9 rounded-xl" />
+      <span className="leading-tight">
+        <span className="block text-base font-semibold tracking-tight">群記</span>
+        <span className="block text-[10px] font-medium tracking-widest text-gray-500">GROUPSCRIBE</span>
+      </span>
+    </>
+  );
   return (
     <header className="flex items-center gap-2.5 px-4 py-3">
-      <a href="/about" className="flex items-center gap-2.5">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/mark-512.png" alt="" className="h-9 w-9 rounded-xl" />
-        <span className="leading-tight">
-          <span className="block text-base font-semibold tracking-tight">群記</span>
-          <span className="block text-[10px] font-medium tracking-widest text-gray-500">GROUPSCRIBE</span>
-        </span>
-      </a>
+      {link ? (
+        <a href="/about" className="flex items-center gap-2.5">
+          {mark}
+        </a>
+      ) : (
+        <span className="flex items-center gap-2.5">{mark}</span>
+      )}
       {right && <div className="ml-auto">{right}</div>}
     </header>
   );
