@@ -3,16 +3,20 @@ import { redirect } from 'next/navigation';
 import { dbConfigured } from '@/db';
 import { isGroupMember, liffId, liffUser } from '@/core/liff';
 import { liffStatePath, parseLiffEntry } from '@/core/funnel';
-import { surfaces } from '@/org/surfaces';
+import { surfaces, type Surface } from '@/org/surfaces';
 import { BrandBar } from '@/app/ui/intro';
-import { LiffInit } from './g/liff-init';
+import { AttendLiffBoot, LangMenu } from './a/shell';
+import { groupSurfaces, hasRoleToggle, homeMode } from '@/org/surface-groups';
+import { TOOL_ICON, toolDesc, toolName } from '@/org/surface-meta';
+import { locale, t, type MsgKey } from '@/attend/i18n';
 
 export const dynamic = 'force-dynamic';
 
 // 全站唯一入口：所有人都從同一個 LINE 連結進來，這裡依身分決定去哪。
 //
 //   只有一種身分 → 直接進去
-//   兩種以上     → 記得上次選的就直接進去；第一次（或 ?menu=1）顯示選單讓他自己選
+//   兩種以上     → 記得上次選的就直接進去；第一次顯示選單讓他自己選
+//   ?menu=1      → 一律顯示選單，連只有一種身分的人也是（身分列最底的「看全部身分」會來這裡，F6）
 //   沒有身分     → 還沒用 LINE 登入就先跑 LIFF 開機；登入了還是沒有，就說明並給建立組織的入口
 //
 // 原本是系統「猜」：有員工身分就一律先進打卡。老闆同時是員工的話，每次點開都先跑到打卡頁，
@@ -32,55 +36,70 @@ export default async function Root({ searchParams }: { searchParams: Promise<Rec
   if (uid && entry.g && (await isGroupMember(entry.g, uid)))
     redirect(`/g/${encodeURIComponent(entry.g)}${entry.src ? `?src=${entry.src}` : ''}`);
   const { list } = await surfaces();
-  const menu = typeof sp.menu === 'string' ? sp.menu : undefined;
+  const menu = typeof sp.menu === 'string';
+  const last = (await cookies()).get('gs_surface')?.value;
+  const hit = list.find((s) => s.key === last);
+  const mode = homeMode(list.length, !!uid, menu, !!hit);
+  const loc = await locale();
+  const tt = (key: MsgKey, params?: Record<string, string | number>) => t(loc, key, params);
 
-  if (list.length === 1 && !menu) redirect(list[0].href);
-  if (list.length > 1) {
-    const last = (await cookies()).get('gs_surface')?.value;
-    const hit = list.find((s) => s.key === last);
-    if (hit && !menu) redirect(hit.href);
+  if (mode === 'redirect') redirect((list.length === 1 ? list[0] : hit!).href);
+  // 開機畫面走員工端語系：越南籍員工第一眼不該是中文（審查 F44）
+  if (mode === 'boot') return <AttendLiffBoot liffId={liffId()} tt={tt} />;
+
+  if (mode === 'none')
+    // 沒有任何身分：中性文案，不對可能是協力廠商的人講打卡與管理員（審查 F52）
     return (
-      <div className="mx-auto max-w-md pb-8">
-        <BrandBar />
-        <main className="px-4">
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight">你想做什麼？</h1>
-          <p className="mt-1 mb-5 text-sm text-gray-600">
-            這個 LINE 帳號有 {list.length} 種身分。選一個，下次打開會直接帶你去。想換身分，用頁面上方的切換膠囊（管理後台在「更多」頁最下面）。
-          </p>
-          <div className="space-y-3">
-            {list.map((s) => (
-              <a key={s.key} href={`/go/${encodeURIComponent(s.key)}`} className="card flex items-center gap-3 rounded-2xl hover:bg-gray-50">
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="text-base font-semibold">{s.label}</span>
-                    {s.key === last && (
-                      <span className="rounded-full bg-emerald-100 px-2 py-px text-[11px] font-medium text-emerald-900">上次使用</span>
-                    )}
-                  </span>
-                  <span className="mt-0.5 block text-sm text-gray-600">{s.desc}</span>
-                </span>
-                <span className="text-xl text-gray-300">›</span>
-              </a>
-            ))}
-          </div>
-        </main>
-      </div>
+      <main className="mx-auto max-w-md p-6 text-center">
+        <p className="mb-2 text-lg font-bold">GroupScribe</p>
+        <p className="text-sm text-gray-500">{tt('HOME_NONE')}</p>
+        <a className="btn mt-4" href="/start">
+          {tt('HOME_CREATE_ORG')}
+        </a>
+      </main>
     );
-  }
-  if (!uid) return <LiffInit liffId={liffId()} />;
 
-  // 有身分但沒有任何面向：不是員工、不在任何已認領的群、也不是管理員
+  // 選單（畫布 IdHome）：個人一段（淺色）、每家公司一段（深色段頭）、平台一段
+  const g = groupSurfaces(list);
+  const toggle = hasRoleToggle(g);
+  const row = (s: Surface) => (
+    <a key={s.key} href={`/go/${encodeURIComponent(s.key)}`} className="id-row">
+      <span className="id-row-tile">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          {TOOL_ICON[s.id]}
+        </svg>
+      </span>
+      <span className="id-row-text">
+        <span className="id-row-name">{toolName(s.id, tt)}</span>
+        <span className="id-row-desc">{toolDesc(s.id, tt)}</span>
+      </span>
+      {menu && s.key === last && <span className="home-last">{tt('LAST_USED')}</span>}
+    </a>
+  );
+  const section = (key: string, title: string, items: Surface[], dark: boolean) => (
+    <section key={key}>
+      <h2 className={dark ? 'home-sec home-sec--dark' : 'home-sec'}>{title}</h2>
+      <div className={dark ? 'home-card home-card--dark' : 'home-card'}>{items.map(row)}</div>
+    </section>
+  );
+
   return (
-    <main className="mx-auto max-w-md p-6 text-center">
-      <p className="mb-2 text-lg font-bold">GroupScribe</p>
-      <p className="text-sm text-gray-500">
-        這個 LINE 帳號還沒有可用的功能。
-        <br />
-        要打卡請向管理員索取加入連結；要看群組整理，請先加入有群記的群組（群組要先被管理員認領）。
-      </p>
-      <a className="btn-primary mt-4" href="/start">
-        我是管理者，免費建立組織
-      </a>
-    </main>
+    <div className="mx-auto max-w-md pb-8">
+      <BrandBar right={<LangMenu loc={loc} back="/?menu=1" />} />
+      <main className="px-4">
+        <h1 className="mt-2 text-[30px] leading-tight font-black tracking-[1px]" style={{ fontFamily: 'var(--font-title)' }}>
+          {tt('HOME_TITLE')}
+        </h1>
+        <p className="mt-1 mb-5 text-sm text-gray-600">
+          {tt('HOME_HINT')}
+          {toggle ? tt('HOME_HINT_TOGGLE', { me: tt('ROLE_ME'), admin: tt('ROLE_ADMIN') }) : tt('HOME_HINT_TOOL')}
+        </p>
+        <div className="space-y-5">
+          {g.me.length > 0 && section('me', toggle ? tt('ROLE_ME') : tt('YOUR_TOOLS'), g.me, false)}
+          {g.admin.map((o) => section(`org:${o.slug}`, `${tt('ROLE_ADMIN')} · ${o.name}`, o.items, true))}
+          {g.platform.length > 0 && section('platform', '平台', g.platform, true)}
+        </div>
+      </main>
+    </div>
   );
 }

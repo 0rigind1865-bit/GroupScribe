@@ -116,3 +116,15 @@ export function goTarget(list: Surface[], key: string, from: string | null, last
   }
   return list.find((x) => x.key === key) ?? null;
 }
+
+/**
+ * 首頁 / 要做什麼（審查 F6）：
+ *   redirect＝直接進去（只有一種身分、或記得上次選的）；menu＝顯示選單；boot＝還沒登入，跑 LIFF 開機；none＝沒有任何身分
+ *   ?menu=1 時只要有身分就顯示選單——連只有一種身分的人也是（原本會落到「這個帳號沒有可用的功能」）
+ */
+export function homeMode(listLength: number, hasUid: boolean, menu: boolean, hasLast: boolean): 'redirect' | 'menu' | 'boot' | 'none' {
+  if (listLength > 0 && menu) return 'menu';
+  if (listLength === 1) return 'redirect';
+  if (listLength > 1) return hasLast ? 'redirect' : 'menu';
+  return hasUid ? 'none' : 'boot';
+}

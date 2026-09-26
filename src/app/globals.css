@@ -559,6 +559,13 @@ html {
   .id-panel::before, .id-close { display: none; }
 }
 
+/* 首頁身分選單（src/app/page.tsx，畫布 IdHome）：個人段淺色卡；管理／平台段深色段頭＝跟頂列同一個角色色 */
+.home-sec { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 12px; font-weight: 700; letter-spacing: 2px; color: #5b665f; }
+.home-sec--dark { margin: 0; padding: 10px 14px; border-radius: 14px 14px 0 0; background: #1c2420; color: #ffffff; letter-spacing: 1px; }
+.home-card { padding: 4px; border-radius: 14px; border: 1px solid #ebe3d2; background: #ffffff; }
+.home-card--dark { border-top: 0; border-radius: 0 0 14px 14px; }
+.home-last { flex-shrink: 0; align-self: flex-start; margin-top: 4px; padding: 2px 8px; border-radius: 9999px; background: #e3efe9; color: #0f5c46; font-size: 11px; font-weight: 700; }
+
 /* 按鈕與輸入框已全尺寸 44px（設計稿桌機也是 44）；這裡只剩手機放大勾選框 */
 @media (max-width: 767px) {
   input[type="checkbox"] {
@@ -690,6 +697,11 @@ body:has(.batch-box:checked) #batch {
   .bg-blue-100 { background-color: #172a45; }
   .text-blue-900 { color: #93c5fd; }
 
+  .home-sec--dark { background: #173a2e; }
+  .home-card { background: #1a211e; border-color: #2a332f; }
+  .home-sec { color: #a7b3ac; }
+  .home-sec--dark { color: #ffffff; }
+  .home-last { background: #12312a; color: #34d399; }
   /* 身分列：暗色下「深色＝管理」要改用綠底才分得出來（個人頁背景 #111613，審查 F27） */
   .id-bar--light { color: #e8edea; }
   .id-bar--light .id-toggle { background: #252d28; }

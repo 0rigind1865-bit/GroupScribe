@@ -351,7 +351,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 | T4 | IdentityBar | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 159 pass（身分列 11 個：七角色＋連結＋無障礙＋五語系）；快照腳本移到 T9 |
 | T5 | 管理端 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 163 pass；素材 A：/o/main/attend 手機（多公司兩行按鈕、抽屜分段＋平台段、遮罩下是 summary＝點了會關、抽屜蓋住底部膠囊）、/o/demo 電腦（頂欄＋下拉照 IdDesktopMenu、<title> 帶公司名）、1024 寬不溢出、/platform 暗色綠底 |
 | T6 | 個人端 | P0 | ◐ | 09-27 夜 | 0 | （本 commit） | 164 pass；身分列接上 /a、/a/expense、/g；地球規則測試（AttendHeader）；素材 B 假非成員 /a 無管理字（只有「請向管理員索取加入碼」）、/go 亂打回落地頁、/o/main 404。**報帳 App 最小版五語系未做**，併入 D2 |
-| T7 | 首頁選單 | P0 | ⬜ | | 0 | | |
+| T7 | 首頁選單 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 167 pass（homeMode 3 個）；素材 A：/?menu=1 手機截圖照 IdHome（深色段頭、上次使用、無開關提示、地球） |
 | T8 | 清理 | P0 | ⬜ | | 0 | | |
 | T9 | 視覺驗收 | P0 | ⬜ | | 0 | | |
 | C4 | 既有畫板修改 | P1 | ⬜ | | 0 | | |

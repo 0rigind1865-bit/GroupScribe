@@ -175,3 +175,19 @@ test('三家公司：分段照清單順序（surfaces 已改成公司優先排�
   const list = [adm('gs', 'a'), adm('attend', 'a'), adm('attend', 'b'), adm('gs', 'c')];
   assert.deepEqual(groupSurfaces(list).admin.map((o) => o.slug), ['a', 'b', 'c']);
 });
+
+// ── 首頁（T7）──
+import { homeMode } from '../src/org/surface-groups';
+test('homeMode：一種身分直接進；兩種以上記得上次就直接進、否則選單', () => {
+  assert.equal(homeMode(1, true, false, false), 'redirect');
+  assert.equal(homeMode(3, true, false, true), 'redirect');
+  assert.equal(homeMode(3, true, false, false), 'menu');
+});
+test('homeMode：?menu=1 連一種身分也顯示選單，不落到「沒有功能」（F6）', () => {
+  assert.equal(homeMode(1, true, true, false), 'menu');
+  assert.equal(homeMode(1, true, true, true), 'menu');
+});
+test('homeMode：沒有身分——沒登入跑開機、登入了說明', () => {
+  assert.equal(homeMode(0, false, false, false), 'boot');
+  assert.equal(homeMode(0, true, true, false), 'none');
+});

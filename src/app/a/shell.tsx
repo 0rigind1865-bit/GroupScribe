@@ -156,8 +156,8 @@ export function AttendHeader({ emp, loc, tt, back, groups, dot, org }: HeaderPro
   );
 }
 
-/** 語言選單：details 折疊，零 JS、佔位小；44px 觸控目標 */
-function LangMenu({ loc, back }: { loc: Locale; back: string }) {
+/** 語言選單：details 折疊，零 JS、佔位小；44px 觸控目標（首頁也用） */
+export function LangMenu({ loc, back }: { loc: Locale; back: string }) {
   return (
     <details className="relative">
       <summary
