@@ -1,6 +1,7 @@
 import { fmtHM, itemTime, type ExpenseItem } from './types';
 
 // 報帳 CSV（欄位照 Snaptab lib/export.ts）：員工 App 在手機產生、後台匯出路由也用同一份。
+// 畫面上「案場」已改「專案」（跨行業），但欄位名維持「案場」——會計的試算表範本可能靠欄位名對應，改名要 jielin 決定。
 // UTF-8 BOM＋CRLF，Excel 直接開不亂碼。表尾：合計＋代墊請款＋公司卡核銷＋現金（>0 才列）。
 const esc = (v: unknown) => {
   const s = String(v ?? '');

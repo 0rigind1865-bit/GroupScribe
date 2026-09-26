@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FloatingNav } from '@/app/ui/floating-nav';
+import { ZH_LABELS, type ExpenseLabels } from './labels';
 import { Icon } from '@/expense/icons';
 import type { CategoryItem } from '@/expense/categories';
 import type { ExpenseItem } from '@/expense/types';
@@ -18,12 +19,14 @@ import { ReportView } from './report-view';
 // 我的報帳 App 外殼（從 Snaptab AppShell 搬來）：四個分頁（記一筆／清單／報帳／分析）、自動定位＋附近地點、
 // 小提示、離線暫存自動補送。分頁用 ?tab=，但四個分頁同時掛著只切顯示——記到一半切去看清單，回來金額還在。
 export type Tab = 'add' | 'list' | 'report' | 'analytics';
-const TABS: [Tab, string, string][] = [
-  ['add', '記一筆', 'edit'],
-  ['list', '清單', 'list'],
-  ['report', '報帳', 'receipt'],
-  ['analytics', '分析', 'chart'],
+const TABS: [Tab, keyof ExpenseLabels, string][] = [
+  ['add', 'tabAdd', 'edit'],
+  ['list', 'tabList', 'list'],
+  // 不叫「報帳」：工具本身就叫報帳，分頁再叫一次分不出來（審查 F10）
+  ['report', 'tabExport', 'receipt'],
+  ['analytics', 'tabAnalytics', 'chart'],
 ];
+
 const WEEK = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
 const NEARBY_MONTHLY = 500; // 每支手機每月最多查幾次附近地點（伺服器另有全站上限）
 
@@ -52,9 +55,11 @@ export function ExpenseApp({
   projects: initialProjects,
   items,
   hasNearby,
+  L = ZH_LABELS,
 }: {
   tab: Tab;
   header: React.ReactNode;
+  L?: ExpenseLabels;
   canManage: boolean;
   categories: CategoryItem[];
   projects: string[];
@@ -140,7 +145,9 @@ export function ExpenseApp({
   };
 
   const now = new Date();
-  const title = tab === 'add' ? `${now.getMonth() + 1}月${now.getDate()}日 ${WEEK[now.getDay()]}` : tab === 'list' ? '代墊與核銷' : tab === 'report' ? '匯出報帳單' : '花費分析';
+  // 頁標題是頁名，日期降為副標（記一筆原本最大的字是日期，3 秒答不出這頁幹嘛——審查 F55）
+  const title = tab === 'add' ? L.titleAdd : tab === 'list' ? L.titleList : tab === 'report' ? L.titleExport : L.titleAnalytics;
+  const dateSub = `${now.getMonth() + 1}月${now.getDate()}日 ${WEEK[now.getDay()]}`;
   const locText = locating ? '定位中…' : loc?.placeName || (loc?.lat != null ? '已定位・點此選地點' : '點此輸入地點');
   const icons = Object.fromEntries(categories.map((c) => [c.name, c.icon]));
 
@@ -149,9 +156,9 @@ export function ExpenseApp({
       {/* 身分列（個人・淺色）；自帶左右留白，貼齊畫面邊緣 */}
       <div className="-mx-4 -mt-4 mb-1">{header}</div>
       <header className="mb-3 flex items-end gap-2">
-        <div className="min-w-0">
-          <p className="text-xs text-gray-500">{TABS.find(([k]) => k === tab)?.[1]}</p>
+        <div className="flex min-w-0 items-baseline gap-2.5">
           <h1 className="truncate">{title}</h1>
+          {tab === 'add' && <span className="flex-none text-sm text-gray-500">{dateSub}</span>}
         </div>
         {tab === 'add' && (
           <button type="button" onClick={() => setShowPlaces(true)} className="ml-auto flex max-w-[55%] items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs">
@@ -167,6 +174,7 @@ export function ExpenseApp({
       <div className="nav-gap">
         <div hidden={tab !== 'add'}>
           <AddView
+            L={L}
             categories={categories}
             projects={projects}
             canManage={canManage}
@@ -188,7 +196,7 @@ export function ExpenseApp({
           <ReportView items={items} categories={categories} onToast={showToast} />
         </div>
         <div hidden={tab !== 'analytics'}>
-          <AnalyticsView items={items} icons={icons} projectLabel="案場" />
+          <AnalyticsView items={items} icons={icons} projectLabel="專案" />
         </div>
       </div>
 
@@ -231,7 +239,7 @@ export function ExpenseApp({
       <FloatingNav
         tabs={TABS.map(([k, label, icon]) => ({
           href: `/a/expense?tab=${k}`,
-          label,
+          label: L[label],
           icon: <Icon name={icon} size={22} />,
           active: k === tab,
         }))}

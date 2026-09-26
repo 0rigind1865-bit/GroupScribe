@@ -6,7 +6,7 @@ import { PAY_METHODS, parseAmount, parseDate } from './receipt';
 
 // 我的報帳（X2／Snaptab 全功能移植）：身分一律從 LIFF session 反查，絕不信表單傳來的人或公司。
 // 能用的人：所屬公司有開報帳的「管理者」（org_members）或「在職員工」（employees active）。
-// canManage：管理者才能改分類、改案場名稱（影響全公司）。
+// canManage：管理者才能改分類、改專案名稱（影響全公司）。
 export type ExpenseMe = { org_id: string; line_user_id: string; display_name: string; canManage: boolean };
 
 export async function myExpenseIdentity(): Promise<ExpenseMe | null> {

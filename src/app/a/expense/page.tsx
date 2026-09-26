@@ -12,8 +12,8 @@ import { ExpenseApp, type Tab } from './expense-app';
 
 export const dynamic = 'force-dynamic';
 
-// 我的報帳（Snaptab 全功能移植）：伺服器準備好資料（身分、分類、案場、我的紀錄、照片簽名網址），
-// 畫面與互動在 expense-app.tsx。只有繁中（ponytail：外籍員工需要時接 attend/i18n）。
+// 我的報帳（Snaptab 全功能移植）：伺服器準備好資料（身分、分類、專案、我的紀錄、照片簽名網址），
+// 畫面與互動在 expense-app.tsx。五語系只做最小版（分頁、頁標題、記一筆六個標籤，labels.ts），其餘仍是繁中。
 const TABS: Tab[] = ['add', 'list', 'report', 'analytics'];
 
 export default async function MyExpense({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
@@ -25,7 +25,7 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
   if (!dbConfigured()) return <main className="p-6 text-gray-500">系統尚未設定資料庫。</main>;
   const me = await myExpenseIdentity();
   if (!me)
-    return <main className="mx-auto max-w-md p-6 text-sm text-gray-600">你所屬的公司還沒開報帳功能，或你還不是在職員工。請聯絡管理者。</main>;
+    return <main className="mx-auto max-w-md p-6 text-sm text-gray-600">{tt('EXP_NOT_ENABLED')}</main>;
 
   const [sp, sd] = await Promise.all([searchParams, shellData(uid)]);
   const tab = TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : 'add';
@@ -53,6 +53,22 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
       key={me.org_id}
       tab={tab}
       header={<IdentityBar groups={sd.groups} currentKey="myexpense" side="me" tt={tt} dot={sd.dot} />}
+      L={{
+        tabAdd: tt('EXP_TAB_ADD'),
+        tabList: tt('EXP_TAB_LIST'),
+        tabExport: tt('EXP_TAB_EXPORT'),
+        tabAnalytics: tt('EXP_TAB_ANALYTICS'),
+        titleAdd: tt('EXP_TITLE_ADD'),
+        titleList: tt('EXP_TITLE_LIST'),
+        titleExport: tt('EXP_TITLE_EXPORT'),
+        titleAnalytics: tt('EXP_TITLE_ANALYTICS'),
+        amount: tt('EXP_AMOUNT'),
+        photo: tt('EXP_PHOTO'),
+        category: tt('EXP_CATEGORY'),
+        project: tt('EXP_PROJECT'),
+        pay: tt('EXP_PAY'),
+        save: tt('EXP_SAVE'),
+      }}
       canManage={me.canManage}
       categories={categories}
       projects={projects}

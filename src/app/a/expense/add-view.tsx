@@ -10,6 +10,7 @@ import { fmtMoney } from '@/expense/types';
 import type { InvoiceData } from '@/expense/invoice';
 import { isSpeechSupported, startDictation, type Dictation } from '@/expense/speech';
 import { blobToDataUrl, compressImage } from '@/expense/compress';
+import { ZH_LABELS, type ExpenseLabels } from './labels';
 import { enqueue } from '@/expense/outbox';
 import { Sheet } from '@/app/ui/expense/sheet';
 import dynamic from 'next/dynamic';
@@ -17,8 +18,8 @@ import dynamic from 'next/dynamic';
 // 掃描器（含 jsqr，約 40KB）要用才載入，平常打開記帳頁不用下載
 const QRScanner = dynamic(() => import('@/app/ui/expense/qr-scanner').then((m) => m.QRScanner), { ssr: false });
 
-// 記一筆（從 Snaptab AddView 搬來）：大字金額＋計算機鍵盤、分類圖示格＋AI 分類、案場（可新增／改名）、
-// 付款方式、備註（可語音）、發票號（可掃 QR）、拍照。存完金額歸零；「記住上次」開著才保留案場與分類。
+// 記一筆（從 Snaptab AddView 搬來）：大字金額＋計算機鍵盤、分類圖示格＋AI 分類、專案（可新增／改名）、
+// 付款方式、備註（可語音）、發票號（可掃 QR）、拍照。存完金額歸零；「記住上次」開著才保留專案與分類。
 // 沒網路時先存在手機（outbox），恢復網路由外殼自動補送。
 export type Loc = { lat: number | null; lng: number | null; placeName: string };
 const NEW = '__new__';
@@ -34,7 +35,9 @@ export function AddView({
   onNewProject,
   onRenamed,
   onManageCategories,
+  L = ZH_LABELS,
 }: {
+  L?: ExpenseLabels;
   categories: CategoryItem[];
   projects: string[];
   canManage: boolean;
@@ -64,7 +67,7 @@ export function AddView({
   const dictRef = useRef<Dictation | null>(null);
   const noteRef = useRef<HTMLTextAreaElement>(null);
 
-  // 「記住上次」：開著才帶回上次的案場與分類（預設關＝每次重選，防止選錯）
+  // 「記住上次」：開著才帶回上次的專案與分類（預設關＝每次重選，防止選錯）
   useEffect(() => {
     try {
       const on = localStorage.getItem('gs-expense-remember') === '1';
@@ -166,7 +169,7 @@ export function AddView({
       .catch(() => ({ ok: false, error: '沒有網路' }));
   const onProject = async (v: string) => {
     if (v === NEW) {
-      const name = window.prompt('新增案場／專案名稱')?.trim().slice(0, 60);
+      const name = window.prompt('新增專案名稱')?.trim().slice(0, 60);
       if (!name) return;
       const fd = new FormData();
       fd.set('name', name);
@@ -174,10 +177,10 @@ export function AddView({
       if (!r.ok) return onToast(`✗ ${r.error ?? '新增失敗'}`);
       onNewProject(name);
       setProject(name);
-      return onToast('✓ 已新增案場');
+      return onToast('✓ 已新增專案');
     }
     if (v === RENAME) {
-      const to = window.prompt('重新命名案場（全公司這個案場的紀錄都會一起改）', project)?.trim().slice(0, 60);
+      const to = window.prompt('重新命名專案（全公司這個專案的紀錄都會一起改）', project)?.trim().slice(0, 60);
       if (!to || to === project) return;
       const fd = new FormData();
       fd.set('action', 'rename');
@@ -188,7 +191,7 @@ export function AddView({
       onRenamed(project, to);
       setProject(to);
       if (remember) localStorage.setItem('gs-expense-last-project', to);
-      return onToast('✓ 已更新案場名稱');
+      return onToast('✓ 已更新專案名稱');
     }
     setProject(v);
   };
@@ -260,7 +263,7 @@ export function AddView({
         className="card flex cursor-pointer items-center gap-3"
       >
         <div className="min-w-0 flex-1">
-          <p className="text-xs text-gray-500">金額</p>
+          <p className="text-xs text-gray-500">{L.amount}</p>
           <p className={`truncate text-4xl font-semibold tabular-nums ${expr ? '' : 'text-gray-400'}`}>
             <span className="mr-1 text-lg text-gray-500">$</span>
             {expr ? fmtMoney(amount) : '0'}
@@ -282,7 +285,7 @@ export function AddView({
           ) : (
             <span className="flex flex-col items-center text-xs">
               <Icon name="camera" size={22} />
-              拍照
+              {L.photo}
             </span>
           )}
         </button>
@@ -297,7 +300,7 @@ export function AddView({
       {/* 分類：選好收合成一行，點一下再展開 */}
       {catOpen || !category ? (
         <div>
-          <p className="mb-1.5 text-xs text-gray-500">分類</p>
+          <p className="mb-1.5 text-xs text-gray-500">{L.category}</p>
           <div className="grid grid-cols-4 gap-2">
             {categories.map((c) => (
               <button
@@ -332,33 +335,33 @@ export function AddView({
         <button type="button" onClick={() => setCatOpen(true)} className="card flex w-full items-center gap-3 text-left">
           <Icon name={picked?.icon ?? 'tag'} size={20} />
           <span className="min-w-0 flex-1">
-            <span className="block text-xs text-gray-500">分類</span>
+            <span className="block text-xs text-gray-500">{L.category}</span>
             <span className="block font-medium">{category}</span>
           </span>
           <span className="text-sm text-gray-500">更改 ▾</span>
         </button>
       )}
 
-      {/* 案場＋付款方式 */}
+      {/* 專案＋付款方式 */}
       <div className="grid grid-cols-2 gap-2">
         <label className="flex flex-col gap-1">
-          <span className="text-xs text-gray-500">案場／專案</span>
+          <span className="text-xs text-gray-500">{L.project}</span>
           <select className="input" value={project} onChange={(e) => onProject(e.target.value)}>
             {!project && (
               <option value="" disabled>
-                請選擇案場…
+                請選擇專案…
               </option>
             )}
             {projects.map((p) => (
               <option key={p}>{p}</option>
             ))}
             {project && !projects.includes(project) && <option>{project}</option>}
-            {project && canManage && <option value={RENAME}>✎ 重新命名目前案場…</option>}
-            <option value={NEW}>＋ 新增案場…</option>
+            {project && canManage && <option value={RENAME}>✎ 重新命名目前專案…</option>}
+            <option value={NEW}>＋ 新增專案…</option>
           </select>
         </label>
         <div className="flex flex-col gap-1">
-          <span className="text-xs text-gray-500">付款方式</span>
+          <span className="text-xs text-gray-500">{L.pay}</span>
           <div className="flex rounded-lg border border-gray-200 p-0.5 text-sm">
             {PAY_METHODS.map((p) => (
               <button
@@ -419,21 +422,21 @@ export function AddView({
       </div>
 
       <button type="button" className="btn-primary h-12 w-full text-base" disabled={!canSave} onClick={save}>
-        {saving ? '儲存中…' : '＋ 存一筆'}
+        {saving ? '儲存中…' : L.save}
       </button>
       {!canSave && !saving && (
         <p className="text-center text-xs text-gray-500">
-          {amount <= 0 ? '先輸入金額' : !category ? '再選一個分類' : !project ? '再選一個案場' : ''}
+          {amount <= 0 ? '先輸入金額' : !category ? '再選一個分類' : !project ? '再選一個專案' : ''}
         </p>
       )}
       <label className="flex items-center gap-2 text-sm text-gray-600">
         <input type="checkbox" checked={remember} onChange={(e) => setRememberPref(e.target.checked)} />
-        記住上次的案場與分類（下次打開自動帶入）
+        記住上次的專案與分類（下次打開自動帶入）
       </label>
 
       {showPad && (
         <Sheet onClose={() => setShowPad(false)}>
-          <p className="text-xs text-gray-500">金額</p>
+          <p className="text-xs text-gray-500">{L.amount}</p>
           <p className={`text-4xl font-semibold tabular-nums ${expr ? '' : 'text-gray-400'}`}>
             <span className="mr-1 text-lg text-gray-500">$</span>
             {expr ? fmtMoney(amount) : '0'}

@@ -52,7 +52,7 @@ export default async function ExpenseReport({
   if (error)
     return (
       <main className="page">
-        <h1 className="mb-3">報帳加總</h1>
+        <h1 className="mb-3">加總</h1>
         <Banner tone="warn">
           報帳資料表還沒建立：請在 Supabase SQL Editor 執行 <code>supabase/migrations/022_expenses.sql</code>。
         </Banner>
@@ -66,7 +66,7 @@ export default async function ExpenseReport({
 
   return (
     <main className="page">
-      <h1 className="mb-3">報帳加總</h1>
+      <h1 className="mb-3">加總</h1>
       <form className="mb-4 flex flex-wrap items-end gap-2 text-sm" method="get">
         <label className="flex flex-col gap-1">
           <span className="text-xs text-gray-500">專案</span>

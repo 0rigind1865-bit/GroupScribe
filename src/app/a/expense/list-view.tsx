@@ -9,7 +9,7 @@ import { Empty } from '@/app/ui/empty';
 import { Badge } from '@/app/ui/badge';
 import { Lightbox, Sheet } from '@/app/ui/expense/sheet';
 
-// 我的清單（從 Snaptab ListView／EditExpenseModal 搬來）：依案場分組＋小計，組照最新一筆排、組內新到舊。
+// 我的清單（從 Snaptab ListView／EditExpenseModal 搬來）：依專案分組＋小計，組照最新一筆排、組內新到舊。
 // 點一列開編輯；已被管理者標「已報帳」的鎖定（多人共用下，改了會讓會計對不上帳）。
 const PAY_TONE: Record<string, string> = { 代墊: 'bg-amber-100 text-amber-900', 公司卡: 'bg-sky-100 text-sky-900', 現金: 'bg-emerald-100 text-emerald-900' };
 
@@ -192,7 +192,7 @@ function EditSheet({
             </option>
           ))}
         </select>
-        <label className={label}>案場／專案</label>
+        <label className={label}>專案</label>
         <select className="input w-full" value={project} onChange={(e) => setProject(e.target.value)}>
           {(project && !projects.includes(project) ? [project, ...projects] : projects).map((p) => (
             <option key={p}>{p}</option>

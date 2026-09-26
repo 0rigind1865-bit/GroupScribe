@@ -47,7 +47,7 @@ export default async function ExpenseList({
   if (error)
     return (
       <main className="page">
-        <h1 className="mb-3">報帳</h1>
+        <h1 className="mb-3">收據清單</h1>
         <Banner tone="warn">
           報帳資料表還沒建立：請在 Supabase SQL Editor 執行 <code>supabase/migrations/022_expenses.sql</code>。
         </Banner>
@@ -75,7 +75,7 @@ export default async function ExpenseList({
 
   return (
     <main className="page">
-      <h1 className="mb-1">報帳</h1>
+      <h1 className="mb-1">收據清單</h1>
       <p className="mb-3 text-sm text-gray-500">員工在 LINE 私訊群記一張收據照，就會自動記在這裡。</p>
       <Flash
         sp={sp}

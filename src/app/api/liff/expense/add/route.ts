@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     return fail('沒有記成功，請稍後再試', 500);
   }
   if (cid) recent.set(`${me.line_user_id}:${cid}`, now);
-  // 案場清單：用過的名稱順手登記（表還沒建就略過）
+  // 專案清單：用過的名稱順手登記（表還沒建就略過）
   if (input.project)
     await db.from('expense_projects').upsert({ org_id: me.org_id, name: input.project, created_by: me.line_user_id }, { onConflict: 'org_id,name', ignoreDuplicates: true }).then(() => {});
   return NextResponse.json({ ok: true, photo: !!photo_path || !(file instanceof File && file.size > 0) });

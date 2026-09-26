@@ -112,5 +112,20 @@
   "YOUR_TOOLS": "你的工具",
   "HOME_NONE": "這個 LINE 帳號目前沒有可用的頁面。請從有群記的 LINE 群組裡點連結進來。",
   "HOME_CREATE_ORG": "我是公司管理者，建立組織",
-  "SWITCH_LANG": "切換語言"
+  "SWITCH_LANG": "切換語言",
+  "EXP_TAB_ADD": "記一筆",
+  "EXP_TAB_LIST": "清單",
+  "EXP_TAB_EXPORT": "匯出",
+  "EXP_TAB_ANALYTICS": "分析",
+  "EXP_TITLE_ADD": "記一筆",
+  "EXP_TITLE_LIST": "我的清單",
+  "EXP_TITLE_EXPORT": "匯出報帳單",
+  "EXP_TITLE_ANALYTICS": "花費分析",
+  "EXP_AMOUNT": "金額",
+  "EXP_PHOTO": "拍照",
+  "EXP_CATEGORY": "分類",
+  "EXP_PROJECT": "專案",
+  "EXP_PAY": "付款方式",
+  "EXP_SAVE": "＋ 存一筆",
+  "EXP_NOT_ENABLED": "你所屬的公司還沒開報帳功能，或你還不是在職員工。請聯絡管理者。"
 }

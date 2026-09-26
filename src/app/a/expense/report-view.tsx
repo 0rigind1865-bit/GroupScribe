@@ -7,13 +7,13 @@ import { fmtHM, fmtMoney, itemTime, type ExpenseItem } from '@/expense/types';
 import { toCsv } from '@/expense/csv';
 import { Empty } from '@/app/ui/empty';
 
-// 報帳（從 Snaptab ReportView 搬來）：選案場 → 依分類加總（照分類設定的順序）→ 合計、代墊請款／公司卡核銷 → 匯出。
+// 報帳（從 Snaptab ReportView 搬來）：選專案 → 依分類加總（照分類設定的順序）→ 合計、代墊請款／公司卡核銷 → 匯出。
 // 匯出維持 CSV（使用者 2026-09-26 決定，不加 Excel 套件）；檔案在手機上直接產生，不經伺服器。
 export function ReportView({ items, categories, onToast }: { items: ExpenseItem[]; categories: CategoryItem[]; onToast: (m: string) => void }) {
   const projects = useMemo(() => {
     const latest = new Map<string, number>();
     for (const e of items) if (e.project) latest.set(e.project, Math.max(latest.get(e.project) ?? 0, itemTime(e)));
-    return [...latest].sort((a, b) => b[1] - a[1]).map(([p]) => p); // 最近有花費的案場在前
+    return [...latest].sort((a, b) => b[1] - a[1]).map(([p]) => p); // 最近有花費的專案在前
   }, [items]);
   const [picked, setPicked] = useState('');
   const current = picked || projects[0] || '';
@@ -29,7 +29,7 @@ export function ReportView({ items, categories, onToast }: { items: ExpenseItem[
   const sum = (p?: string) => rows.filter((e) => !p || e.pay_method === p).reduce((a, e) => a + e.amount, 0);
 
   const exportCsv = () => {
-    if (!rows.length) return onToast('這個案場還沒有紀錄');
+    if (!rows.length) return onToast('這個專案還沒有紀錄');
     const csv = toCsv(rows, { includePerson: false });
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const a = document.createElement('a');
@@ -41,7 +41,7 @@ export function ReportView({ items, categories, onToast }: { items: ExpenseItem[
     onToast('📤 已匯出');
   };
 
-  if (!projects.length) return <Empty title="還沒有任何案場的紀錄" />;
+  if (!projects.length) return <Empty title="還沒有任何專案的紀錄" />;
   return (
     <div className="space-y-3">
       <select className="input w-full" value={current} onChange={(e) => setPicked(e.target.value)}>
