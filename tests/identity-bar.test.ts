@@ -116,3 +116,34 @@ test('五語系：角色名照語系（越南文 Tôi／Quản lý）', () => {
   const html = render([punch('a'), adm('attend', 'a', 'A')], 'punch', 'me', 'vi');
   assert.ok(html.includes('Tôi') && html.includes('Quản lý'));
 });
+
+// ── 員工端外殼：任何角色都恰好一顆語言地球（審查 F3）──
+import { AttendHeader } from '../src/app/a/shell';
+
+function shell(list: Surface[], loc: Locale = 'vi') {
+  return renderToStaticMarkup(
+    createElement(AttendHeader, {
+      emp: { display_name: '阿明', dept: null, picture_url: null },
+      loc,
+      tt: tt(loc),
+      back: '/a',
+      groups: groupSurfaces(list),
+    }),
+  );
+}
+
+test('員工端外殼：七種角色都恰好一顆「切換語言」，單一工具時在姓名列、有身分列時在身分列', () => {
+  const personas: Surface[][] = [
+    [punch('a')], // P1
+    [punch('a'), myexp('a')], // P3
+    [punch('a'), myexp('a'), groups, adm('gs', 'a', 'A'), adm('attend', 'a', 'A')], // P4
+    [punch('b'), adm('attend', 'a', 'A')], // P6
+  ];
+  for (const list of personas) {
+    const html = shell(list);
+    const n = html.split('aria-label="Đổi ngôn ngữ"').length - 1;
+    assert.equal(n, 1, JSON.stringify(list.map((s) => s.key)));
+  }
+  // P1：沒有身分列
+  assert.ok(!shell([punch('a')]).includes('id-bar'));
+});

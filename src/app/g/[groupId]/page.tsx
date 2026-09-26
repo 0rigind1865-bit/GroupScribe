@@ -467,10 +467,12 @@ export default async function MemberView({
     <main className="nav-gap mx-auto max-w-md">
       {/* 釘在頂端：與管理版同一個理由——群組名是成員唯一的 context 錨點 */}
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
-        <a href="/g" aria-label="回你的群組" className="-ml-1 p-1 text-gray-400">
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+        {/* 回群組清單：看得見的 44px 連結（原本是 28px 灰色無字箭頭，常按到 LINE 的關閉，審查 F46） */}
+        <a href="/g" className="-ml-2 flex min-h-11 flex-none items-center gap-0.5 rounded-full px-2 text-sm text-gray-600 hover:bg-gray-50">
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
             <path d="M15 6l-6 6 6 6" />
           </svg>
+          群組
         </a>
         {g?.picture_url ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -482,7 +484,7 @@ export default async function MemberView({
         )}
         <div>
           <p className="leading-tight font-bold">{name}</p>
-          <p className="text-xs text-gray-500">群組工作助理</p>
+          <p className="text-xs text-gray-500">群組</p>
         </div>
       </header>
 

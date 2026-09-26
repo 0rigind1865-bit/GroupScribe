@@ -8,6 +8,7 @@ import { Banner } from '@/app/ui/banner';
 import { PunchBadge } from '@/app/ui/badge';
 import { Empty } from '@/app/ui/empty';
 import { AttendLiffBoot, AttendShell } from './shell';
+import { shellData, todayLabel } from './shell-data';
 import { PunchPanel, type PunchLocation } from './punch-client';
 
 export const dynamic = 'force-dynamic';
@@ -42,12 +43,13 @@ export default async function AttendHome({
 
   const employees = await myEmployees();
   const emp = employees.find((e) => e.status === 'active') ?? employees[0];
+  const { inGroups, ...sd } = await shellData(uid, emp, employees);
 
   // 尚未加入：唯一入口是管理員發的深連結（見 src/app/g/page.tsx 檔頭的權限說明），
   // 但已經走到這頁的人顯然拿到了連結，給他一個補填加入碼的路
   if (!emp) {
     return (
-      <AttendShell current="dash" loc={loc} tt={tt} back="/a">
+      <AttendShell current="dash" loc={loc} tt={tt} back="/a" {...sd}>
         {banner}
         <Empty
           title={tt('NOT_JOINED')}
@@ -66,7 +68,7 @@ export default async function AttendHome({
   // 現在明確講「接下來會發生什麼」並給兩個出口。
   if (emp.status !== 'active') {
     return (
-      <AttendShell emp={emp} current="dash" loc={loc} tt={tt} back="/a">
+      <AttendShell emp={emp} current="dash" loc={loc} tt={tt} back="/a" {...sd}>
         {banner}
         <div className="card space-y-3 text-sm">
           <p className="font-bold text-gray-700">
@@ -77,9 +79,11 @@ export default async function AttendHome({
             <a href="/a" className="btn">
               {tt('REFRESH')}
             </a>
-            <a href="/g" className="btn">
-              {tt('BACK_TO_GROUPS')}
-            </a>
+            {inGroups && (
+              <a href="/g" className="btn">
+                {tt('BACK_TO_GROUPS')}
+              </a>
+            )}
           </div>
           {emp.status === 'pending' && (
             <a href="/a/join" className="inline-block text-xs text-gray-400 underline">
@@ -111,7 +115,7 @@ export default async function AttendHome({
   const abnormalCount = days.filter((d) => d.abnormal).length;
 
   return (
-    <AttendShell emp={emp} current="dash" loc={loc} tt={tt} back="/a">
+    <AttendShell emp={emp} current="dash" loc={loc} tt={tt} back="/a" {...sd} title={tt('TOOL_PUNCH')} sub={todayLabel(loc)}>
       {banner}
       {!locations.length && <Banner tone="warn">{tt('NO_LOCATIONS')}</Banner>}
 

@@ -146,7 +146,8 @@ export function ExpenseApp({
 
   return (
     <main className="mx-auto max-w-md p-4">
-      <div className="mb-2">{header}</div>
+      {/* 身分列（個人・淺色）；自帶左右留白，貼齊畫面邊緣 */}
+      <div className="-mx-4 -mt-4 mb-1">{header}</div>
       <header className="mb-3 flex items-end gap-2">
         <div className="min-w-0">
           <p className="text-xs text-gray-500">{TABS.find(([k]) => k === tab)?.[1]}</p>

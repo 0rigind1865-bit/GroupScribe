@@ -111,5 +111,6 @@
   "LAST_USED": "Last used",
   "YOUR_TOOLS": "Your tools",
   "HOME_NONE": "This LINE account has nothing to open yet. Open the link from a LINE group that uses GroupScribe.",
-  "HOME_CREATE_ORG": "I manage a company — create an organization"
+  "HOME_CREATE_ORG": "I manage a company — create an organization",
+  "SWITCH_LANG": "Language"
 }

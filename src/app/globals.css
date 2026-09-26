@@ -440,7 +440,7 @@ html {
 .id-sep { width: 1px; height: 24px; flex-shrink: 0; background: #d9d5c9; }
 .id-bar--dark .id-sep { background: #3d4a43; }
 /* 工具按鈕：圖示有底色方塊（底部膠囊的圖示沒有——同一個圖示，至少一個維度不同，審查 F10） */
-.id-menu { position: relative; min-width: 0; }
+.id-menu { position: relative; min-width: 0; flex-shrink: 0; }
 .id-tool {
   display: flex;
   align-items: center;
@@ -465,7 +465,11 @@ html {
 .id-chevron { flex-shrink: 0; transition: transform 0.15s; }
 .id-menu[open] .id-chevron { transform: rotate(180deg); }
 .id-nav { display: none; }
-.id-context { margin-left: auto; flex-shrink: 1; min-width: 0; }
+/* 空間不夠時的先後（手機 390 寬＋角色開關＋群組名膠囊會超出）：工具名永遠不縮——那是「我在哪個工具」
+   唯一的答案；情境膠囊先縮成「全…▾」，群組名在頁標題旁本來就看得到（畫布 IdAdminGs） */
+.id-context { margin-left: auto; flex-shrink: 1; min-width: 56px; }
+.id-context .ctx-pill { max-width: min(100%, 128px); }
+.id-tool--title { flex-shrink: 0; }
 .id-right { margin-left: auto; flex-shrink: 0; }
 .id-context + .id-right { margin-left: 0; }
 /* 手機抽屜 */
@@ -537,7 +541,7 @@ html {
   .id-tool-org::before { content: '· '; }
   .id-nav { display: flex; flex: 1; min-width: 0; overflow-x: auto; }
   .id-context { margin-left: 0; }
-  .ctx-pill { max-width: 220px; }
+  .ctx-pill, .id-context .ctx-pill { max-width: min(100%, 220px); }
   .id-menu[open] > summary::before { background: transparent; }
   .id-panel {
     position: absolute;

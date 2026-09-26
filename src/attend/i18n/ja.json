@@ -111,5 +111,6 @@
   "LAST_USED": "前回",
   "YOUR_TOOLS": "あなたのツール",
   "HOME_NONE": "このLINEアカウントで開けるページはまだありません。GroupScribe が参加している LINE グループのリンクから開いてください。",
-  "HOME_CREATE_ORG": "会社の管理者です。組織を作成"
+  "HOME_CREATE_ORG": "会社の管理者です。組織を作成",
+  "SWITCH_LANG": "言語を切り替え"
 }

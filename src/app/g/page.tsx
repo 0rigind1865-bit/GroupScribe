@@ -2,14 +2,18 @@ import { dbConfigured } from '@/db';
 import { redirect } from 'next/navigation';
 import { isGroupMember, liffId, liffUser, myGroups } from '@/core/liff';
 import { liffStatePath, logFunnel, parseLiffEntry } from '@/core/funnel';
-import { SurfaceSwitcher } from '@/app/ui/surface-switcher';
+import { IdentityBar, identityBarShown } from '@/app/ui/identity-bar';
+import { surfaces } from '@/org/surfaces';
+import { groupSurfaces } from '@/org/surface-groups';
+import { hasAdminPending } from '@/org/pending';
+import { locale, t, type MsgKey } from '@/attend/i18n';
 import { LiffInit } from './liff-init';
 
 export const dynamic = 'force-dynamic';
 
 // LIFF 成員版首頁：列出「你是成員」的群組（成員資格由 LINE 群成員 API 判定，見 core/liff.ts）。
 //
-// 其他面向（打卡、管理後台）的入口統一由 SurfaceSwitcher 提供，本頁不再手刻導覽卡。
+// 其他身分（打卡、公司管理）的入口統一由身分列提供（src/app/ui/identity-bar.tsx），本頁不再手刻導覽卡。
 // ⚠ 可見性是權限邊界：LINE 群組裡可能有別家公司的人（協力廠商、客戶），他們該看得到
 // 本群的整理，但完全不該知道考勤系統存在——判定在 src/org/surfaces.ts。
 export default async function LiffHome({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -29,15 +33,28 @@ export default async function LiffHome({ searchParams }: { searchParams: Promise
   if (dest && !/^\/g(\?|$)/.test(dest)) redirect(dest);
 
   const mine = await myGroups(uid); // 排除未認領與群記已離開的群（core/liff.ts）
+  const loc = await locale();
+  const tt = (key: MsgKey, params?: Record<string, string | number>) => t(loc, key, params);
+  const groups = groupSurfaces((await surfaces()).list);
+  const barShown = identityBarShown(groups, 'me');
+  const dot = barShown && (await hasAdminPending(groups, uid));
 
   return (
     <main className="mx-auto max-w-md p-5">
-      {/* 面向切換器：取代原本手刻的「打卡系統」與「管理後台」兩張卡片。
-          可見性規則不變（沒權限的面向不出現），但改由 src/org/surfaces.ts 單一判定。 */}
-      <div className="mb-3">
-        <SurfaceSwitcher current="groups" />
-      </div>
-      <h1 className="mb-1 text-xl font-semibold tracking-tight">你的群組</h1>
+      {/* 身分列（個人・淺色，畫布 IdMeGroups）：只有群組身分的人整列不渲染，只留「群記」小字。
+          可見性由 src/org/surfaces.ts 單一判定，沒權限的東西 DOM 裡也不存在。 */}
+      {barShown ? (
+        <div className="-mx-5 -mt-5 mb-2">
+          <IdentityBar groups={groups} currentKey="groups" side="me" tt={tt} dot={dot} />
+        </div>
+      ) : (
+        <p className="mb-2 text-base font-black" style={{ fontFamily: 'var(--font-title)' }}>
+          群記
+        </p>
+      )}
+      <h1 className="mb-1 text-[30px] leading-tight font-black tracking-[1px]" style={{ fontFamily: 'var(--font-title)' }}>
+        你的群組
+      </h1>
       <p className="mb-4 text-sm text-gray-500">
         {mine.length
           ? '選一個群組看整理好的行程、待辦與公告。'

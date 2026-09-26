@@ -17,7 +17,7 @@ export const TOOL_ICON: Record<SurfaceId, ReactNode> = {
   groups: I.chat,
   gs: I.chat,
   platform: I.grid,
-  unclaimed: I.grid,
+  unclaimed: I.chat, // 未認領的群本質是群組；同一段兩列不共用圖示（畫布 SPEC v2 §H）
 };
 
 export const ROLE_ICON = { me: I.person, admin: I.briefcase };

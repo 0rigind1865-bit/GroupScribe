@@ -342,15 +342,15 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 |---|---|---|---|---|---|---|---|
 | T0 | 開工 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 基準 130 pass；launch.json 加 SESSION_SECRET |
 | D1 | /g 後台段 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 131 pass；故意加回「後台」測試會紅 |
-| C1 | SPEC v2 | P0 | ⏳ | 09-27 夜 | 0 | | workflow canvas-c1-c3 背景執行 |
-| C2 | 新增 7 張 Id 畫板 | P0 | ⬜ | | 0 | | |
-| C3 | 修改既有 Id 畫板 | P0 | ⬜ | | 0 | | |
+| C1 | SPEC v2 | P0 | ✅ | 09-27 夜 | 0 | 畫布 v17 | scratchpad canvas-work/SPEC.md（暗色、截斷、抽屜關閉、span、三態、多公司、小點） |
+| C2 | 新增 7 張 Id 畫板 | P0 | ✅ | 09-27 夜 | 0 | 畫布 v17 | IdAdminAttendSingle／IdAdminMulti／IdAdminGs／IdDrawerMe／IdMeGroups／IdMeExpense／IdPlatform；發布前逐檔讀過 |
+| C3 | 修改既有 Id 畫板 | P0 | ✅ | 09-27 夜 | 0 | 畫布 v17 | IdDrawer、IdHome（→980 高）、IdDesktopMenu、IdMePunch、IdSingleRole、IdAdminAttend、IdDesktopGs（目前角色改 span） |
 | T1 | groupSurfaces | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 145 pass（+14 persona／對應／安全網測試）；diff 審查見 T2 列 |
 | T2 | 名稱／圖示／五語系 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 145 pass；i18n 守門綠；五語系無「群組助理／打卡系統」 |
 | T3 | 角色跳轉 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 148 pass（goTarget 3 個）|
 | T4 | IdentityBar | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 159 pass（身分列 11 個：七角色＋連結＋無障礙＋五語系）；快照腳本移到 T9 |
 | T5 | 管理端 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 163 pass；素材 A：/o/main/attend 手機（多公司兩行按鈕、抽屜分段＋平台段、遮罩下是 summary＝點了會關、抽屜蓋住底部膠囊）、/o/demo 電腦（頂欄＋下拉照 IdDesktopMenu、<title> 帶公司名）、1024 寬不溢出、/platform 暗色綠底 |
-| T6 | 個人端 | P0 | ⬜ | | 0 | | |
+| T6 | 個人端 | P0 | ◐ | 09-27 夜 | 0 | （本 commit） | 164 pass；身分列接上 /a、/a/expense、/g；地球規則測試（AttendHeader）；素材 B 假非成員 /a 無管理字（只有「請向管理員索取加入碼」）、/go 亂打回落地頁、/o/main 404。**報帳 App 最小版五語系未做**，併入 D2 |
 | T7 | 首頁選單 | P0 | ⬜ | | 0 | | |
 | T8 | 清理 | P0 | ⬜ | | 0 | | |
 | T9 | 視覺驗收 | P0 | ⬜ | | 0 | | |
@@ -375,6 +375,8 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 - 2026-09-27：F20 報帳頁五語系採最小版（見 T6）；非 zh 語系的選單「報帳」說明後加「（中文介面）」字樣。
 - 2026-09-27：F30 琥珀小點只在個人側、指向管理；管理側「個人」格 v1 不亮。
 - 2026-09-27：暗色模式管理列改用 `var(--accent-tint)` 底（F27），C1 定稿時若截圖對比不足再改為深底＋2px accent 上緣線。
+- 2026-09-27 C1–C3（畫布 v17）：檢查員指出手機「角色開關＋群組助理＋群組名膠囊」放不下；定案＝工具名永遠不縮、情境膠囊先縮成「全…▾」（群組名在頁標題旁本來就看得到）。平台頁工具按鈕有 ▾（平台擁有者有多個管理項目，與程式一致）。未認領的群用雙對話框圖示（同一段兩列不共用圖示）。IdMeGroups 拿掉語言地球——成員頁目前只有繁中（F53），放地球切了也不會變。IdMeExpense 範例改跨行業（客戶午餐、文具）。
+- 2026-09-27 T6：外殼頭部拆成純元件 AttendHeader（FloatingNav 需要 Next 路由，測試無法渲染）；語言選單 LangMenu 改 44px。
 - 2026-09-27 T5：瀏覽器工具在手機模擬尺寸下真實點擊座標會偏移（點到別的元素），抽屜開關改用 elementFromPoint 驗證「遮罩底下是 summary」＋JS 開啟截圖。真機點擊列入早晨報告待驗清單。
 - 2026-09-27 T1/T2 審查（Fable）：沒有 critical、沒有權限洩漏；已修——安全網補「公司在清單但沒這個工具」、群組以外 slugs 空陣列不算同公司、公司優先排序、surfaces 說明對齊 2.2、vi／id／ja 三處譯文。過渡期（T8 前）管多家公司的舊切換器會出現兩個一樣的工具名——**T8 前不要部署**。
 - 2026-09-27 T4：不另寫 async 包裝 `identityBarFor()`——頁面層各自 `groupSurfaces((await surfaces()).list, current)` 一行就好（YAGNI）。「關閉」列＝連回目前頁（零 JS 關不掉 <details>，重新載入即關閉）。persona 快照腳本需要 dev server 的 CSS 網址，移到 T9 開 server 時一起寫。

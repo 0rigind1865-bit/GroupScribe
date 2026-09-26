@@ -8,6 +8,7 @@ import { MonthGrid } from '@/app/ui/month-grid';
 import { dayCellClass } from '@/attend/day-tone';
 import { PunchBadge, Badge } from '@/app/ui/badge';
 import { AttendLiffBoot, AttendShell } from '../shell';
+import { shellData } from '../shell-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,9 +28,10 @@ export default async function RecordsPage({
 
   const employees = await myEmployees();
   const emp = employees.find((e) => e.status === 'active');
+  const { inGroups: _g, ...sd } = await shellData(uid, emp, employees);
   if (!emp) {
     return (
-      <AttendShell current="records" loc={loc} tt={tt} back="/a/records">
+      <AttendShell current="records" loc={loc} tt={tt} back="/a/records" {...sd}>
         <p className="text-sm text-gray-600">{tt('NOT_ACTIVE')}</p>
       </AttendShell>
     );
@@ -45,7 +47,7 @@ export default async function RecordsPage({
   const sel = sp.d && byDate.has(sp.d) ? byDate.get(sp.d)! : null;
 
   return (
-    <AttendShell emp={emp} current="records" loc={loc} tt={tt} back={`/a/records?month=${month}`}>
+    <AttendShell emp={emp} current="records" loc={loc} tt={tt} back={`/a/records?month=${month}`} {...sd}>
       <div className="mb-3 flex items-center justify-between">
         <a className="btn px-3 py-1 text-sm" href={`/a/records?month=${shiftMonth(month, -1)}`}>←</a>
         <h1>{tt('MONTH_TITLE', { y, m })}</h1>

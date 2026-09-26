@@ -8,6 +8,7 @@ import { Banner } from '@/app/ui/banner';
 import { Badge } from '@/app/ui/badge';
 import type { Tone } from '@/app/ui/tone';
 import { AttendLiffBoot, AttendShell } from '../shell';
+import { shellData } from '../shell-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,9 +39,10 @@ export default async function AdjustPage({
 
   const employees = await myEmployees();
   const emp = employees.find((e) => e.status === 'active');
+  const { inGroups: _g, ...sd } = await shellData(uid, emp, employees);
   if (!emp)
     return (
-      <AttendShell current="requests" loc={loc} tt={tt} back="/a/adjust">
+      <AttendShell current="requests" loc={loc} tt={tt} back="/a/adjust" {...sd}>
         <p className="text-sm text-gray-600">{tt('NOT_ACTIVE')}</p>
       </AttendShell>
     );
@@ -63,7 +65,7 @@ export default async function AdjustPage({
   const defDatetime = sp.d ? `${sp.d}T${defType === 'in' ? '09:00' : '18:00'}` : '';
 
   return (
-    <AttendShell emp={emp} current="requests" loc={loc} tt={tt} back="/a/adjust">
+    <AttendShell emp={emp} current="requests" loc={loc} tt={tt} back="/a/adjust" {...sd} title={tt('TAB_REQUESTS')}>
       {sp.ok && <Banner>{tt('MSG_ADJUST_SENT')}</Banner>}
       {sp.err && <Banner tone="err">{ERR[sp.err] ? tt(ERR[sp.err]) : sp.err}</Banner>}
 
@@ -94,6 +96,8 @@ export default async function AdjustPage({
       )}
 
       <form action="/api/attend/adjust" method="post" className="card space-y-3">
+        {/* 表單要有標題：點底部「我的申請」進來直接是一張表，3 秒內答不出這頁幹嘛（審查 F22） */}
+        <h2 className="card-title">{tt('ADJUST_TITLE')}</h2>
         <label className="block text-sm">
           <span className="mb-1 block font-bold text-gray-700">{tt('TYPE_LABEL')}</span>
           <select className="input w-full" name="type" defaultValue={defType}>

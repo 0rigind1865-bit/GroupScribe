@@ -1,10 +1,14 @@
 import { LiffInit } from '@/app/g/liff-init';
 import { FloatingNav } from '@/app/ui/floating-nav';
-import { SurfaceSwitcher } from '@/app/ui/surface-switcher';
-import { LOCALES, type Locale, type MsgKey } from '@/attend/i18n';
+import { IdentityBar, identityBarShown } from '@/app/ui/identity-bar';
+import type { Grouped } from '@/org/surface-groups';
+import { LOCALES, t, type Locale, type MsgKey } from '@/attend/i18n';
 import type { Employee } from '@/attend/auth';
 
-// 員工端的共用外框：頭部（返回 /g・姓名・語言）＋ 底部懸浮膠囊。
+// 員工端的共用外框：身分列（個人・淺色）＋ 姓名列 ＋ 頁標題 ＋ 底部懸浮膠囊。
+//
+// 身分列只在有得選時出現（角色開關或多個工具）；只有打卡一個工具的員工整列不渲染，
+// 這時語言地球留在姓名列右邊——任何角色都恰好一顆（審查 F3，畫布 IdMePunch／IdSingleRole）。
 //
 // 導覽與管理端統一用 FloatingNav（滑動指示器／拖曳切換／捲動收合都是現成的），
 // 全站只有一種「切分頁」的手勢。打卡的兩顆大按鈕仍在首屏，膠囊浮在其下方，
@@ -55,6 +59,11 @@ export function AttendShell({
   tt,
   back,
   children,
+  groups,
+  dot,
+  org,
+  title,
+  sub,
 }: {
   emp?: Pick<Employee, 'display_name' | 'dept' | 'picture_url'> | null;
   current: Tab['key'];
@@ -62,55 +71,29 @@ export function AttendShell({
   tt: (k: MsgKey, p?: Record<string, string | number>) => string;
   back: string; // 語言切換後回到哪一頁
   children: React.ReactNode;
+  /** surfaces() 分好組的身分（頁面層取好傳進來；沒傳就不畫身分列） */
+  groups?: Grouped;
+  /** 管理那一邊有事等你（琥珀小點，src/org/pending.ts） */
+  dot?: boolean;
+  /** 在兩家以上公司當員工時，姓名下方顯示「公司名 · 部門」（審查 F32） */
+  org?: string;
+  /** 頁標題（襯線大標）＋副標（日期） */
+  title?: string;
+  sub?: string;
 }) {
   return (
-    <main className="mx-auto max-w-md p-4">
-      {/* 切換器取代原本的返回鍵：它已經包含「我的群組」，而且順帶回答
-          「我還能去哪」——返回鍵只能回答「上一步」。 */}
-      <div className="mb-2">
-        <SurfaceSwitcher current="punch" />
-      </div>
+    <main className="mx-auto max-w-md p-4 pt-0">
+      <AttendHeader emp={emp} loc={loc} tt={tt} back={back} groups={groups} dot={dot} org={org} />
 
-      <header className="mb-3 flex items-center gap-2">
-        {emp && (
-          <>
-            {emp.picture_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={emp.picture_url} alt="" className="h-9 w-9 flex-none rounded-full" />
-            ) : (
-              <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-emerald-600 text-sm font-bold text-white">
-                {emp.display_name.slice(0, 1)}
-              </span>
-            )}
-            <span className="min-w-0">
-              <span className="block truncate text-sm leading-tight font-bold">{emp.display_name}</span>
-              {emp.dept && <span className="block text-[11px] text-gray-500">{emp.dept}</span>}
-            </span>
-          </>
-        )}
-        {/* 語言：details 折疊選單，零 JS、佔位小 */}
-        <details className="relative ml-auto flex-none">
-          <summary className="grid h-9 w-9 cursor-pointer place-items-center rounded-full border border-gray-300 text-gray-600">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8">
-              <circle cx="12" cy="12" r="9" />
-              <path d="M3 12h18M12 3c2.5 2.7 2.5 15 0 18M12 3c-2.5 2.7-2.5 15 0 18" />
-            </svg>
-          </summary>
-          <div className="absolute right-0 z-20 mt-1 w-32 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
-            {LOCALES.map(([l, label]) => (
-              <a
-                key={l}
-                href={`/api/attend/lang?to=${l}&back=${encodeURIComponent(back)}`}
-                className={`block px-3 py-1.5 text-sm ${l === loc ? 'font-bold text-emerald-700' : 'text-gray-600'}`}
-              >
-                {label}
-              </a>
-            ))}
+      <div className="nav-gap">
+        {title && (
+          <div className="mb-4 flex items-baseline gap-2.5">
+            <h1>{title}</h1>
+            {sub && <span className="text-sm text-gray-500">{sub}</span>}
           </div>
-        </details>
-      </header>
-
-      <div className="nav-gap">{children}</div>
+        )}
+        {children}
+      </div>
 
       <FloatingNav
         tabs={TABS.map((t) => ({
@@ -125,6 +108,79 @@ export function AttendShell({
         }))}
       />
     </main>
+  );
+}
+
+type HeaderProps = {
+  emp?: Pick<Employee, 'display_name' | 'dept' | 'picture_url'> | null;
+  loc: Locale;
+  tt: (k: MsgKey, p?: Record<string, string | number>) => string;
+  back: string;
+  groups?: Grouped;
+  dot?: boolean;
+  org?: string;
+};
+
+/** 身分列＋姓名列（純元件；tests/identity-bar.test.ts 驗「任何角色恰好一顆語言地球」） */
+export function AttendHeader({ emp, loc, tt, back, groups, dot, org }: HeaderProps) {
+  const bar = !!groups && identityBarShown(groups, 'me');
+  const lang = <LangMenu loc={loc} back={back} />;
+  return (
+    <>
+      {bar && (
+        <div className="-mx-4">
+          <IdentityBar groups={groups!} currentKey="punch" side="me" tt={tt} rightSlot={lang} dot={dot} />
+        </div>
+      )}
+
+      <header className={`mb-3 flex items-center gap-2 ${bar ? 'pt-2' : 'pt-4'}`}>
+        {emp && (
+          <>
+            {emp.picture_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={emp.picture_url} alt="" className="h-9 w-9 flex-none rounded-full" />
+            ) : (
+              <span className="grid h-9 w-9 flex-none place-items-center rounded-full bg-emerald-600 text-sm font-bold text-white">
+                {emp.display_name.slice(0, 1)}
+              </span>
+            )}
+            <span className="min-w-0">
+              <span className="block truncate text-sm leading-tight font-bold">{emp.display_name}</span>
+              {(org || emp.dept) && <span className="block text-[11px] text-gray-500">{[org, emp.dept].filter(Boolean).join(' · ')}</span>}
+            </span>
+          </>
+        )}
+        {!bar && <div className="ml-auto flex-none">{lang}</div>}
+      </header>
+    </>
+  );
+}
+
+/** 語言選單：details 折疊，零 JS、佔位小；44px 觸控目標 */
+function LangMenu({ loc, back }: { loc: Locale; back: string }) {
+  return (
+    <details className="relative">
+      <summary
+        aria-label={t(loc, 'SWITCH_LANG')}
+        className="grid h-11 w-11 cursor-pointer list-none place-items-center rounded-full border border-gray-300 bg-white text-gray-600 [&::-webkit-details-marker]:hidden"
+      >
+        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M3 12h18M12 3c2.5 2.7 2.5 15 0 18M12 3c-2.5 2.7-2.5 15 0 18" />
+        </svg>
+      </summary>
+      <div className="absolute right-0 z-40 mt-1 w-36 rounded-lg border border-gray-200 bg-white py-1 shadow-lg" data-no-swipe="">
+        {LOCALES.map(([l, label]) => (
+          <a
+            key={l}
+            href={`/api/attend/lang?to=${l}&back=${encodeURIComponent(back)}`}
+            className={`block px-3 py-2 text-sm ${l === loc ? 'font-bold text-emerald-700' : 'text-gray-600'}`}
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+    </details>
   );
 }
 

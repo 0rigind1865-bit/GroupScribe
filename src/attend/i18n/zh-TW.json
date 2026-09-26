@@ -111,5 +111,6 @@
   "LAST_USED": "上次使用",
   "YOUR_TOOLS": "你的工具",
   "HOME_NONE": "這個 LINE 帳號目前沒有可用的頁面。請從有群記的 LINE 群組裡點連結進來。",
-  "HOME_CREATE_ORG": "我是公司管理者，建立組織"
+  "HOME_CREATE_ORG": "我是公司管理者，建立組織",
+  "SWITCH_LANG": "切換語言"
 }
