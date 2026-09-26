@@ -33,7 +33,7 @@
   "ORG_LABEL": "組織コード",
   "CODE_LABEL": "参加コード",
   "NAME_LABEL": "氏名（表示用）",
-  "NAME_PLACEHOLDER": "未入力の場合は LINE の名前",
+  "NAME_PLACEHOLDER": "お名前（管理者が分かるように）",
   "SUBMIT": "送信",
   "STATUS_PUNCH_NORMAL": "正常",
   "STATUS_PUNCH_IN_MISSING": "出勤打刻なし",
@@ -127,5 +127,6 @@
   "EXP_PROJECT": "プロジェクト",
   "EXP_PAY": "支払方法",
   "EXP_SAVE": "＋ 保存",
-  "EXP_NOT_ENABLED": "会社で経費機能が有効になっていないか、まだ在籍社員として登録されていません。管理者に連絡してください。"
+  "EXP_NOT_ENABLED": "会社で経費機能が有効になっていないか、まだ在籍社員として登録されていません。管理者に連絡してください。",
+  "ORG_PLACEHOLDER": "管理者から受け取った代号"
 }

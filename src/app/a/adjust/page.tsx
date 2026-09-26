@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { dbConfigured, getDb } from '@/db';
 import { liffId, liffUser } from '@/core/liff';
 import { myEmployees } from '@/attend/auth';
@@ -40,12 +41,9 @@ export default async function AdjustPage({
   const employees = await myEmployees();
   const emp = employees.find((e) => e.status === 'active');
   const { inGroups: _g, ...sd } = await shellData(uid, emp, employees);
-  if (!emp)
-    return (
-      <AttendShell current="requests" loc={loc} tt={tt} back="/a/adjust" {...sd}>
-        <p className="text-sm text-gray-600">{tt('NOT_ACTIVE')}</p>
-      </AttendShell>
-    );
+  // 還沒加入或還沒啟用：回打卡頁——那裡會講清楚現在的狀態並給下一步（輸入加入碼／重新整理），
+  // 這頁只剩一行「尚未啟用」是死路（審查 F34）
+  if (!emp) redirect('/a');
 
   const sp = await searchParams;
   const today = workDate(new Date());

@@ -33,7 +33,7 @@
   "ORG_LABEL": "組織代號",
   "CODE_LABEL": "加入碼",
   "NAME_LABEL": "你的姓名（顯示用）",
-  "NAME_PLACEHOLDER": "不填則用 LINE 名稱",
+  "NAME_PLACEHOLDER": "請填你的名字（管理員要認得出你）",
   "SUBMIT": "送出",
   "STATUS_PUNCH_NORMAL": "正常",
   "STATUS_PUNCH_IN_MISSING": "未打上班卡",
@@ -127,5 +127,6 @@
   "EXP_PROJECT": "專案",
   "EXP_PAY": "付款方式",
   "EXP_SAVE": "＋ 存一筆",
-  "EXP_NOT_ENABLED": "你所屬的公司還沒開報帳功能，或你還不是在職員工。請聯絡管理者。"
+  "EXP_NOT_ENABLED": "你所屬的公司還沒開報帳功能，或你還不是在職員工。請聯絡管理者。",
+  "ORG_PLACEHOLDER": "管理員給你的代號"
 }

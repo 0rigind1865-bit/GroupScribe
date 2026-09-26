@@ -27,13 +27,14 @@ export default async function JoinPage({
 
   return (
     <main className="mx-auto max-w-md p-5">
-      <PageHeader back="/g" title={tt('JOIN_TITLE')} />
+      {/* 返回打卡頁：拿加入連結的員工多半不在任何已認領的群，回 /g 是一頁中文空白（審查 F34） */}
+      <PageHeader back="/a" title={tt('JOIN_TITLE')} />
       <p className="mb-4 text-sm text-gray-600">{tt('JOIN_DESC')}</p>
       {err && <Banner tone="err">{ERR[err] ? tt(ERR[err]) : err}</Banner>}
       <form action="/api/attend/join" method="post" className="card space-y-3">
         <label className="block text-sm">
           <span className="mb-1 block font-bold text-gray-700">{tt('ORG_LABEL')}</span>
-          <input className="input w-full" name="org" defaultValue={org ?? ''} placeholder="main" required />
+          <input className="input w-full" name="org" defaultValue={org ?? ''} placeholder={tt('ORG_PLACEHOLDER')} required />
         </label>
         <label className="block text-sm">
           <span className="mb-1 block font-bold text-gray-700">{tt('CODE_LABEL')}</span>
@@ -41,7 +42,8 @@ export default async function JoinPage({
         </label>
         <label className="block text-sm">
           <span className="mb-1 block font-bold text-gray-700">{tt('NAME_LABEL')}</span>
-          <input className="input w-full" name="name" placeholder={tt('NAME_PLACEHOLDER')} />
+          {/* 必填：不填會存成「LINE 使用者 a1b2c3」，管理員認不出是誰、不敢啟用（審查 F37） */}
+          <input className="input w-full" name="name" placeholder={tt('NAME_PLACEHOLDER')} required />
         </label>
         <button className="btn-primary w-full">{tt('SUBMIT')}</button>
       </form>

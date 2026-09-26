@@ -33,7 +33,7 @@
   "ORG_LABEL": "Organization code",
   "CODE_LABEL": "Join code",
   "NAME_LABEL": "Your name (display)",
-  "NAME_PLACEHOLDER": "Defaults to your LINE name",
+  "NAME_PLACEHOLDER": "Your name (so your manager recognizes you)",
   "SUBMIT": "Submit",
   "STATUS_PUNCH_NORMAL": "Normal",
   "STATUS_PUNCH_IN_MISSING": "Missed punch in",
@@ -127,5 +127,6 @@
   "EXP_PROJECT": "Project",
   "EXP_PAY": "Payment",
   "EXP_SAVE": "+ Save",
-  "EXP_NOT_ENABLED": "Your company hasn’t turned on expenses, or you’re not an active employee yet. Please contact your manager."
+  "EXP_NOT_ENABLED": "Your company hasn’t turned on expenses, or you’re not an active employee yet. Please contact your manager.",
+  "ORG_PLACEHOLDER": "Code from your manager"
 }

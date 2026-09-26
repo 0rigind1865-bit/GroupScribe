@@ -33,7 +33,7 @@
   "ORG_LABEL": "Kode organisasi",
   "CODE_LABEL": "Kode gabung",
   "NAME_LABEL": "Nama Anda (tampilan)",
-  "NAME_PLACEHOLDER": "Kosongkan untuk pakai nama LINE",
+  "NAME_PLACEHOLDER": "Nama Anda (agar pengelola mengenali)",
   "SUBMIT": "Kirim",
   "STATUS_PUNCH_NORMAL": "Normal",
   "STATUS_PUNCH_IN_MISSING": "Tidak absen masuk",
@@ -127,5 +127,6 @@
   "EXP_PROJECT": "Proyek",
   "EXP_PAY": "Pembayaran",
   "EXP_SAVE": "+ Simpan",
-  "EXP_NOT_ENABLED": "Perusahaan Anda belum mengaktifkan fitur biaya, atau Anda belum karyawan aktif. Hubungi pengelola."
+  "EXP_NOT_ENABLED": "Perusahaan Anda belum mengaktifkan fitur biaya, atau Anda belum karyawan aktif. Hubungi pengelola.",
+  "ORG_PLACEHOLDER": "Kode dari pengelola"
 }

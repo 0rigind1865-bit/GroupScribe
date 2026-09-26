@@ -65,7 +65,8 @@ export function AttendShell({
   title,
   sub,
 }: {
-  emp?: Pick<Employee, 'display_name' | 'dept' | 'picture_url'> | null;
+  // status：只有在職的員工才畫底部膠囊（還沒加入／待啟用時點月曆或申請只會看到一行訊息，審查 F34）
+  emp?: (Pick<Employee, 'display_name' | 'dept' | 'picture_url'> & { status?: Employee['status'] }) | null;
   current: Tab['key'];
   loc: Locale;
   tt: (k: MsgKey, p?: Record<string, string | number>) => string;
@@ -95,6 +96,7 @@ export function AttendShell({
         {children}
       </div>
 
+      {emp?.status === 'active' && (
       <FloatingNav
         tabs={TABS.map((t) => ({
           href: t.href,
@@ -107,6 +109,7 @@ export function AttendShell({
           active: t.key === current,
         }))}
       />
+      )}
     </main>
   );
 }

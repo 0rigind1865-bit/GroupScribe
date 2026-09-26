@@ -360,9 +360,9 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 | D4 | 個人報帳公司級動作 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 分類「管理」格拿掉，改小字連到 /o/<slug>/expense/categories（只給能管該公司報帳的人）；「重新命名專案」保留（管理端沒有對應功能） |
 | D5 | 報表膠囊 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 素材 A：/o/main/attend/report 自動轉 ?emp=…&month=…，膠囊寫「林杰 ▾」；ALL_OK 已在 T5 補 |
 | D6 | 待啟用排前 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 依 pending／active／disabled 排序 |
-| D7 | 加入流程 | P1 | ⬜ | | 0 | | |
-| D8 | 單群頁返回 | P1 | ⬜ | | 0 | | |
-| D9 | 首頁兜底文案 | P1 | ⬜ | | 0 | | |
+| D7 | 加入流程 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 素材 B：假非成員 /a、/a/records、/a/adjust、/a/join 都沒有底部膠囊；records／adjust 轉回 /a；join 返回 /a、名字必填、代號 placeholder 五語系 |
+| D8 | 單群頁返回 | P1 | ✅ | 09-27 夜 | 0 | 22d4a9e（T6） | 44px「‹ 群組」 |
+| D9 | 首頁兜底文案 | P1 | ✅ | 09-27 夜 | 0 | 42ef57d（T7） | HOME_NONE 中性文案 |
 | D10 | 月曆／打卡狀態／補卡 | P2 | ⬜ | | 0 | | |
 | T10 | UX 審查迴圈 | P0 | ⬜ | | 0 | | |
 | T11 | 收尾 | P0 | ⬜ | | 0 | | |

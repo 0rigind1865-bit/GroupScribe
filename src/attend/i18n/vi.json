@@ -33,7 +33,7 @@
   "ORG_LABEL": "Mã tổ chức",
   "CODE_LABEL": "Mã tham gia",
   "NAME_LABEL": "Tên của bạn (hiển thị)",
-  "NAME_PLACEHOLDER": "Bỏ trống sẽ dùng tên LINE",
+  "NAME_PLACEHOLDER": "Tên của bạn (để quản lý nhận ra)",
   "SUBMIT": "Gửi",
   "STATUS_PUNCH_NORMAL": "Bình thường",
   "STATUS_PUNCH_IN_MISSING": "Thiếu chấm công vào",
@@ -127,5 +127,6 @@
   "EXP_PROJECT": "Dự án",
   "EXP_PAY": "Thanh toán",
   "EXP_SAVE": "+ Lưu",
-  "EXP_NOT_ENABLED": "Công ty của bạn chưa bật chức năng chi phí, hoặc bạn chưa là nhân viên chính thức. Vui lòng liên hệ quản lý."
+  "EXP_NOT_ENABLED": "Công ty của bạn chưa bật chức năng chi phí, hoặc bạn chưa là nhân viên chính thức. Vui lòng liên hệ quản lý.",
+  "ORG_PLACEHOLDER": "Mã do quản lý đưa"
 }
