@@ -11,9 +11,13 @@ export async function POST(req: NextRequest) {
   const raw = await req.text();
   const connector = getConnector();
   if (!connector.verifyWebhook(raw, req.headers.get('x-line-signature') ?? '')) {
+    console.warn(`webhook 簽章驗證失敗（${raw.length} bytes）`);
     return new NextResponse('簽章驗證失敗', { status: 401 });
   }
   const body = JSON.parse(raw);
+  // 營運紀錄：每批收到什麼（只記事件類型，不記內容）。照片沒進來時靠這行分辨「LINE 沒送」還是「送了但處理失敗」
+  const kinds = ((body?.events ?? []) as { type?: string; message?: { type?: string } }[]).map((e) => (e.message?.type ? `${e.type}/${e.message.type}` : e.type));
+  if (kinds.length) console.log(`webhook 收到 ${kinds.length} 個事件：${kinds.join(', ')}`);
   const channelId = await getChannelId();
   const landed = await landWebhook(rawEventRows(body, channelId));
 
