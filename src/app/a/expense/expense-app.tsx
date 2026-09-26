@@ -150,7 +150,7 @@ export function ExpenseApp({
       <header className="mb-3 flex items-end gap-2">
         <div className="min-w-0">
           <p className="text-xs text-gray-500">{TABS.find(([k]) => k === tab)?.[1]}</p>
-          <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
+          <h1 className="truncate text-3xl md:text-4xl">{title}</h1>
         </div>
         {tab === 'add' && (
           <button type="button" onClick={() => setShowPlaces(true)} className="ml-auto flex max-w-[55%] items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs">

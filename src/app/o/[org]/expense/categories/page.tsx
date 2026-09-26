@@ -17,8 +17,8 @@ export default async function ExpenseCategories({ params }: { params: Promise<{ 
   if (!org) notFound();
   const items = await orgCategoryItems(org.id);
   return (
-    <main className="mx-auto max-w-xl p-4 md:p-5">
-      <h1 className="mb-1 text-2xl font-semibold tracking-tight">報帳分類</h1>
+    <main className="mx-auto max-w-xl p-4 md:p-8">
+      <h1 className="mb-1 text-3xl md:text-4xl">報帳分類</h1>
       <p className="mb-3 text-sm text-gray-500">
         最多 {MAX_CATEGORIES} 個。讀不出分類的歸「雜支」（會自動保留）。改名不會改到已記的舊資料。
       </p>

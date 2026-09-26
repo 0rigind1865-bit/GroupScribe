@@ -15,7 +15,7 @@ const money = (n: number) => `$${n.toLocaleString('en-US')}`;
 function SumTable({ title, rows }: { title: string; rows: [string, number, number][] }) {
   return (
     <section className="card">
-      <h2 className="mb-2 font-semibold">{title}</h2>
+      <h2 className="mb-3 text-base font-bold">{title}</h2>
       <table className="w-full text-sm">
         <tbody>
           {rows.map(([k, amt, n]) => (
@@ -51,8 +51,8 @@ export default async function ExpenseReport({
   ]);
   if (error)
     return (
-      <main className="mx-auto max-w-3xl p-4 md:p-5">
-        <h1 className="mb-3 text-2xl font-semibold tracking-tight">報帳加總</h1>
+      <main className="mx-auto max-w-3xl p-4 md:p-8">
+        <h1 className="mb-3 text-3xl md:text-4xl">報帳加總</h1>
         <Banner tone="warn">
           報帳資料表還沒建立：請在 Supabase SQL Editor 執行 <code>supabase/migrations/022_expenses.sql</code>。
         </Banner>
@@ -65,8 +65,8 @@ export default async function ExpenseReport({
   const qs = new URLSearchParams({ org: slug, status: f.status ?? 'all', ...(f.project ? { project: f.project } : {}), ...(f.month ? { month: f.month } : {}) });
 
   return (
-    <main className="mx-auto max-w-3xl p-4 md:p-5">
-      <h1 className="mb-3 text-2xl font-semibold tracking-tight">報帳加總</h1>
+    <main className="mx-auto max-w-3xl p-4 md:p-8">
+      <h1 className="mb-3 text-3xl md:text-4xl">報帳加總</h1>
       <form className="mb-4 flex flex-wrap items-end gap-2 text-sm" method="get">
         <label className="flex flex-col gap-1">
           <span className="text-xs text-gray-500">專案</span>

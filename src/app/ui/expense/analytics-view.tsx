@@ -103,7 +103,9 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
             <p className="text-xs text-gray-500">
               {PERIODS.find(([k]) => k === period)?.[1]}合計{project ? `・${project}` : ''}
             </p>
-            <p className="text-3xl font-semibold tabular-nums">${fmtMoney(stat.total)}</p>
+            <p className="mt-1 text-4xl font-black tabular-nums" style={{ fontFamily: 'var(--font-title)' }}>
+              ${fmtMoney(stat.total)}
+            </p>
             <p className="mt-1 flex gap-4 text-sm text-gray-500">
               <span>{stat.count} 筆</span>
               <span>平均 ${fmtMoney(stat.avg)}／筆</span>
@@ -111,7 +113,7 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
           </section>
 
           <section className="card">
-            <h3 className="mb-2 font-semibold">分類占比</h3>
+            <h3 className="mb-3 text-base font-bold">分類占比</h3>
             <div className="flex flex-col items-center gap-4 sm:flex-row">
               <div className="relative h-32 w-32 flex-none">
                 <svg viewBox="0 0 42 42" className="h-full w-full" fill="none">
@@ -152,7 +154,7 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
 
           {!project && stat.ev.length > 1 && (
             <section className="card">
-              <h3 className="mb-2 font-semibold">{projectLabel}花費排行</h3>
+              <h3 className="mb-3 text-base font-bold">{projectLabel}花費排行</h3>
               <ul className="space-y-2 text-sm">
                 {stat.ev.map(([name, amt], i) => (
                   <li key={name}>
@@ -160,8 +162,8 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
                       <span className="min-w-0 flex-1 truncate">{name}</span>
                       <span className="tabular-nums">{fmtMoney(amt)}</span>
                     </div>
-                    <div className="mt-1 h-2 rounded bg-gray-100">
-                      <div className="h-2 rounded" style={{ width: `${(amt / evMax) * 100}%`, background: color(i) }} />
+                    <div className="mt-1 h-2 rounded-full bg-gray-100">
+                      <div className="h-2 rounded-full" style={{ width: `${(amt / evMax) * 100}%`, background: color(i) }} />
                     </div>
                   </li>
                 ))}
@@ -171,7 +173,7 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
           )}
 
           <section className="card">
-            <h3 className="mb-2 font-semibold">付款方式</h3>
+            <h3 className="mb-3 text-base font-bold">付款方式</h3>
             <div className="flex h-3 overflow-hidden rounded-full bg-gray-100">
               {PAY.map((k) => (stat.pay[k] > 0 ? <span key={k} style={{ width: `${(stat.pay[k] / payTotal) * 100}%`, background: PAY_COLOR[k] }} /> : null))}
             </div>
@@ -189,7 +191,7 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
       )}
 
       <section className="card">
-        <h3 className="mb-2 font-semibold">近 6 個月趨勢{project ? `・${project}` : ''}</h3>
+        <h3 className="mb-3 text-base font-bold">近 6 個月趨勢{project ? `・${project}` : ''}</h3>
         <div className="flex h-36 items-end gap-2">
           {trend.map((m) => (
             <div key={m.key} className="flex h-full flex-1 flex-col items-center justify-end gap-1">

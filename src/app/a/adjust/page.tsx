@@ -69,7 +69,7 @@ export default async function AdjustPage({
 
       {abnormal.length > 0 && (
         <section className="card mb-4">
-          <h2 className="mb-2 text-sm font-bold text-gray-700">{tt('ADJUST_MONTH_ABNORMAL', { n: abnormal.length })}</h2>
+          <h2 className="mb-2 text-base font-bold">{tt('ADJUST_MONTH_ABNORMAL', { n: abnormal.length })}</h2>
           <ul className="space-y-1.5 text-sm">
             {abnormal.map((d) => {
               const missIn = !d.punches.some((p) => p.type === 'in');
@@ -114,7 +114,7 @@ export default async function AdjustPage({
 
       {(reqs ?? []).length > 0 && (
         <section className="card mt-4">
-          <h2 className="mb-2 text-sm font-bold text-gray-700">{tt('MY_REQUESTS')}</h2>
+          <h2 className="mb-2 text-base font-bold">{tt('MY_REQUESTS')}</h2>
           <ul className="space-y-1.5 text-sm">
             {(reqs ?? []).map((r) => {
               const [labelKey, tone] = STATUS_BADGE[r.status] ?? ['REQ_PENDING' as MsgKey, 'neutral' as Tone];

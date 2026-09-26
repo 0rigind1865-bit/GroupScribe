@@ -72,7 +72,7 @@ export function ListView({
                         <button
                           type="button"
                           aria-label="看收據照片"
-                          className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-700"
+                          className="rounded-md bg-gray-100 px-1.5 py-0.5 text-gray-700"
                           onClick={(e) => {
                             e.stopPropagation();
                             setPhoto(r.photo);

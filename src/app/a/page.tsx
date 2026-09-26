@@ -131,7 +131,7 @@ export default async function AttendHome({
       />
 
       <section className="card mt-4">
-        <h2 className="mb-2 text-sm font-bold text-gray-700">
+        <h2 className="mb-2 text-base font-bold">
           {tt('TODAY')}（{today}）
         </h2>
         {todayStatus?.punches.length ? (

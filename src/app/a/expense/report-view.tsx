@@ -61,7 +61,7 @@ export function ReportView({ items, categories, onToast }: { items: ExpenseItem[
         </ul>
         <p className="mt-2 flex items-baseline border-t border-gray-200 pt-2">
           <span className="font-semibold">合計</span>
-          <span className="ml-auto text-2xl font-semibold tabular-nums">${fmtMoney(sum())}</span>
+          <span className="ml-auto text-3xl font-black tabular-nums" style={{ fontFamily: 'var(--font-title)' }}>${fmtMoney(sum())}</span>
         </p>
         <p className="mt-1 flex flex-wrap gap-x-4 text-sm text-gray-600">
           <span>代墊請款 ${fmtMoney(sum('代墊'))}</span>
