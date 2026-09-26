@@ -342,10 +342,10 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 |---|---|---|---|---|---|---|---|
 | T0 | 開工 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 基準 130 pass；launch.json 加 SESSION_SECRET |
 | D1 | /g 後台段 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 131 pass；故意加回「後台」測試會紅 |
-| C1 | SPEC v2 | P0 | ⬜ | | 0 | | |
+| C1 | SPEC v2 | P0 | ⏳ | 09-27 夜 | 0 | | workflow canvas-c1-c3 背景執行 |
 | C2 | 新增 7 張 Id 畫板 | P0 | ⬜ | | 0 | | |
 | C3 | 修改既有 Id 畫板 | P0 | ⬜ | | 0 | | |
-| T1 | groupSurfaces | P0 | ⬜ | | 0 | | |
+| T1 | groupSurfaces | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 145 pass（+14 persona／對應／安全網測試）；diff 審查見 T2 列 |
 | T2 | 名稱／圖示／五語系 | P0 | ⬜ | | 0 | | |
 | T3 | 角色跳轉 | P0 | ⬜ | | 0 | | |
 | T4 | IdentityBar | P0 | ⬜ | | 0 | | |

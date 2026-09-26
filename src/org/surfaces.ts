@@ -19,7 +19,10 @@ import { myExpenseIdentity } from '@/expense/mine';
 //   群組管理／考勤管理 ＝ org_members 有他（每個 org 各一組，依該 org 開的模組 ∩ 他被授權的模組）；平台擁有者另加預設 org 全開
 //   平台管理 ＝ 平台擁有者（後台密碼，或 ADMIN_LINE_USER_ID 的 LINE 帳號）
 
-export type SurfaceId = 'groups' | 'punch' | 'myexpense' | 'gs' | 'attend' | 'expense' | 'platform';
+export type SurfaceId = 'groups' | 'punch' | 'myexpense' | 'gs' | 'attend' | 'expense' | 'platform' | 'unclaimed';
+
+/** 角色（身分切換的第一層）：個人＝自己用；管理＝管公司；平台＝平台擁有者（畫面上歸在管理那一邊） */
+export type SurfaceRole = 'me' | 'admin' | 'platform';
 
 export type Surface = {
   key: string; // 唯一：同一人管多個 org 時 gs/attend 會各有一組（'gs:acme'）
@@ -28,6 +31,11 @@ export type Surface = {
   desc: string; // 首頁選單的說明
   href: string;
   slug?: string; // 管理面向所屬的 org
+  role: SurfaceRole;
+  /** 管理面向所屬公司的名稱（選單分段標題、多家公司時的「考勤 · 公司A」） */
+  orgName?: string;
+  /** 個人面向（打卡、報帳）屬於哪幾家公司——角色開關「同一家公司」的對應要用；群組沒有公司 */
+  slugs?: string[];
   /** 排序：數字小的先（員工的日常動作優先於管理動作） */
   rank: number;
 };
@@ -46,27 +54,46 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
   const list: Surface[] = [];
   const db = getDb();
 
-  // 1. 員工 → 打卡
+  // 1. 員工 → 打卡；1b. 公司有開報帳的在職員工或管理者 → 我的報帳（X2／Snaptab 全功能移植）
+  // 兩者都帶所屬公司的 slug：角色開關從「打卡」切到「管理」時，要先找同一家公司的考勤
   const employees = uid ? await myEmployees() : [];
-  if (employees.length) {
-    list.push({ key: 'punch', id: 'punch', label: '我要打卡', desc: '上下班打卡、看打卡紀錄、申請補卡', href: '/a', rank: 1 });
+  const exp = uid ? await myExpenseIdentity() : null;
+  const orgIds = [...new Set([...employees.map((e) => e.org_id), ...(exp ? [exp.org_id] : [])])];
+  const slugOf = new Map<string, string>();
+  if (orgIds.length) {
+    const { data } = await db.from('orgs').select('id, slug').in('id', orgIds);
+    for (const o of (data ?? []) as { id: string; slug: string }[]) slugOf.set(o.id, o.slug);
   }
-  // 1b. 公司有開報帳的在職員工或管理者 → 我的報帳（X2／Snaptab 全功能移植）
-  if (uid && (await myExpenseIdentity())) {
-    list.push({ key: 'myexpense', id: 'myexpense', label: '我的報帳', desc: '記一筆墊付的錢、看自己的報帳清單', href: '/a/expense', rank: 1.5 });
+  const slugsFor = (ids: string[]) => ids.map((id) => slugOf.get(id)).filter((x): x is string => !!x);
+  if (employees.length) {
+    list.push({ key: 'punch', id: 'punch', role: 'me', slugs: slugsFor(employees.map((e) => e.org_id)), label: '我要打卡', desc: '上下班打卡、看打卡紀錄、申請補卡', href: '/a', rank: 1 });
+  }
+  if (exp) {
+    list.push({ key: 'myexpense', id: 'myexpense', role: 'me', slugs: slugsFor([exp.org_id]), label: '我的報帳', desc: '記一筆墊付的錢、看自己的報帳清單', href: '/a/expense', rank: 1.5 });
   }
 
   // 2. 群組成員 → 成員版（以「現在在不在群裡」為準，不是「有沒有講過話」）
   if (uid && (await myGroups(uid, { first: true })).length) {
-    list.push({ key: 'groups', id: 'groups', label: '我的群組', desc: '看你所在群組的行程、待辦、公告，順手確認 AI 整理的內容', href: '/g', rank: 2 });
+    list.push({ key: 'groups', id: 'groups', role: 'me', label: '我的群組', desc: '看你所在群組的行程、待辦、公告，順手確認 AI 整理的內容', href: '/g', rank: 2 });
   }
 
   // 3. 管理員 → 每個 org 各一組（依該 org 開的模組）
+  // 平台擁有者：列出所有租戶（原本只列預設 org——從平台頁點進別家時，身分列會說你在預設 org）。
+  // 預設 org 維持三個模組全開（改版前的行為）；其他家以該公司 org_settings.modules 為準。
   const orgs: OrgRow[] = [];
+  let hasUnclaimed = false;
   if (owner) {
-    const slug = process.env.DEFAULT_ORG_SLUG ?? 'main';
-    const { data } = await db.from('orgs').select('name').eq('slug', slug).maybeSingle();
-    orgs.push({ slug, name: data?.name ?? slug, modules: new Set(['gs', 'attend', 'expense']) });
+    const def = process.env.DEFAULT_ORG_SLUG ?? 'main';
+    const { data } = await db.from('orgs').select('slug, name, org_settings(modules)').order('created_at');
+    for (const o of (data ?? []) as { slug: string; name: string | null; org_settings?: { modules?: unknown } | null }[]) {
+      if (o.slug === 'unclaimed') {
+        hasUnclaimed = true;
+        continue;
+      }
+      const ids = o.slug === def ? ['gs', 'attend', 'expense'] : enabledModuleIds(o.org_settings?.modules);
+      orgs.push({ slug: o.slug, name: o.name ?? o.slug, modules: new Set(ids) });
+    }
+    if (!orgs.some((o) => o.slug === def)) orgs.unshift({ slug: def, name: def, modules: new Set(['gs', 'attend', 'expense']) });
   }
   if (uid) {
     const q = (cols: string) => db.from('org_members').select(cols).eq('line_user_id', uid);
@@ -88,16 +115,20 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
   orgs.forEach((o, i) => {
     const tail = many ? `・${o.name}` : '';
     // 群組管理排在考勤管理前面：平台擁有者（用密碼登入、沒有 LINE 身分）的主場是群組助理
+    const base = { slug: o.slug, orgName: o.name, role: 'admin' as const };
     if (o.modules.has('gs'))
-      list.push({ key: `gs:${o.slug}`, id: 'gs', slug: o.slug, label: `群組管理${tail}`, desc: '收件匣把關、所有群的今天總覽、群組與方案設定', href: `/o/${o.slug}`, rank: 3 + i * 0.01 });
+      list.push({ ...base, key: `gs:${o.slug}`, id: 'gs', label: `群組管理${tail}`, desc: '收件匣把關、所有群的今天總覽、群組與方案設定', href: `/o/${o.slug}`, rank: 3 + i * 0.01 });
     if (o.modules.has('attend'))
-      list.push({ key: `attend:${o.slug}`, id: 'attend', slug: o.slug, label: `考勤管理${tail}`, desc: '員工管理、補卡審核、打卡報表與薪資', href: `/o/${o.slug}/attend`, rank: 4 + i * 0.01 });
+      list.push({ ...base, key: `attend:${o.slug}`, id: 'attend', label: `考勤管理${tail}`, desc: '員工管理、補卡審核、打卡報表與薪資', href: `/o/${o.slug}/attend`, rank: 4 + i * 0.01 });
     if (o.modules.has('expense'))
-      list.push({ key: `expense:${o.slug}`, id: 'expense', slug: o.slug, label: `報帳管理${tail}`, desc: '員工私訊的收據、標已報帳、匯出 CSV', href: `/o/${o.slug}/expense`, rank: 4.5 + i * 0.01 });
+      list.push({ ...base, key: `expense:${o.slug}`, id: 'expense', label: `報帳管理${tail}`, desc: '員工私訊的收據、標已報帳、匯出 CSV', href: `/o/${o.slug}/expense`, rank: 4.5 + i * 0.01 });
   });
 
   // 4. 平台擁有者 → 平台管理（所有公司、未認領的群、改方案）
-  if (owner) list.push({ key: 'platform', id: 'platform', label: '平台管理', desc: '所有公司、未認領的群、方案與用量', href: '/platform', rank: 5 });
+  // 「未認領的群」不是一家公司：歸在平台這一段（/o/unclaimed 底下的群組頁）
+  if (owner) list.push({ key: 'platform', id: 'platform', role: 'platform', label: '平台管理', desc: '所有公司、未認領的群、方案與用量', href: '/platform', rank: 5 });
+  if (owner && hasUnclaimed)
+    list.push({ key: 'unclaimed', id: 'unclaimed', role: 'platform', slug: 'unclaimed', label: '未認領的群', desc: '等管理員認領，7 天沒人要就退群', href: '/o/unclaimed/groups', rank: 5.1 });
 
   list.sort((a, b) => a.rank - b.rank);
   return { list, landing: list[0]?.href ?? null };

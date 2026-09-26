@@ -1,4 +1,4 @@
-// 模組開關的純邏輯（不 import 路由表——routes.tsx 含 JSX，測試環境載不進來）。
+// 模組開關的純邏輯（不依賴 DB 與路由表，方便 node:test 直接測）。
 export type ModuleId = 'gs' | 'attend' | 'expense';
 export const MODULE_IDS: ModuleId[] = ['gs', 'attend', 'expense'];
 
