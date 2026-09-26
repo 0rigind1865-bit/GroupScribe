@@ -24,6 +24,7 @@ export type ExpenseRow = {
   lat?: number | null;
   lng?: number | null;
   place_name?: string;
+  spent_at?: string | null; // v3（migration 027）
 };
 
 export const isMonth = (m?: string): m is string => !!m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);

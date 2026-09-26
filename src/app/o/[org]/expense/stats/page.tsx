@@ -3,7 +3,10 @@ import { dbConfigured, getDb } from '@/db';
 import { orgBySlug } from '@/org/orgs';
 import { Banner } from '@/app/ui/banner';
 import { Empty } from '@/app/ui/empty';
-import { pivot, type ExpenseRow, type Pivot } from '@/expense/query';
+import { pivot, type Pivot } from '@/expense/query';
+import { rowToItem } from '@/expense/items';
+import { orgCategoryItems } from '@/expense/categories';
+import { AnalyticsView } from '@/app/ui/expense/analytics-view';
 import { SetupNotice } from '../../(admin)/setup-notice';
 
 export const dynamic = 'force-dynamic';
@@ -51,15 +54,11 @@ export default async function ExpenseStats({ params }: { params: Promise<{ org: 
   const { org: slug } = await params;
   const org = await orgBySlug(slug);
   if (!org) notFound();
-  // 近 12 個月
-  const now = new Date();
-  const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1)).toISOString().slice(0, 10);
-  const { data, error } = await getDb()
-    .from('expenses')
-    .select('amount, spent_on, category, project, person_name')
-    .eq('org_id', org.id)
-    .gte('spent_on', since)
-    .limit(5000);
+  const [{ data, error }, cats] = await Promise.all([
+    // ponytail: 一次載最近 5000 筆在瀏覽器裡算；一家公司真的超過再改成資料庫加總
+    getDb().from('expenses').select('*').eq('org_id', org.id).order('spent_on', { ascending: false }).limit(5000),
+    orgCategoryItems(org.id),
+  ]);
   if (error)
     return (
       <main className="mx-auto max-w-3xl p-4 md:p-5">
@@ -69,34 +68,18 @@ export default async function ExpenseStats({ params }: { params: Promise<{ org: 
         </Banner>
       </main>
     );
-  const rows = (data ?? []) as Pick<ExpenseRow, 'amount' | 'spent_on' | 'category' | 'project' | 'person_name'>[];
-  const byMonth = pivot(rows, (r) => r.spent_on.slice(0, 7), (r) => r.category, (a, b) => b.localeCompare(a));
-  const byProject = pivot(rows, (r) => r.project, (r) => r.person_name ?? '');
-  const max = Math.max(1, ...byMonth.rows.map((m) => byMonth.rowTotal(m)));
+  const items = (data ?? []).map((r) => rowToItem(r));
+  const byProject = pivot(items, (r) => r.project, (r) => r.person);
 
   return (
     <main className="mx-auto max-w-3xl p-4 md:p-5">
       <h1 className="mb-1 text-2xl font-semibold tracking-tight">報帳統計</h1>
-      <p className="mb-4 text-sm text-gray-500">近 12 個月，含已報帳與還沒報的。</p>
-      {!rows.length ? (
-        <Empty title="近 12 個月沒有報帳" />
+      <p className="mb-4 text-sm text-gray-500">全公司的報帳，含已報帳與還沒報的。</p>
+      {!items.length ? (
+        <Empty title="還沒有報帳" />
       ) : (
         <div className="space-y-4">
-          <section className="card">
-            <h2 className="mb-2 font-semibold">每月合計</h2>
-            <ul className="space-y-1.5 text-sm">
-              {byMonth.rows.map((m) => (
-                <li key={m} className="flex items-center gap-2">
-                  <span className="w-16 flex-none text-gray-500 tabular-nums">{m}</span>
-                  <span className="h-4 flex-1 rounded bg-gray-100">
-                    <span className="block h-4 rounded bg-emerald-600" style={{ width: `${(byMonth.rowTotal(m) / max) * 100}%` }} />
-                  </span>
-                  <span className="w-24 flex-none text-right font-medium tabular-nums">{money(byMonth.rowTotal(m))}</span>
-                </li>
-              ))}
-            </ul>
-          </section>
-          <PivotTable title="月份 × 分類" p={byMonth} />
+          <AnalyticsView items={items} icons={Object.fromEntries(cats.map((c) => [c.name, c.icon]))} />
           <PivotTable title="專案 × 人" p={byProject} />
         </div>
       )}

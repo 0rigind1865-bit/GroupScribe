@@ -5,6 +5,7 @@ import { SurfaceSwitcher } from '@/app/ui/surface-switcher';
 import { myExpenseIdentity } from '@/expense/mine';
 import { orgCategoryItems } from '@/expense/categories';
 import type { ExpenseItem } from '@/expense/types';
+import { photoPathOf, rowToItem } from '@/expense/items';
 import { ExpenseApp, type Tab } from './expense-app';
 
 export const dynamic = 'force-dynamic';
@@ -32,28 +33,14 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
   ]);
   const rows = (mine ?? []) as Record<string, any>[];
 
-  // 照片：私訊的收據在 media_assets、網頁上傳的在 photo_path；私有 bucket → 批次簽名 1 小時
-  const pathOf = (r: Record<string, any>): string | null => r.photo_path ?? r.media_assets?.storage_path ?? null;
-  const paths = rows.map(pathOf).filter((p): p is string => !!p);
+  // 照片：私有 bucket → 批次簽名 1 小時
+  const paths = rows.map(photoPathOf).filter((p): p is string => !!p);
   const { data: signed } = paths.length ? await db.storage.from(MEDIA_BUCKET).createSignedUrls(paths, 3600) : { data: [] };
   const urlOf = new Map((signed ?? []).filter((s) => s.signedUrl).map((s) => [s.path!, s.signedUrl]));
-
-  const items: ExpenseItem[] = rows.map((r) => ({
-    id: r.id,
-    amount: r.amount,
-    category: r.category,
-    note: r.note ?? '',
-    vendor: r.vendor ?? '',
-    project: r.project ?? '',
-    pay_method: r.pay_method ?? '代墊',
-    invoice_no: r.invoice_no ?? '',
-    spent_on: r.spent_on,
-    spent_at: r.spent_at ?? null,
-    place_name: r.place_name ?? '',
-    reimbursed: !!r.reimbursed_at,
-    photo: (pathOf(r) && urlOf.get(pathOf(r)!)) || null,
-    person: r.person_name ?? me.display_name,
-  }));
+  const items: ExpenseItem[] = rows.map((r) => {
+    const it = rowToItem(r, urlOf.get(photoPathOf(r) ?? '') ?? null);
+    return { ...it, person: it.person || me.display_name };
+  });
   const projects = [...new Set([...(named ?? []).map((p) => p.name as string), ...(used ?? []).map((p) => p.project as string)])];
 
   return (

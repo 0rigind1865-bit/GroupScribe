@@ -18,6 +18,10 @@ export const dynamic = 'force-dynamic';
 
 const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
 const money = (n: number) => `$${n.toLocaleString('en-US')}`;
+const hm = (iso: string) => new Date(iso).toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit', hour12: false });
+// datetime-local 的預設值（台北時間）；沒有精確時間的舊資料用中午
+const localDt = (r: ExpenseRow) =>
+  r.spent_at ? new Date(r.spent_at).toLocaleString('sv', { timeZone: 'Asia/Taipei' }).slice(0, 16).replace(' ', 'T') : `${r.spent_on}T12:00`;
 
 export default async function ExpenseList({
   params,
@@ -159,7 +163,9 @@ export default async function ExpenseList({
                       {r.reimbursed_at ? <Badge tone="ok">已報帳</Badge> : <Badge tone="warn">還沒報</Badge>}
                     </div>
                     <p className="truncate text-sm text-gray-600">
-                      {md(r.spent_on)}・{r.person_name ?? '（未命名）'}
+                      {md(r.spent_on)}
+                      {r.spent_at ? ` ${hm(r.spent_at)}` : ''}・{r.person_name ?? '（未命名）'}
+                      {r.place_name ? `・${r.place_name}` : ''}
                       {r.vendor ? `・${r.vendor}` : ''}
                       {r.project ? `・${r.project}` : ''}
                     </p>
@@ -184,8 +190,8 @@ export default async function ExpenseList({
                       <input className="input" name="amount" inputMode="numeric" defaultValue={r.amount} required />
                     </label>
                     <label className="flex flex-col gap-1">
-                      <span className="text-xs text-gray-500">日期</span>
-                      <input className="input" type="date" name="spent_on" defaultValue={r.spent_on} required />
+                      <span className="text-xs text-gray-500">日期時間</span>
+                      <input className="input" type="datetime-local" name="spent_at" defaultValue={localDt(r)} required />
                     </label>
                     <label className="flex flex-col gap-1">
                       <span className="text-xs text-gray-500">分類</span>
@@ -216,6 +222,20 @@ export default async function ExpenseList({
                       <span className="text-xs text-gray-500">備註</span>
                       <input className="input" name="note" defaultValue={r.note} />
                     </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-gray-500">地點</span>
+                      <input className="input" name="place_name" defaultValue={r.place_name ?? ''} />
+                    </label>
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs text-gray-500">發票號碼</span>
+                      <input className="input" name="invoice_no" defaultValue={r.invoice_no} />
+                    </label>
+                    {img && (
+                      <label className="col-span-2 flex items-center gap-2 text-sm text-gray-600">
+                        <input type="checkbox" name="remove_photo" value="1" />
+                        儲存時移除這張收據照片
+                      </label>
+                    )}
                     <div className="col-span-2 flex gap-2">
                       <button className="btn-primary" name="action" value="save">
                         儲存
