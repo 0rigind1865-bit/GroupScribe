@@ -95,7 +95,7 @@
 | 13 | A6 | ✅ | 1 | （本 commit） | 20:01 | 20:12 | scripts/seed-owner.ts（未執行）；唯讀查詢 main 有 1 位 owner → 移除 callback 自動種子 |
 | 14 | A8 | ✅ | 1 | （本 commit） | 20:13 | 20:30 | migration 026 org_settings.status；suspended 時 aiScope 丟 QuotaError（整理、讀圖、問答、記帳解析都停，訊息照存）；後台每頁橫幅；欄位未建視為 active |
 | 15 | E1 | ✅ | 1 | （本 commit） | 20:31 | 20:45 | 餐飲門市／室內裝修／補習班各 30 則＋期望項目；compare() 比對器有測試；腳本缺測試專案 env 即退出，抽取入口留 TODO |
-| 16 | A10 | 設計夥伴一頁合約草稿 | C | 否 | 低 |
+| 16 | A10 | ✅ | 1 | （本 commit） | 20:46 | 20:55 | docs/legal/design-partner-agreement.md：半價 6 個月、無 SLA、資料歸屬與匯出、LINE 規範變動免費遷移、30 天刪除、72 小時通報；無「符合 LINE」字樣 |
 
 **migration 編號規則**：每次新增前 `ls supabase/migrations`，取「已存在的最大編號 +1」（目前最大是 `020`，所以第一支是 `021`）。檔名 `0NN_<英文短名>.sql`。SQL 一律可重跑（`if not exists`、`create or replace`、`drop trigger if exists`、backfill 加 `where ... is null`）。本機沒有 psql，SQL 今晚無法執行驗證——這點要寫進報告。
 
@@ -348,8 +348,8 @@
 
 ## 5. 進度回寫區（agent 每個任務更新）
 
-**目前狀態**：執行中（任務 16 A10）
-**最後更新**：2026-09-26 20:45
+**目前狀態**：收尾中
+**最後更新**：2026-09-26 20:55
 **起始 commit**：`de67eae`
 
 | 順序 | 代號 | 狀態 | 嘗試 | commit | 開始 | 結束 | 一句話結果 |
