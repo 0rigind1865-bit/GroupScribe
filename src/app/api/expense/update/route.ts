@@ -3,8 +3,9 @@ import { getDb } from '@/db';
 import { redirectTo } from '@/http';
 import { orgAdminAccess } from '@/org/orgs';
 import { oh } from '@/org/href';
-import { EXPENSE_CATEGORIES, PAY_METHODS, parseAmount, parseDate } from '@/expense/receipt';
+import { PAY_METHODS, parseAmount, parseDate } from '@/expense/receipt';
 import { withV2Fallback } from '@/expense/store';
+import { orgCategories } from '@/expense/categories';
 
 // 報帳寫入（X1）：改欄位、標已報帳／改回、刪除。
 // 把關：orgAdminAccess(表單 org) → 每個查詢都 .eq('org_id')，拿到別家的 id 也改不到。
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
     const amount = parseAmount(String(form.get('amount') ?? ''));
     const spent_on = parseDate(String(form.get('spent_on') ?? ''));
     const category = String(form.get('category') ?? '');
-    if (amount === null || !spent_on || !(EXPENSE_CATEGORIES as readonly string[]).includes(category)) return go('err=bad');
+    if (amount === null || !spent_on || !(await orgCategories(access.org.id)).includes(category)) return go('err=bad');
     const text = (k: string, max: number) => String(form.get(k) ?? '').trim().slice(0, max);
     const pay = String(form.get('pay_method') ?? '代墊');
     const patch = {

@@ -2,6 +2,7 @@ import { getDb } from '@/db';
 import { isDm } from '@/core/types';
 import { orgOfGroup } from '@/core/quota';
 import { parseReceipt, type Receipt } from './receipt';
+import { orgCategories } from './categories';
 
 // 收據照 → 一筆報帳（X1）。只收 1:1 私訊：私訊給群記＝本人明確說「這筆我墊的」；
 // 群組裡的收據可能是轉傳的報價，誰付的說不準。
@@ -14,6 +15,13 @@ export async function orgHasExpense(orgId: string): Promise<boolean> {
   return Array.isArray(data?.modules) && data.modules.includes('expense');
 }
 
+/** 個人筆記所屬公司的報帳分類（沒開報帳或查不到 → undefined，AI 用預設清單） */
+export async function receiptCategoriesOf(groupId: string): Promise<string[] | undefined> {
+  const orgId = await orgOfGroup(groupId);
+  if (!orgId || !(await orgHasExpense(orgId))) return undefined;
+  return orgCategories(orgId);
+}
+
 /** 記成功回 Receipt（給 1:1 回覆用）；不是收據、不該記、重複、或寫入失敗 → null */
 export async function recordReceipt(a: {
   assetId: string;
@@ -23,10 +31,10 @@ export async function recordReceipt(a: {
   senderName?: string | null;
 }): Promise<Receipt | null> {
   if (!isDm(a.groupId)) return null;
-  const r = parseReceipt(a.raw, taipeiDate(a.at));
-  if (!r) return null;
   const orgId = await orgOfGroup(a.groupId);
   if (!orgId || !(await orgHasExpense(orgId))) return null;
+  const r = parseReceipt(a.raw, taipeiDate(a.at), await orgCategories(orgId));
+  if (!r) return null;
   const { data, error } = await getDb()
     .from('expenses')
     .upsert(

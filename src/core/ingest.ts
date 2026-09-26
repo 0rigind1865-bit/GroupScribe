@@ -1,5 +1,5 @@
 import { getDb, MEDIA_BUCKET } from '@/db';
-import { orgHasExpense, recordReceipt, receiptReply } from '@/expense/record';
+import { orgHasExpense, receiptCategoriesOf, recordReceipt, receiptReply } from '@/expense/record';
 import type { Receipt } from '@/expense/receipt';
 import { getConnector, getVision } from './config';
 import { indexText } from './indexer';
@@ -535,8 +535,10 @@ export async function analyzeAsset(
   at: Date,
   senderName?: string | null,
 ): Promise<Receipt | null> {
+  // 個人筆記的圖：帶該公司的報帳分類給 AI 挑（X2-4）；群組的圖不記帳，用不到
+  const receiptCategories = isDm(groupId) ? await receiptCategoriesOf(groupId) : undefined;
   return aiScope(groupId, async () => {
-  const r = await getVision().analyze(data, mime);
+  const r = await getVision().analyze(data, mime, { receiptCategories });
   // 先建索引再標 done：順序反過來的話，索引失敗（例如 embedding 撞配額）會留下
   // 「status=done 但查不到內容」的黑洞——不列入積壓數、也永遠不會被重試。
   const text = [r.summary, r.ocrText].filter(Boolean).join('\n');

@@ -12,7 +12,7 @@ export type Receipt = {
   amount: number;
   spent_on: string; // YYYY-MM-DD
   vendor: string;
-  category: ExpenseCategory;
+  category: string;
   invoice_no: string;
 };
 
@@ -42,8 +42,8 @@ export function parseDate(v: unknown): string | null {
   return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
 }
 
-/** AI 回的 receipt 物件 → Receipt；不是收據或金額讀不出來 → null。fallbackDate＝訊息日期 */
-export function parseReceipt(raw: unknown, fallbackDate: string): Receipt | null {
+/** AI 回的 receipt 物件 → Receipt；不是收據或金額讀不出來 → null。fallbackDate＝訊息日期；categories＝該公司的分類 */
+export function parseReceipt(raw: unknown, fallbackDate: string, categories: readonly string[] = EXPENSE_CATEGORIES): Receipt | null {
   if (!raw || typeof raw !== 'object') return null;
   const r = raw as Record<string, unknown>;
   const amount = parseAmount(r.amount);
@@ -54,7 +54,7 @@ export function parseReceipt(raw: unknown, fallbackDate: string): Receipt | null
     amount,
     spent_on: parseDate(r.date) ?? fallbackDate,
     vendor: String(r.vendor ?? '').trim().slice(0, 80),
-    category: (EXPENSE_CATEGORIES as readonly string[]).includes(cat) ? (cat as ExpenseCategory) : '雜支',
+    category: categories.includes(cat) ? cat : '雜支',
     invoice_no: INVOICE_RE.test(inv) ? inv : '',
   };
 }

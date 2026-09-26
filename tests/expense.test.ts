@@ -90,3 +90,19 @@ test('withV2Fallback：欄位不存在時拿掉 v2 欄位重寫一次；其他�
   assert.equal(n, 1);
   assert.deepEqual(stripV2({ a: 1, source: 'web', photo_path: 'p' }), { a: 1 });
 });
+
+// ── 自訂分類（X2-4）──
+import { normalizeCategories } from '../src/expense/categories';
+
+test('normalizeCategories：一行一個、去空白去重、雜支一定在', () => {
+  assert.deepEqual(normalizeCategories('交通\n  餐飲 \n交通\n\n'), ['交通', '餐飲', '雜支']);
+  assert.deepEqual(normalizeCategories('雜支\n交通'), ['雜支', '交通']); // 自己排的位置要尊重
+  assert.deepEqual(normalizeCategories(''), ['雜支']);
+  assert.equal(normalizeCategories(Array.from({ length: 30 }, (_, i) => `類${i}`).join('\n')).length, 20);
+  assert.equal(normalizeCategories('這是一個超過十個字的分類名稱')[0].length, 10);
+});
+
+test('parseReceipt：用公司自訂分類；不在清單裡歸雜支', () => {
+  assert.equal(parseReceipt({ amount: 10, category: '機票' }, '2026-09-26', ['機票', '雜支'])?.category, '機票');
+  assert.equal(parseReceipt({ amount: 10, category: '餐飲' }, '2026-09-26', ['機票', '雜支'])?.category, '雜支');
+});

@@ -6,7 +6,8 @@ import { Banner, Flash } from '@/app/ui/banner';
 import { Badge } from '@/app/ui/badge';
 import { Empty } from '@/app/ui/empty';
 import { StatGrid } from '@/app/ui/stat';
-import { EXPENSE_CATEGORIES, PAY_METHODS } from '@/expense/receipt';
+import { PAY_METHODS } from '@/expense/receipt';
+import { orgCategories } from '@/expense/categories';
 import { expenseQuery, type ExpenseFilter, type ExpenseRow } from '@/expense/query';
 import { SetupNotice } from '../(admin)/setup-notice';
 
@@ -33,10 +34,11 @@ export default async function ExpenseList({
   const f: ExpenseFilter = { status: sp.status ?? 'open', who: sp.who, project: sp.project, month: sp.month };
   const db = getDb();
 
-  const [{ data, error }, { data: all }] = await Promise.all([
+  const [{ data, error }, { data: all }, cats] = await Promise.all([
     expenseQuery(db, org.id, f),
     // 篩選下拉的選項（人、專案）要看全部，不受目前篩選影響
     db.from('expenses').select('line_user_id, person_name, project').eq('org_id', org.id).limit(2000),
+    orgCategories(org.id),
   ]);
   if (error)
     return (
@@ -185,7 +187,8 @@ export default async function ExpenseList({
                     <label className="flex flex-col gap-1">
                       <span className="text-xs text-gray-500">分類</span>
                       <select className="input" name="category" defaultValue={r.category}>
-                        {EXPENSE_CATEGORIES.map((c) => (
+                        {/* 舊資料的分類可能已被改名或刪除：仍列出目前值，避免一存檔就被換掉 */}
+                        {(cats.includes(r.category) ? cats : [r.category, ...cats]).map((c) => (
                           <option key={c}>{c}</option>
                         ))}
                       </select>

@@ -168,6 +168,7 @@ export const EXPENSE_MODULE: ModuleDef = {
   items: [
     { key: 'list', path: '', label: '清單', desc: '員工私訊的收據，標已報帳', icon: I.receipt, primary: true },
     { key: 'report', path: '/report', label: '報帳', desc: '依專案或月份加總、匯出 CSV', icon: I.chart, primary: true },
+    { key: 'categories', path: '/categories', label: '分類', desc: '報帳分類的名稱與順序', icon: I.rules },
   ],
 };
 
