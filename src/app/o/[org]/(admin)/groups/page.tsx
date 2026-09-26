@@ -44,8 +44,8 @@ export default async function GroupsPage({
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-4 md:p-5">
-      <h1 className="mb-3 text-2xl font-semibold tracking-tight">群組管理</h1>
+    <main className="mx-auto max-w-3xl p-4 md:p-8">
+      <h1 className="mb-5 text-3xl md:text-4xl">群組管理</h1>
 
       {profile_error === 'quota' ? (
         <p className="card mb-3 border-red-200 bg-red-50 text-sm text-red-700">
@@ -92,7 +92,7 @@ export default async function GroupsPage({
       <div className="space-y-5">
         {[...byCat.entries()].map(([cat, gs]) => (
           <section key={cat}>
-            <h2 className="mb-2 text-sm font-bold text-gray-500">{cat}</h2>
+            <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">{cat}</h2>
             <div className="space-y-2">
               {gs.map((g: any) => {
                 const p = profileOf.get(g.group_id);
@@ -100,9 +100,9 @@ export default async function GroupsPage({
                   <div className="card flex flex-wrap items-center gap-3" key={g.group_id}>
                     {g.picture_url && (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={g.picture_url} alt="" className="h-8 w-8 rounded-full" />
+                      <img src={g.picture_url} alt="" className="h-11 w-11 rounded-full" />
                     )}
-                    <a className="font-semibold text-emerald-700 hover:underline" href={`/o/${slug}/?group=${encodeURIComponent(g.group_id)}`}>
+                    <a className="text-[15px] font-bold text-emerald-700 hover:underline" href={`/o/${slug}/?group=${encodeURIComponent(g.group_id)}`}>
                       {g.name ?? g.group_id}
                     </a>
                     {g.left_at && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-500">bot 已離開</span>}

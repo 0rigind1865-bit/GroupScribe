@@ -47,7 +47,7 @@ function EventChip({ e, href }: { e: Ev; href: string }) {
     <a
       href={href}
       title={e.title}
-      className={`mt-0.5 block truncate rounded px-1 py-0.5 text-xs ${
+      className={`mt-1 block truncate rounded-md px-1.5 py-1 text-xs font-medium ${
         e.needs_confirmation
           ? 'bg-amber-100 text-amber-900 hover:bg-amber-200'
           : 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200'
@@ -78,10 +78,10 @@ function DayCard({
   selectable?: boolean;
 }) {
   return (
-    <div className={card ? 'card p-3' : 'p-1'}>
-      <div className="mb-1 text-sm font-bold text-gray-600">
+    <div className={card ? 'card p-3.5' : 'p-1'}>
+      <div className="mb-1 text-sm font-bold text-gray-900">
         {zhDate(iso, { month: 'long', day: 'numeric', weekday: 'short' })}
-        {iso === todayIso && <span className="ml-2 rounded bg-emerald-600 px-1 text-xs text-white">今天</span>}
+        {iso === todayIso && <span className="ml-2 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">今天</span>}
       </div>
       {events.length ? (
         events.map((e) =>
@@ -132,7 +132,7 @@ function TimeGrid({
             {days.map((d) => (
               <div key={d} className="px-1 py-1 text-center text-xs">
                 <span
-                  className={d === todayIso ? 'rounded bg-emerald-600 px-1 font-bold text-white' : 'text-gray-500'}
+                  className={d === todayIso ? 'rounded-full bg-emerald-600 px-1.5 font-bold text-white' : 'text-gray-500'}
                 >
                   {zhDate(d, { weekday: 'short' })} {zhDate(d, { day: 'numeric' })}
                 </span>
@@ -314,9 +314,9 @@ export default async function CalendarPage({
   const agendaTruncated = view === 'agenda' && range === 'all' && events.length === AGENDA_LIMIT;
 
   return (
-    <main className="mx-auto max-w-5xl p-5">
+    <main className="mx-auto max-w-5xl p-4 md:p-8">
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">月曆</h1>
+        <h1 className="text-3xl md:text-4xl">月曆</h1>
         {group && <span className="text-gray-500">{groupName}</span>}
         {/* 視圖切換器：手機四等分、桌機 inline */}
         <div className="segmented grid w-full grid-cols-4 md:ml-auto md:inline-flex md:w-auto">
@@ -379,7 +379,7 @@ export default async function CalendarPage({
                         <div
                           className={`text-xs ${
                             cell.iso === todayIso
-                              ? 'inline-block rounded bg-emerald-600 px-1 font-bold text-white'
+                              ? 'inline-block rounded-full bg-emerald-600 px-1.5 font-bold text-white'
                               : 'text-gray-400'
                           }`}
                         >
@@ -414,7 +414,7 @@ export default async function CalendarPage({
                 >
                   <span
                     className={`text-xs ${
-                      cell.iso === todayIso ? 'rounded bg-emerald-600 px-1 font-bold text-white' : 'text-gray-600'
+                      cell.iso === todayIso ? 'rounded-full bg-emerald-600 px-1.5 font-bold text-white' : 'text-gray-600'
                     }`}
                   >
                     {cell.day}
@@ -472,7 +472,9 @@ export default async function CalendarPage({
           )}
           {agendaGroups.map((g) => (
             <div key={g.month}>
-              <h2 className="sticky top-0 z-10 bg-gray-50 py-1 text-sm font-bold text-gray-500">{zhMonth(g.month)}</h2>
+              <h2 className="sticky top-0 z-10 bg-gray-50 py-2 text-xl font-black text-gray-900" style={{ fontFamily: 'var(--font-title)' }}>
+                {zhMonth(g.month)}
+              </h2>
               <div className="space-y-2">
                 {g.days.map((iso) => (
                   <DayCard

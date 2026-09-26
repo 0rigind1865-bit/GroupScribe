@@ -21,16 +21,16 @@ const kindClass = (k: string) =>
 
 function NoteRow({ n, back }: { n: any; back: string }) {
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded border-l-4 border-purple-400 bg-white px-3 py-2 text-sm shadow-sm">
+    <li className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
       <BatchBox id={n.id} />
-      <span className={`rounded px-1.5 py-0.5 text-xs ${kindClass(n.kind)}`}>{kindLabel(n.kind)}</span>
+      <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${kindClass(n.kind)}`}>{kindLabel(n.kind)}</span>
       {n.pinned && (
         <svg viewBox="0 0 24 24" className="h-4 w-4 text-amber-700" fill="none" stroke="currentColor" strokeWidth="1.8">
           <title>置頂</title>
           <path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z" />
         </svg>
       )}
-      <span>{n.title}</span>
+      <span className="font-bold">{n.title}</span>
       <PendingBadge item={n} />
       <span className="ml-auto flex flex-wrap gap-1.5">
         <a className="btn btn-sm" href={`${back}&note=${n.id}`}>
@@ -132,9 +132,9 @@ export default async function NotesPage({
   const back = `/o/${slug}/notes?group=${g}${archived ? '&view=ignored' : ''}`;
 
   return (
-    <main className="mx-auto max-w-4xl p-5">
+    <main className="mx-auto max-w-3xl p-4 md:p-8">
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">公告 / 決議</h1>
+        <h1 className="text-3xl md:text-4xl">公告 / 決議</h1>
         {archived && <span className="rounded bg-gray-100 px-2 py-0.5 text-sm text-gray-600">已忽略</span>}
         {group && <span className="text-gray-500">{groupName}</span>}
       </div>
@@ -182,16 +182,18 @@ export default async function NotesPage({
         <div className="space-y-5">
           {pending.length > 0 && (
             <section>
-              <h2 className="mb-2 text-sm font-bold text-amber-700">⚠ 待確認（AI 抽取）</h2>
-              <ul className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-2">
+              <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+              <h2 className="text-xs font-bold tracking-widest text-amber-700">待確認 · AI 抽取</h2>
+              <ul className="space-y-2">
                 {pending.map((n) => (
                   <NoteRow key={n.id} n={n} back={back} />
                 ))}
               </ul>
+              </div>
             </section>
           )}
           <section>
-            <h2 className="mb-2 text-sm font-bold text-gray-600">有效</h2>
+            <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">有效</h2>
             {active.length ? (
               <ul className="space-y-1.5">
                 {active.map((n) => (

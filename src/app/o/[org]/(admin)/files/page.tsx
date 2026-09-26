@@ -139,27 +139,27 @@ export default async function FilesPage({
   ].filter(Boolean) as string[];
 
   const chip = (active: boolean) =>
-    `rounded border px-3 py-1 ${active ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white'}`;
+    `rounded-full border px-3 py-1 ${active ? 'border-emerald-600 bg-emerald-600 text-white' : 'border-gray-300 bg-white'}`;
 
   const card = (a: any) => {
     const url = urlOf.get(a.storage_path);
     const m = a.messages as { sender_name: string | null; created_at: string };
     return (
-      <div className="card relative p-2" key={a.id}>
+      <div className="card relative space-y-1 p-2" key={a.id}>
         <span className="absolute top-3 left-3 z-10 rounded bg-white/90 p-0.5 shadow">
           <BatchBox id={a.id} />
         </span>
         {a.kind === 'image' && url ? (
           <a href={url} target="_blank" rel="noreferrer">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={url} alt="" className="mb-1 aspect-square w-full rounded object-cover" />
+            <img src={url} alt="" className="mb-1 aspect-square w-full rounded-lg object-cover" />
           </a>
         ) : (
           <a
             href={url ?? '#'}
             target="_blank"
             rel="noreferrer"
-            className="mb-1 flex aspect-square items-center justify-center rounded bg-gray-100 text-gray-400"
+            className="mb-1 flex aspect-square items-center justify-center rounded-lg bg-gray-100 text-gray-400"
           >
             <svg viewBox="0 0 24 24" className="h-12 w-12" fill="none" stroke="currentColor" strokeWidth="1.5">
               <path d="M6 2h8l4 4v16H6z" />
@@ -174,7 +174,7 @@ export default async function FilesPage({
           {a.status !== 'done' && '｜解析中'}
         </div>
         {projectReady && a.project && a.project !== '未分類' && (
-          <div className="mt-0.5 inline-block rounded bg-sky-100 px-1.5 py-0.5 text-xs text-sky-900">{a.project}</div>
+          <div className="inline-block rounded-md bg-sky-100 px-1.5 py-0.5 text-xs font-bold text-sky-900">{a.project}</div>
         )}
         {a.vision_summary && <div className="line-clamp-2 text-xs">{a.vision_summary}</div>}
         <div className="mt-0.5 text-xs text-gray-400">
@@ -188,9 +188,9 @@ export default async function FilesPage({
   );
 
   return (
-    <main className="mx-auto max-w-5xl p-5">
+    <main className="mx-auto max-w-5xl p-4 md:p-8">
       <div className="mb-4 flex flex-wrap items-center gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">檔案</h1>
+        <h1 className="text-3xl md:text-4xl">檔案</h1>
         {group && <span className="text-gray-500">{groupName}</span>}
       </div>
 

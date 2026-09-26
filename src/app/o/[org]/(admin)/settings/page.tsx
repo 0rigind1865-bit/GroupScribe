@@ -12,9 +12,9 @@ export const dynamic = 'force-dynamic';
 // 三條進度條同一個形狀：綠→琥珀→紅，門檻一致，看一眼就知道哪條該擔心
 function Meter({ pct }: { pct: number }) {
   return (
-    <div className="h-3 overflow-hidden rounded bg-gray-200">
+    <div className="h-2.5 overflow-hidden rounded-full bg-gray-200">
       <div
-        className={`h-full rounded ${pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+        className={`h-full rounded-full ${pct >= 90 ? 'bg-red-500' : pct >= 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
         style={{ width: `${pct}%` }}
       />
     </div>
@@ -139,8 +139,8 @@ export default async function SettingsPage({
     'limit' in lineQuota && lineQuota.limit ? Math.min(100, Math.round((lineQuota.used / lineQuota.limit) * 100)) : 0;
 
   return (
-    <main className="mx-auto max-w-2xl p-5">
-      <h1 className="mb-4 text-2xl font-semibold tracking-tight">設定</h1>
+    <main className="mx-auto max-w-2xl p-4 md:p-8">
+      <h1 className="mb-5 text-3xl md:text-4xl">設定</h1>
       {saved && <p className="card mb-4 border-emerald-200 bg-emerald-50 text-sm">已儲存。</p>}
       {processed && (
         <p className="card mb-4 border-emerald-200 bg-emerald-50 text-sm">
@@ -168,7 +168,7 @@ export default async function SettingsPage({
 
       {platform && (<>
       <section className="card mb-6 space-y-2">
-        <h2 className="font-bold">收訊狀態</h2>
+        <h2 className="text-base font-bold">收訊狀態</h2>
         {lastWebhook ? (
           <>
             <p className="text-sm">
@@ -216,7 +216,7 @@ export default async function SettingsPage({
       {/* LINE 推送額度：與 AI 用量分開一張卡，因為它們是兩種完全不同的破產方式——
           AI 用完是花錢，LINE 用完是「訊息安靜地送不出去」而且不會有人發現。 */}
       <section className="card mb-6 space-y-3">
-        <h2 className="font-bold">LINE 推送訊息（本月）</h2>
+        <h2 className="text-base font-bold">LINE 推送訊息（本月）</h2>
         {'error' in lineQuota ? (
           <p className="text-sm text-gray-500">查不到額度：{lineQuota.error}</p>
         ) : lineQuota.limit === null ? (
@@ -246,7 +246,7 @@ export default async function SettingsPage({
       </section>
 
       <section className="card mb-6 space-y-3">
-        <h2 className="font-bold">AI 用量（本月）</h2>
+        <h2 className="text-base font-bold">AI 用量（本月）</h2>
         {usageErr ? (
           <p className="text-sm text-gray-500">
             用量記帳尚未啟用——請在 Supabase SQL Editor 執行 <code>supabase/migrations/006_api_usage.sql</code>，
@@ -326,7 +326,7 @@ export default async function SettingsPage({
           金鑰刻意不放進來——service-role 讀得到整張表，API key 進 DB 等於多開一條外洩路徑，
           而且金鑰本來就不是會反覆調整的東西。 */}
       <section className="card mb-6 space-y-3">
-        <h2 className="font-bold">AI 設定</h2>
+        <h2 className="text-base font-bold">AI 設定</h2>
         <form action="/api/settings" method="post" className="space-y-3 text-sm">
           <input type="hidden" name="ai" value="1" />
           <label className="block">
@@ -376,7 +376,7 @@ export default async function SettingsPage({
       {/* 抽取品質：這是產品價值的健康指標，比用量更重要——
           用量告訴你花了多少錢，這裡告訴你那些錢有沒有換到有用的東西。 */}
       <section className="card mb-6 space-y-2">
-        <h2 className="font-bold">抽取品質（近 7 天）</h2>
+        <h2 className="text-base font-bold">抽取品質（近 7 天）</h2>
         {judged === 0 ? (
           <p className="text-sm text-gray-500">
             還沒有足夠樣本。AI 產出的項目經你「確認」或「忽略」之後，這裡會顯示採用率。
@@ -392,10 +392,10 @@ export default async function SettingsPage({
                   <span className="w-12 flex-none text-right font-bold tabular-nums">
                     {k.rate === null ? '—' : `${k.rate}%`}
                   </span>
-                  <span className="h-2 flex-1 overflow-hidden rounded bg-gray-200">
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-gray-200">
                     {k.rate !== null && (
                       <span
-                        className={`block h-full rounded ${
+                        className={`block h-full rounded-full ${
                           k.rate >= 70 ? 'bg-emerald-500' : k.rate >= 50 ? 'bg-amber-500' : 'bg-red-500'
                         }`}
                         style={{ width: `${k.rate}%` }}
@@ -431,7 +431,7 @@ export default async function SettingsPage({
       </section>
 
       <form action="/api/settings" method="post" className="card space-y-4">
-        <h2 className="font-bold">進群告知訊息</h2>
+        <h2 className="text-base font-bold">進群告知訊息</h2>
         <input type="hidden" name="org" value={access.org.slug} />
         <p className="text-sm text-gray-500">
           群組被你認領時（或 bot 重新加入你的群組時）會發送這則訊息（隱私告知＋用法），之後保持沉默。只影響你的群組。
