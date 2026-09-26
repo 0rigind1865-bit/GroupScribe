@@ -59,3 +59,30 @@ export function sumBy(rows: Pick<ExpenseRow, 'amount'>[], key: (r: any) => strin
   }
   return [...m.entries()].map(([k, [a, n]]) => [k, a, n] as [string, number, number]).sort((x, y) => y[1] - x[1]);
 }
+
+export type Pivot = { rows: string[]; cols: string[]; cell: (r: string, c: string) => number; rowTotal: (r: string) => number; colTotal: (c: string) => number; total: number };
+
+/** 交叉加總（統計頁 X2-5）：列、欄各依合計由大到小；rowOrder 給定時列照它排（例如月份由新到舊） */
+export function pivot<T extends { amount: number }>(rows: T[], rowKey: (r: T) => string, colKey: (r: T) => string, rowOrder?: (a: string, b: string) => number): Pivot {
+  const cells = new Map<string, number>();
+  const rt = new Map<string, number>();
+  const ct = new Map<string, number>();
+  let total = 0;
+  for (const r of rows) {
+    const a = rowKey(r) || '（未填）';
+    const b = colKey(r) || '（未填）';
+    cells.set(`${a}\u0000${b}`, (cells.get(`${a}\u0000${b}`) ?? 0) + r.amount);
+    rt.set(a, (rt.get(a) ?? 0) + r.amount);
+    ct.set(b, (ct.get(b) ?? 0) + r.amount);
+    total += r.amount;
+  }
+  const byTotal = (m: Map<string, number>) => (x: string, y: string) => (m.get(y) ?? 0) - (m.get(x) ?? 0);
+  return {
+    rows: [...rt.keys()].sort(rowOrder ?? byTotal(rt)),
+    cols: [...ct.keys()].sort(byTotal(ct)),
+    cell: (a, b) => cells.get(`${a}\u0000${b}`) ?? 0,
+    rowTotal: (a) => rt.get(a) ?? 0,
+    colTotal: (b) => ct.get(b) ?? 0,
+    total,
+  };
+}

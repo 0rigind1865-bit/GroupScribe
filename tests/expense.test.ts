@@ -133,3 +133,24 @@ test('parseExpenseForm：日期沒填用今天、付款方式白名單、座標�
   const bad = parseExpenseForm(form({ amount: '5', category: '雜支', lat: '200', lng: '121' }), CATS, '2026-09-26');
   assert.deepEqual([bad?.lat, bad?.lng], [null, null]);
 });
+
+// ── 統計（X2-5）──
+import { pivot } from '../src/expense/query';
+
+test('pivot：交叉加總、列欄依合計排序、可指定列順序', () => {
+  const rows = [
+    { amount: 100, m: '2026-08', c: '餐飲' },
+    { amount: 300, m: '2026-09', c: '交通' },
+    { amount: 50, m: '2026-09', c: '餐飲' },
+    { amount: 10, m: '2026-09', c: '' },
+  ];
+  const p = pivot(rows, (r) => r.m, (r) => r.c);
+  assert.deepEqual(p.rows, ['2026-09', '2026-08']);
+  assert.deepEqual(p.cols, ['交通', '餐飲', '（未填）']);
+  assert.equal(p.cell('2026-09', '餐飲'), 50);
+  assert.equal(p.cell('2026-08', '交通'), 0);
+  assert.equal(p.rowTotal('2026-09'), 360);
+  assert.equal(p.colTotal('餐飲'), 150);
+  assert.equal(p.total, 460);
+  assert.deepEqual(pivot(rows, (r) => r.m, (r) => r.c, (a, b) => a.localeCompare(b)).rows, ['2026-08', '2026-09']);
+});
