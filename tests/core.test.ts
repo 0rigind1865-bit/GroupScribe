@@ -263,3 +263,26 @@ test('個人筆記（G8）：1:1 事件轉成 dm:<userId> 群，問句才回答'
   for (const q of ['上次報價多少？', '車號是?', '查 車號', '找一下合約']) assert.ok(DM_ASK_RE.test(q), q);
   for (const t of ['明天 9 點看場地', '報價 48000', '我要查一下再說']) assert.ok(!DM_ASK_RE.test(t), t);
 });
+
+// ── G7 進群告知：三段、明寫由認領公司管理且可匯出、整段不過長 ──
+import { DEFAULT_NOTICE, withLiffEntry } from '../src/core/ingest';
+
+test('進群告知：含入口與法務連結的完整輸出 ≤ 400 字，且講明「管理」「匯出」', () => {
+  const saved = { liff: process.env.LIFF_ID, base: process.env.APP_BASE_URL };
+  process.env.LIFF_ID = '2001234567-AbCdEfGh';
+  process.env.APP_BASE_URL = 'https://example-nas.tailnet-1234.ts.net/';
+  try {
+    const out = withLiffEntry(DEFAULT_NOTICE);
+    assert.ok([...out].length <= 400, `目前 ${[...out].length} 字`);
+    assert.match(out, /管理/);
+    assert.match(out, /匯出/);
+    assert.match(out, /liff\.line\.me/);
+    assert.match(out, /\/privacy/);
+    assert.doesNotMatch(out, /符合\s*LINE/); // 商業計劃 K1：對外不宣稱合規
+  } finally {
+    process.env.LIFF_ID = saved.liff;
+    process.env.APP_BASE_URL = saved.base;
+    if (saved.liff === undefined) delete process.env.LIFF_ID;
+    if (saved.base === undefined) delete process.env.APP_BASE_URL;
+  }
+});

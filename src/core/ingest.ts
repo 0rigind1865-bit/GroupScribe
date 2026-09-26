@@ -65,41 +65,38 @@ export async function leaveStaleUnclaimed(days = 7): Promise<number> {
   return n;
 }
 
-const NOTICE_VERSION = 'v1';
+// v2（2026-09-26，G7）：改三段、明寫「由認領的公司管理、可匯出」——措辭變了，consent_log 要分得出來
+const NOTICE_VERSION = 'v2';
 // LIFF 成員入口網址；未設定 LIFF_ID 時回 null，所有引用處自然省略該行
 export const liffUrl = (): string | null =>
   process.env.LIFF_ID ? `https://liff.line.me/${process.env.LIFF_ID}` : null;
 
 // 進群告知的內建預設；各 org 可在 /settings 改寫（org_settings.join_notice_text）
-export const DEFAULT_NOTICE = `大家好，我是群記 🦉（GroupScribe 群組工作助理）
-我會在背景記錄本群組的訊息（文字、圖片、PDF），整理成可搜尋的工作紀錄。
+export const DEFAULT_NOTICE = `大家好，我是群記 🦉（群組工作助理）
+我會安靜記錄本群的訊息（文字、圖片、PDF），自動整理成行程、待辦和公告。平常不說話，要查資料就 @我（例如「上次報價多少」）。
 
-【怎麼用】
-・平常我不會說話，需要查資料時 @我 提問即可（例如「上次報價多少」）
-・行程、待辦、公告我會自動整理好，隨時可以查看
+【誰看得到】
+本群的整理由認領這個群的公司管理，管理者可以查看與匯出；成員也能從下方連結查看。
 
 【隱私】
-・將我移出群組即停止收集；管理者可隨時刪除全部資料
-・收回的訊息會同步刪除對應紀錄`;
+・把我移出群組就停止記錄
+・收回的訊息會同步刪除
+・想刪除全部資料，請找管理者`;
 
 // 告知文末附成員入口與訂閱引導。
 // 這是唯一天然到達全體成員的觸點——入口不在這裡講，成員幾乎不會知道它存在（審查 P0）。
 // 加好友的說明用「點頭像」而非搜尋 ID：在群組裡點 bot 頭像就有「加入好友」，不必知道帳號 ID。
-const withLiffEntry = (text: string): string => {
+// G7：整段（含預設告知）控制在 400 字內，tests/core.test.ts 有守
+export const withLiffEntry = (text: string): string => {
   const url = liffUrl();
   const base = process.env.APP_BASE_URL?.replace(/\/$/, '');
   const legal = base ? `\n\n服務條款 ${base}/terms ・ 隱私權政策 ${base}/privacy` : '';
   if (!url) return text + legal;
   return `${text}
 
-【看整理結果】
+【看整理、訂閱提醒】
 👉 ${url}
-（行程／待辦／公告都在裡面，也可以直接確認或修正 AI 整理錯的地方）
-
-【想每天收到提醒的人】
-・先點我的頭像 →「加入好友」（LINE 規定：沒加好友我不能私訊你）
-・再從上面連結打開，把「每天早上私訊我這個群的摘要」打開
-・只有你自己收得到，群組裡不會有任何訊息；沒事的日子也不會打擾${legal}`;
+想每天收到提醒：先點我的頭像「加入好友」，再從上面連結打開提醒。只有你收得到，群裡不會出現任何訊息。${legal}`;
 };
 
 // 低資訊過濾（規劃書第 1 節推論 3）：只留原始紀錄，不進解析與向量化
