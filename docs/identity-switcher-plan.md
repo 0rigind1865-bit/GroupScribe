@@ -354,7 +354,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 | T7 | 首頁選單 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 167 pass（homeMode 3 個）；素材 A：/?menu=1 手機截圖照 IdHome（深色段頭、上次使用、無開關提示、地球） |
 | T8 | 清理 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 167 pass；grep SurfaceSwitcher／IdentityMenu 無結果；更多頁只留「看全部身分 →」（≥2 身分才顯示）；README 介面架構改寫 |
 | T9 | 視覺驗收 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 見下方「T9 對照表」 |
-| C4 | 既有畫板修改 | P1 | ⏳ | 09-27 夜 | 0 | | workflow canvas-c4 背景 |
+| C4 | 既有畫板修改 | P1 | ✅ | 09-27 夜 | 0 | 畫布 v18 | 18 張：More／AttendMore 只留「看全部身分」、報帳分頁「加總」「匯出」、收據清單／我的清單、專案、報表膠囊 [員工 B]、打卡已上班狀態；發布前逐張比對差異 |
 | D2 | 報帳改名＋專案 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 167 pass；另含 T6 移過來的報帳 App 最小版五語系（labels.ts）與記一筆頁標題（F55 一併做） |
 | D3 | 打卡主鈕 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 167 pass；今天最後一筆是上班 → 下班實心、上班描邊（不改 API） |
 | D4 | 個人報帳公司級動作 | P1 | ✅ | 09-27 夜 | 0 | （本 commit） | 分類「管理」格拿掉，改小字連到 /o/<slug>/expense/categories（只給能管該公司報帳的人）；「重新命名專案」保留（管理端沒有對應功能） |
@@ -364,7 +364,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 | D8 | 單群頁返回 | P1 | ✅ | 09-27 夜 | 0 | 22d4a9e（T6） | 44px「‹ 群組」 |
 | D9 | 首頁兜底文案 | P1 | ✅ | 09-27 夜 | 0 | 42ef57d（T7） | HOME_NONE 中性文案 |
 | D10 | 月曆／打卡狀態／補卡 | P2 | ✅ | 09-27 夜 | 0 | （本 commit） | 167 pass、build 綠；員工端需要員工資料列，本機無法實走（R3），列入真機待驗清單 |
-| T10 | UX 審查迴圈 | P0 | ⬜ | | 0 | | |
+| T10 | UX 審查迴圈 | P0 | ⏳ | 09-27 夜 | 0 | | 第 1 輪進行中 |
 | T11 | 收尾 | P0 | ⬜ | | 0 | | |
 
 狀態：⬜ 未開始／⏳ 進行中／✅ 完成／◐ 部分完成／⏭ 跳過＋原因／❌ 失敗＋原因
@@ -410,6 +410,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 - F53 成員頁 `/g`、`/g/[groupId]` 五語系。
 - F37 延伸：加入時自動帶 LINE 顯示名稱。
 - 報帳 App 其餘文案五語系（F20 最小版以外）。
+- 畫布：「文具」分類仍用扳手圖示（Add／List／Report 三張）；StaffExpenseReport 頁首小字仍寫「報帳」。
 - 平台頁公司卡改成 IdPlatform 的「工具列」樣式（目前是一排按鈕，功能相同）。
 - 開發伺服器重新編譯時分頁標題會短暫顯示 404（/login、/platform 實測 200），只在開發環境。
 - 工具選單列的待處理數字徽章。
