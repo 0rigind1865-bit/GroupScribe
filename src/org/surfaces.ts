@@ -4,6 +4,7 @@ import { liffUser, myGroups } from '@/core/liff';
 import { myEmployees } from '@/attend/auth';
 import { isPlatformOwner } from './orgs';
 import { enabledModuleIds } from './module-ids';
+import { orgHasExpense } from '@/expense/record';
 
 // 全站「你能去哪些地方」的單一判定點。
 //
@@ -18,7 +19,7 @@ import { enabledModuleIds } from './module-ids';
 //   群組管理／考勤管理 ＝ org_members 有他（每個 org 各一組，依該 org 開的模組）；平台擁有者另加預設 org 全開
 //   平台管理 ＝ 平台擁有者（後台密碼，或 ADMIN_LINE_USER_ID 的 LINE 帳號）
 
-export type SurfaceId = 'groups' | 'punch' | 'gs' | 'attend' | 'expense' | 'platform';
+export type SurfaceId = 'groups' | 'punch' | 'myexpense' | 'gs' | 'attend' | 'expense' | 'platform';
 
 export type Surface = {
   key: string; // 唯一：同一人管多個 org 時 gs/attend 會各有一組（'gs:acme'）
@@ -49,6 +50,13 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
   const employees = uid ? await myEmployees() : [];
   if (employees.length) {
     list.push({ key: 'punch', id: 'punch', label: '我要打卡', desc: '上下班打卡、看打卡紀錄、申請補卡', href: '/a', rank: 1 });
+  }
+  // 1b. 在職員工且公司有開報帳 → 我的報帳（X2-1）
+  for (const e of employees) {
+    if (e.status === 'active' && (await orgHasExpense(e.org_id))) {
+      list.push({ key: 'myexpense', id: 'myexpense', label: '我的報帳', desc: '記一筆墊付的錢、看自己的報帳清單', href: '/a/expense', rank: 1.5 });
+      break;
+    }
   }
 
   // 2. 群組成員 → 成員版（以「現在在不在群裡」為準，不是「有沒有講過話」）

@@ -58,7 +58,9 @@ export default async function ExpenseList({
   }
 
   // 收據縮圖：私有 bucket → 批次簽名 1 小時（同 core/media.ts）
-  const paths = rows.map((r) => r.media_assets?.storage_path).filter((p): p is string => !!p);
+  // 私訊的收據照在 media_assets；員工網頁上傳的在 photo_path（X2-1）
+  const pathOf = (r: ExpenseRow) => r.photo_path ?? r.media_assets?.storage_path ?? null;
+  const paths = rows.map(pathOf).filter((p): p is string => !!p);
   const { data: signed } = paths.length
     ? await db.storage.from(MEDIA_BUCKET).createSignedUrls(paths, 3600)
     : { data: [] as { path: string | null; signedUrl: string }[] };
@@ -130,13 +132,14 @@ export default async function ExpenseList({
         ) : (
           <Empty
             title="還沒有報帳"
-            hint="請員工加群記好友，把收據或發票拍照私訊給群記，AI 會讀出金額自動記在這裡。"
+            hint="請員工加群記好友，把收據或發票拍照私訊給群記（AI 會讀出金額），或從 LINE 打開「我的報帳」自己記一筆。"
           />
         )
       ) : (
         <ul className="space-y-2">
           {rows.map((r) => {
-            const img = r.media_assets?.storage_path ? urlOf.get(r.media_assets.storage_path) : undefined;
+            const p = pathOf(r);
+            const img = p ? urlOf.get(p) : undefined;
             return (
               <li key={r.id} className="card">
                 <div className="flex items-start gap-3">

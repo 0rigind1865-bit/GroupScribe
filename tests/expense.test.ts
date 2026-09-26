@@ -106,3 +106,30 @@ test('parseReceipt：用公司自訂分類；不在清單裡歸雜支', () => {
   assert.equal(parseReceipt({ amount: 10, category: '機票' }, '2026-09-26', ['機票', '雜支'])?.category, '機票');
   assert.equal(parseReceipt({ amount: 10, category: '餐飲' }, '2026-09-26', ['機票', '雜支'])?.category, '雜支');
 });
+
+// ── 員工網頁記一筆（X2-1）＋地點（X2-7）──
+import { parseExpenseForm } from '../src/expense/mine';
+
+const form = (o: Record<string, string>) => {
+  const f = new FormData();
+  for (const [k, v] of Object.entries(o)) f.set(k, v);
+  return f;
+};
+const CATS = ['交通', '雜支'];
+
+test('parseExpenseForm：金額或分類不合法 → null', () => {
+  assert.equal(parseExpenseForm(form({ amount: '0', category: '交通' }), CATS, '2026-09-26'), null);
+  assert.equal(parseExpenseForm(form({ amount: '120', category: '機票' }), CATS, '2026-09-26'), null);
+});
+
+test('parseExpenseForm：日期沒填用今天、付款方式白名單、座標要成對且在範圍內', () => {
+  const r = parseExpenseForm(form({ amount: '1,200', category: '交通', pay_method: '信用卡', lat: '25.03', lng: '121.56' }), CATS, '2026-09-26');
+  assert.equal(r?.amount, 1200);
+  assert.equal(r?.spent_on, '2026-09-26');
+  assert.equal(r?.pay_method, '代墊');
+  assert.deepEqual([r?.lat, r?.lng], [25.03, 121.56]);
+  const half = parseExpenseForm(form({ amount: '5', category: '雜支', lat: '25', lng: '' }), CATS, '2026-09-26');
+  assert.deepEqual([half?.lat, half?.lng], [null, null]);
+  const bad = parseExpenseForm(form({ amount: '5', category: '雜支', lat: '200', lng: '121' }), CATS, '2026-09-26');
+  assert.deepEqual([bad?.lat, bad?.lng], [null, null]);
+});
