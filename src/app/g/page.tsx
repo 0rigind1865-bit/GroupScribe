@@ -28,7 +28,6 @@ export default async function LiffHome({ searchParams }: { searchParams: Promise
   const dest = liffStatePath(sp);
   if (dest && !/^\/g(\?|$)/.test(dest)) redirect(dest);
 
-  const adminUnset = !process.env.ADMIN_LINE_USER_ID?.trim();
   const mine = await myGroups(uid); // 排除未認領與群記已離開的群（core/liff.ts）
 
   return (
@@ -57,15 +56,6 @@ export default async function LiffHome({ searchParams }: { searchParams: Promise
         ))}
       </div>
 
-      {adminUnset && (
-        <details className="mt-6 text-xs text-gray-400">
-          <summary className="cursor-pointer">我是管理者，要開啟免密碼進後台</summary>
-          <p className="mt-2">
-            把下面這行加進伺服器的 <code>.env.local</code> 後重啟，用這個 LINE 帳號開啟時就會出現「管理後台」入口：
-          </p>
-          <p className="mt-1 rounded bg-gray-100 px-2 py-1 font-mono break-all text-gray-600">ADMIN_LINE_USER_ID={uid}</p>
-        </details>
-      )}
     </main>
   );
 }

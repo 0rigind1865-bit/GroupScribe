@@ -169,3 +169,25 @@ test('管理端每一頁都自己驗模組權限（requireModule），不能只�
   }
   assert.deepEqual(bad, [], `這些頁面沒有自己的權限門禁：\n${bad.join('\n')}`);
 });
+
+// ── 成員頁不得透露後台（權限即可見性，2026-09-27 F5）──
+// /g 原本在 ADMIN_LINE_USER_ID 未設時，對每一位群組成員（含別家公司的人）顯示
+// 「我是管理者，要開啟免密碼進後台」與他的 LINE userId。成員頁只該有群組整理。
+test('成員頁（src/app/g）不出現後台入口、環境變數名或 LINE userId', () => {
+  const G = join(ROOT, 'src/app/g');
+  const files = (dir: string): string[] =>
+    readdirSync(dir).flatMap((n) => {
+      const p = join(dir, n);
+      return statSync(p).isDirectory() ? files(p) : /\.tsx?$/.test(n) ? [p] : [];
+    });
+  const bad: string[] = [];
+  for (const f of files(G)) {
+    readFileSync(f, 'utf8')
+      .split('\n')
+      .forEach((line, i) => {
+        if (/^\s*(\/\/|\*|\{\/\*)/.test(line)) return; // 註解可以提
+        if (/後台|ADMIN_LINE_USER_ID|\.env\.local|=\{uid\}/.test(line)) bad.push(`${f.slice(ROOT.length + 1)}:${i + 1}  ${line.trim()}`);
+      });
+  }
+  assert.deepEqual(bad, [], `成員頁不該出現這些：\n${bad.join('\n')}`);
+});

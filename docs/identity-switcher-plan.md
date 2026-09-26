@@ -341,7 +341,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 | # | 任務 | 級 | 狀態 | 開始 | 嘗試 | commit | 驗證證據 |
 |---|---|---|---|---|---|---|---|
 | T0 | 開工 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 基準 130 pass；launch.json 加 SESSION_SECRET |
-| D1 | /g 後台段 | P0 | ⬜ | | 0 | | |
+| D1 | /g 後台段 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 131 pass；故意加回「後台」測試會紅 |
 | C1 | SPEC v2 | P0 | ⬜ | | 0 | | |
 | C2 | 新增 7 張 Id 畫板 | P0 | ⬜ | | 0 | | |
 | C3 | 修改既有 Id 畫板 | P0 | ⬜ | | 0 | | |
