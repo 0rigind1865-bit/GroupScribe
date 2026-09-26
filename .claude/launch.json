@@ -30,6 +30,7 @@
       "runtimeArgs": [
         "NEXT_DIST_DIR=.next-dev",
         "ADMIN_PASSWORD=preview-only-local",
+        "SESSION_SECRET=verify-only-local",
         "npm",
         "run",
         "dev",
