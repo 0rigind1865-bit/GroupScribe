@@ -128,3 +128,24 @@ test('未認領的群歸平台段，不會長出一家叫「未認領」的公�
   assert.deepEqual(g.admin.map((o) => o.slug), ['main']);
   assert.ok(g.platform.some((s) => s.key === 'unclaimed'));
 });
+
+// ── /go/<key> 的目的地（T3）──
+import { goTarget } from '../src/org/surface-groups';
+const noLast = () => undefined;
+
+test('/go：只接受清單裡有的 key；只有群組身分的人打別人的後台 → null（回落地頁 /g）', () => {
+  const list = [groups];
+  assert.equal(goTarget(list, 'attend:x', null, noLast), null);
+  assert.equal(goTarget(list, 'groups', null, noLast)?.href, '/g');
+});
+
+test('/go/@admin：從打卡切過去同公司考勤；/go/@me 沒有個人側 → null', () => {
+  const list = [punch('a'), adm('gs', 'a'), adm('attend', 'a')];
+  assert.equal(goTarget(list, '@admin', 'punch', noLast)?.key, 'attend:a');
+  assert.equal(goTarget([adm('attend', 'a')], '@me', 'attend:a', noLast), null);
+});
+
+test('/go/@admin：沒有 from 時用該角色上次用的 cookie', () => {
+  const list = [groups, adm('gs', 'a'), adm('attend', 'a')];
+  assert.equal(goTarget(list, '@admin', null, (side) => (side === 'admin' ? 'attend:a' : undefined))?.key, 'attend:a');
+});

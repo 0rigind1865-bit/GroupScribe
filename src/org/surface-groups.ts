@@ -102,3 +102,15 @@ export function resolveRoleJump(g: Grouped, target: Side, fromKey?: string | nul
   }
   return all.find((s) => s.key === lastKey) ?? all[0];
 }
+
+/**
+ * /go/<key> 要去哪：@me／@admin 走角色開關規則；其他 key 必須在清單裡（不能拿來跳到別人的後台）。
+ * 回 null → 呼叫端送回落地頁。lastOf 給「該角色上次用的」cookie 值。
+ */
+export function goTarget(list: Surface[], key: string, from: string | null, lastOf: (side: Side) => string | undefined): Surface | null {
+  if (key === '@me' || key === '@admin') {
+    const side: Side = key === '@me' ? 'me' : 'admin';
+    return resolveRoleJump(groupSurfaces(list), side, from, lastOf(side));
+  }
+  return list.find((x) => x.key === key) ?? null;
+}

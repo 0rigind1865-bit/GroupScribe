@@ -347,7 +347,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 | C3 | 修改既有 Id 畫板 | P0 | ⬜ | | 0 | | |
 | T1 | groupSurfaces | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 145 pass（+14 persona／對應／安全網測試）；diff 審查見 T2 列 |
 | T2 | 名稱／圖示／五語系 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 145 pass；i18n 守門綠；五語系無「群組助理／打卡系統」 |
-| T3 | 角色跳轉 | P0 | ⬜ | | 0 | | |
+| T3 | 角色跳轉 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 148 pass（goTarget 3 個）|
 | T4 | IdentityBar | P0 | ⬜ | | 0 | | |
 | T5 | 管理端 | P0 | ⬜ | | 0 | | |
 | T6 | 個人端 | P0 | ⬜ | | 0 | | |
