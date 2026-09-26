@@ -15,8 +15,9 @@ export async function MoreList({
   ctx?: Record<string, string | undefined>;
   extra?: React.ReactNode;
 }) {
-  // 「換身分」的入口：手機在這裡，桌機與手機頂端的「公司名 ▾」也有
-  const others = (await surfaces()).list.filter((s) => !(s.id === module.id && s.slug === slug));
+  // 換身分、換工具、換公司都在頂端身分列（工具名 ▾）；這裡只留一行回首頁選單。
+  // 只有一種身分時不顯示——那一頁沒有別的選擇，點了只會看到自己（審查 F6）
+  const total = (await surfaces()).list.length;
   return (
     <main className="page">
       <h1 className="mb-5">更多</h1>
@@ -42,26 +43,10 @@ export async function MoreList({
         ))}
         {extra}
       </div>
-      {others.length > 0 && (
-        <>
-          <h2 className="mt-6 mb-2 section-title">切換身分</h2>
-          <div className="space-y-2">
-            {others.map((s) => (
-              <a key={s.key} href={`/go/${encodeURIComponent(s.key)}`} className="card flex items-center gap-4 hover:bg-gray-50">
-                <span className="font-semibold">{s.label}</span>
-                <span className="ml-auto text-gray-300">›</span>
-              </a>
-            ))}
-            {/* 回到首頁的身分選單：記住選擇後首頁會直接跳走，這是回去重選的唯一明顯入口 */}
-            <a href="/?menu=1" className="card flex items-center gap-4 hover:bg-gray-50">
-              <span>
-                <span className="block font-semibold">回到身分選單</span>
-                <span className="block text-sm text-gray-500">看你所有的身分，重新選一個下次直接進入的</span>
-              </span>
-              <span className="ml-auto text-gray-300">›</span>
-            </a>
-          </div>
-        </>
+      {total >= 2 && (
+        <a href="/?menu=1" className="mt-6 block px-1 py-3 text-sm text-gray-500 hover:text-gray-700">
+          看全部身分 →
+        </a>
       )}
     </main>
   );

@@ -11,7 +11,7 @@ import { myExpenseIdentity } from '@/expense/mine';
 // 為什麼需要它：使用者同時可能是群組成員、員工、org 管理員、平台擁有者，
 // 所有人都從同一個 LINE 連結（LIFF）進來。這裡把身分收成一份清單：
 //   首頁（src/app/page.tsx）：一種身分直接進去；兩種以上顯示選單、記住上次選的
-//   切換器（SurfaceSwitcher）與「更多」頁：列出全部，一鍵換身分（經 /go/[key] 記住選擇）
+//   身分列（src/app/ui/identity-bar.tsx）：個人／管理兩層，一鍵換身分與工具（經 /go/[key] 記住選擇）
 //
 // 身分怎麼判定（全部以 LINE 帳號編號為準，每次請求重查，撤權立即生效）：
 //   打卡（個人）＝ employees 有這個 LINE 帳號

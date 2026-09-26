@@ -223,20 +223,28 @@ src/
 
 ## 介面架構
 
-一個殼、一份路由表、兩個工作區。
+一份路由表、一條身分列、兩個角色（個人／管理）。
 
 ```
-/o/[slug]/          layout.tsx      唯一權限閘門（visibleModules → notFound）
-                    routes.tsx      全站唯一路由表：MODULES = [群組助理, 考勤]
-                    shell-header    工作區切換器 + nav + context 切換器
+/o/[slug]/          layout.tsx      org 閘門（visibleModules）；每一頁另有 requireModule（layout 只算 UX）
+                    routes.tsx      全站唯一路由表：MODULES = [群組助理, 考勤, 報帳]；圖示 I 也從這裡匯出
+                    shell-header    深色身分列：角色開關 + 工具按鈕 + 電腦分頁 + 情境膠囊（群組／員工）
    ├── (admin)/     群組助理：今天/收件匣/月曆/待辦 + 更多(公告/檔案/群組/匯入/設定)
-   └── attend/      考勤：總覽/員工/審核/報表 + 更多(地點/規則)
-/g                  LINE 成員版（群組成員都看得到）
-/a                  員工打卡（頂部三 pill：打卡/月曆/我的申請）
+   ├── attend/      考勤：總覽/員工/審核/報表 + 更多(地點/規則)
+   └── expense/     報帳（管理）
+/g                  群組（個人）：成員版
+/a                  打卡（個人）；/a/expense 報帳（個人）
+/                   首頁身分選單（個人一段、各公司一段、平台一段）；/go/<key>、/go/@me、/go/@admin 換身分
 ```
 
+- **身分切換（2026-09 改版，設計見 `docs/identity-switcher-plan.md` 第 2 節、畫布「身分切換提案 A」）**：
+  - 第一層「個人｜管理」角色開關，顏色只說角色：淺色頂列＝個人、深色頂列＝管理（手機也是）
+  - 第二層工具按鈕（`src/app/ui/identity-bar.tsx`），圖示只說工具、兩個角色共用（時鐘＝打卡／考勤…）
+  - 資料單一來源：`src/org/surfaces.ts`（誰有哪些身分）→ `src/org/surface-groups.ts`（純邏輯：分組、三態、
+    跳轉規則）→ `src/org/surface-meta.tsx`（名稱／說明／圖示，個人側五語系）
+  - 沒有選擇就不渲染：只有一種身分一個工具的人，畫面上不存在切換器（權限即可見性）
+  - `tests/surfaces.test.ts`、`tests/identity-bar.test.ts` 用七種角色守住以上規則
 - **加一頁＝在 `routes.tsx` 加一行** —— TopNav、底部膠囊、`/more` 頁、active 判定全部由此推導
-- **工作區切換器只在有兩個模組時渲染**：只有考勤權限的 org 管理員，畫面上不存在「另一個工作區」
 - **context 參數跟著換頁走**：群組助理帶 `?group=`、考勤帶 `?emp=`（用 URL 不用 cookie —— 可分享、狀態看得見）
 - **共用元件在 `src/app/ui/`**：Banner / Badge / MonthGrid / Empty / StatGrid / PageHeader，
   以及狀態語意色 `tone.ts`（ok/warn/err/neutral 四個，跨模組不衝突）
@@ -252,9 +260,9 @@ src/
   | `Empty` | Empty state | 主文＋副文＋一顆下一步；篩不到（filtered）不給引導 |
   | `StatGrid` | Card（stat） | 待處理類 hideZero；量測類永遠顯示 |
   | `.segmented`（月曆視圖／議程範圍） | Segmented control（Toggle button group） | `aria-current=page` 標選中，MPA 連結 |
-  | `SurfaceSwitcher` | Segmented control | 少於兩個面向整條不渲染 |
+  | `IdentityBar`（角色開關＋工具選單） | Segmented control ＋ Menu（Drawer） | 沒有選擇就不渲染；選單 `<details>` 零 JS，手機底部抽屜、電腦下拉 |
   | `FloatingNav` / BottomNav | Navigation（Tabs） | 五格、badge、拖曳與整頁滑動換頁 |
-  | `GroupSwitcher` / `EmployeeSwitcher` | Select | 切換時只保留 view 參數、丟棄 entity 參數 |
+  | `GroupSwitcher` / `EmployeeSwitcher`（`.ctx-pill`） | Select | `<details>` 清單（LINE 內建瀏覽器不一定叫得出原生 select）；切換時只保留 view 參數、丟棄 entity 參數 |
   | `BatchBar` ＋ `BatchBox` | Toolbar（Button group）＋ Checkbox | 勾選後才浮出；全選在列內 |
   | `Loading` / `.spinner` | Spinner（Loader） | `role=status`；表單送出時按鈕內縮小版 |
   | `PageHeader` | Header ＋ Link（返回） | 返回是硬編碼路徑，不用 history.back |
@@ -294,7 +302,7 @@ src/
 用完後訊息照存、暫停整理，方案頁與今天頁會顯示；用量記在 `org_usage`（migration 018）。
 服務條款與隱私權政策在 `/terms`、`/privacy`（草稿，收費前請律師審閱）。
 
-平台擁有者的總控台在 `/platform`（身分選單裡的「平台管理」）：所有公司的方案、群組數、管理員、本月 AI 用量，可直接改方案；未認領的群也列在這裡。
+平台擁有者的總控台在 `/platform`（身分列工具選單「平台」段的「平台管理」）：所有公司的方案、群組數、管理員、本月 AI 用量，可直接改方案；未認領的群也列在這裡。
 平台擁有者也可在 `/o/unclaimed/groups`（或任一 org 的群組頁）用「移轉」下拉手動歸戶。
 認領連結需要公開網址：`.env.local` 設 `APP_BASE_URL=https://<你的網域>`。
 台灣假日初始資料：`npx tsx scripts/seed-holidays.ts <org-slug>`（資料請對照人事行政總處公告核對）。
