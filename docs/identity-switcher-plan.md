@@ -348,7 +348,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 | T1 | groupSurfaces | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 145 pass（+14 persona／對應／安全網測試）；diff 審查見 T2 列 |
 | T2 | 名稱／圖示／五語系 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 145 pass；i18n 守門綠；五語系無「群組助理／打卡系統」 |
 | T3 | 角色跳轉 | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 148 pass（goTarget 3 個）|
-| T4 | IdentityBar | P0 | ⬜ | | 0 | | |
+| T4 | IdentityBar | P0 | ✅ | 09-27 夜 | 0 | （本 commit） | 159 pass（身分列 11 個：七角色＋連結＋無障礙＋五語系）；快照腳本移到 T9 |
 | T5 | 管理端 | P0 | ⬜ | | 0 | | |
 | T6 | 個人端 | P0 | ⬜ | | 0 | | |
 | T7 | 首頁選單 | P0 | ⬜ | | 0 | | |
@@ -375,6 +375,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 - 2026-09-27：F20 報帳頁五語系採最小版（見 T6）；非 zh 語系的選單「報帳」說明後加「（中文介面）」字樣。
 - 2026-09-27：F30 琥珀小點只在個人側、指向管理；管理側「個人」格 v1 不亮。
 - 2026-09-27：暗色模式管理列改用 `var(--accent-tint)` 底（F27），C1 定稿時若截圖對比不足再改為深底＋2px accent 上緣線。
+- 2026-09-27 T4：不另寫 async 包裝 `identityBarFor()`——頁面層各自 `groupSurfaces((await surfaces()).list, current)` 一行就好（YAGNI）。「關閉」列＝連回目前頁（零 JS 關不掉 <details>，重新載入即關閉）。persona 快照腳本需要 dev server 的 CSS 網址，移到 T9 開 server 時一起寫。
 
 ### 發現但沒做的事（R8：記給 jielin）
 

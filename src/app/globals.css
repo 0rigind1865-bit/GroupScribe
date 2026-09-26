@@ -400,6 +400,161 @@ html {
   }
 }
 
+/* ── 身分列（src/app/ui/identity-bar.tsx；docs/identity-switcher-plan.md 第 2 節）──
+   顏色只說角色：--light＝個人（跟頁面同底）、--dark＝管理（深色帶，手機也是）。
+   選單是 <details> 零 JS：手機＝底部抽屜（summary::before 做全螢幕遮罩，點遮罩＝點 summary＝收合）；
+   電腦＝按鈕下方 300px 下拉。未分層寫法，勝過頁面上的 utility。 */
+.id-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  min-height: 64px;
+  box-sizing: border-box;
+}
+.id-bar--light { color: #1c2420; padding-top: 14px; padding-bottom: 4px; }
+.id-bar--dark { background: #1c2420; color: #ffffff; }
+.id-brand { display: none; font-family: var(--font-title); font-weight: 900; font-size: 20px; white-space: nowrap; }
+/* 角色開關：格 38＋外框 3×2＝44（觸控目標，審查 F49） */
+.id-toggle { display: flex; flex-shrink: 0; padding: 3px; border-radius: 12px; background: #e9e5da; }
+.id-bar--dark .id-toggle { background: #27312c; }
+.id-role {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 38px;
+  min-width: 44px;
+  padding: 0 11px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: #5b665f;
+  text-decoration: none;
+}
+.id-bar--dark .id-role { color: #b8c2bc; }
+.id-role[aria-current] { background: #ffffff; color: #1c2420; box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+.id-bar--dark .id-role[aria-current] { background: #3a4a42; color: #ffffff; box-shadow: none; }
+.id-dot { position: absolute; top: 5px; right: 4px; width: 8px; height: 8px; border-radius: 9999px; background: #e0a43a; }
+.id-sep { width: 1px; height: 24px; flex-shrink: 0; background: #d9d5c9; }
+.id-bar--dark .id-sep { background: #3d4a43; }
+/* 工具按鈕：圖示有底色方塊（底部膠囊的圖示沒有——同一個圖示，至少一個維度不同，審查 F10） */
+.id-menu { position: relative; min-width: 0; }
+.id-tool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 0;
+  padding: 0 4px;
+  font-size: 15px;
+  font-weight: 700;
+  list-style: none;
+  cursor: pointer;
+}
+.id-tool::-webkit-details-marker { display: none; }
+.id-tool--title { cursor: default; }
+.id-tile { width: 28px; height: 28px; flex-shrink: 0; border-radius: 8px; display: grid; place-items: center; background: #e3efe9; color: #0f5c46; }
+.id-bar--dark .id-tile { background: #2e3a34; color: #9fe0c4; }
+.id-tool-text { display: flex; flex-direction: column; min-width: 0; line-height: 1.15; }
+/* 截斷（審查 F24）：手機工具名最多 88px；公司名在第二行 11px */
+.id-tool-name { max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.id-tool-org { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; font-weight: 400; color: #5b665f; }
+.id-bar--dark .id-tool-org { color: #b8c2bc; }
+.id-chevron { flex-shrink: 0; transition: transform 0.15s; }
+.id-menu[open] .id-chevron { transform: rotate(180deg); }
+.id-nav { display: none; }
+.id-context { margin-left: auto; flex-shrink: 1; min-width: 0; }
+.id-right { margin-left: auto; flex-shrink: 0; }
+.id-context + .id-right { margin-left: 0; }
+/* 手機抽屜 */
+.id-menu[open] > summary::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  background: rgb(12 16 14 / 0.45);
+  cursor: default;
+}
+.id-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 6px 16px calc(24px + env(safe-area-inset-bottom));
+  border-radius: 20px 20px 0 0;
+  background: #ffffff;
+  color: #1c2420;
+  box-shadow: 0 -8px 30px rgb(0 0 0 / 0.18);
+  font-size: 14px;
+  font-weight: 400;
+}
+.id-panel::before { content: ''; display: block; width: 36px; height: 4px; margin: 4px auto 0; border-radius: 9999px; background: #d9d5c9; }
+.id-close { display: flex; justify-content: flex-end; align-items: center; min-height: 44px; padding: 0 4px; font-size: 13px; color: #5b665f; text-decoration: none; }
+.id-sec { margin: 10px 8px 4px; font-size: 12px; font-weight: 700; letter-spacing: 2px; color: #5b665f; }
+.id-row { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 8px; border-radius: 12px; color: #1c2420; text-decoration: none; }
+.id-row:hover { background: #f6f4ee; }
+.id-row[aria-current] { background: #e3efe9; }
+.id-row-tile { width: 40px; height: 40px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; background: #e3efe9; color: #0f5c46; }
+.id-row[aria-current] .id-row-tile { background: #ffffff; }
+.id-row-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.id-row-name { font-size: 15px; font-weight: 700; }
+.id-row-desc { font-size: 12px; color: #5b665f; }
+.id-check { flex-shrink: 0; color: #0f5c46; }
+.id-all { display: block; padding: 12px 8px 4px; font-size: 13px; color: #5b665f; text-decoration: none; }
+/* 情境膠囊（群組／員工）：淺色列白底細框；深色列透明底白字（審查 F17） */
+.ctx-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  max-width: 128px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  border: 1px solid #d9d5c9;
+  background: #ffffff;
+  color: #1c2420;
+  font-size: 13px;
+  list-style: none;
+  cursor: pointer;
+}
+.ctx-pill::-webkit-details-marker { display: none; }
+.ctx-pill > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.id-bar--dark .ctx-pill { border-color: #3d4a43; background: transparent; color: #ffffff; }
+@media (min-width: 768px) {
+  .id-bar { padding: 0 40px; gap: 20px; }
+  .id-bar--light { padding: 14px 16px 4px; }
+  .id-bar--dark .id-brand { display: block; }
+  .id-tool-name { max-width: none; }
+  /* 電腦：公司名跟工具名同一行「考勤 · 公司A」 */
+  .id-tool-text { flex-direction: row; align-items: baseline; gap: 6px; }
+  .id-tool-org { font-size: 15px; font-weight: 700; color: inherit; max-width: 200px; }
+  .id-bar--dark .id-tool-org { color: inherit; }
+  .id-tool-org::before { content: '· '; }
+  .id-nav { display: flex; flex: 1; min-width: 0; overflow-x: auto; }
+  .id-context { margin-left: 0; }
+  .ctx-pill { max-width: 220px; }
+  .id-menu[open] > summary::before { background: transparent; }
+  .id-panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: auto;
+    bottom: auto;
+    width: 300px;
+    max-height: 70vh;
+    padding: 8px;
+    border-radius: 14px;
+    border: 1px solid #ebe3d2;
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
+  }
+  .id-panel::before, .id-close { display: none; }
+}
+
 /* 按鈕與輸入框已全尺寸 44px（設計稿桌機也是 44）；這裡只剩手機放大勾選框 */
 @media (max-width: 767px) {
   input[type="checkbox"] {
@@ -530,4 +685,26 @@ body:has(.batch-box:checked) #batch {
 
   .bg-blue-100 { background-color: #172a45; }
   .text-blue-900 { color: #93c5fd; }
+
+  /* 身分列：暗色下「深色＝管理」要改用綠底才分得出來（個人頁背景 #111613，審查 F27） */
+  .id-bar--light { color: #e8edea; }
+  .id-bar--light .id-toggle { background: #252d28; }
+  .id-bar--light .id-role { color: #a7b3ac; }
+  .id-bar--light .id-role[aria-current] { background: #1a211e; color: #e8edea; box-shadow: inset 0 0 0 1px #3a443e; }
+  .id-bar--light .id-sep { background: #3a443e; }
+  .id-bar--light .id-tile { background: #12312a; color: #34d399; }
+  .id-bar--light .id-tool-org { color: #a7b3ac; }
+  .id-bar--dark { background: #173a2e; }
+  .id-bar--dark .id-toggle { background: rgb(0 0 0 / 0.25); }
+  .id-bar--dark .id-role[aria-current] { background: rgb(255 255 255 / 0.14); }
+  .id-bar--dark .id-tile { background: rgb(0 0 0 / 0.25); }
+  .id-panel { background: #1a211e; color: #e8edea; }
+  .id-row { color: #e8edea; }
+  .id-row:hover { background: #232b27; }
+  .id-row[aria-current] { background: #12312a; }
+  .id-row-tile { background: #12312a; color: #34d399; }
+  .id-row[aria-current] .id-row-tile { background: #1a211e; }
+  .id-check { color: #34d399; }
+  .id-sec, .id-row-desc, .id-all, .id-close { color: #a7b3ac; }
+  .ctx-pill { background: #1a211e; border-color: #39443e; color: #e8edea; }
 }
