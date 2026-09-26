@@ -375,6 +375,7 @@
 | 19:05|G4|認領改用資料庫函式 claim_webhook_events（update…returning＋for update skip locked），不在應用層拼 update|PostgREST 的 update 做不到 attempts+1 與原子認領 |
 | 19:15|G4|instrumentation 用 if (NEXT_RUNTIME === 'nodejs') 包住動態 import（提早 return 寫法會讓 build 失敗）|第一次 build 報 UnhandledSchemeError node:crypto；改寫後 edge-instrumentation.js 不含任何 node 模組 |
 | 19:35|G3|改用 groups 表觸發器連動 org_id，不寫 transfer_group() 也不改三個歸戶入口|觸發器涵蓋所有入口（認領、平台移轉、claimGroup、個人筆記歸戶、手動 SQL）；函式版只涵蓋改過的入口，且 claimGroup 的「不覆蓋」語意本來就不能換成 transfer。代價：無法用 node:test 驗證（純 SQL），今晚也沒 psql 可跑 |
+| 19:45|X1 修正|migration 022 開報帳模組改指定 slug 'main'，不用 default_org_id()|016 之後 default_org_id() 回傳 unclaimed；原寫法會把報帳開給「未認領」而不是 jielin 的公司。025 的 coalesce 刻意沿用 default_org_id()，與 groups_view 一致 |
 | | | | |
 | 2 | P1 | ⬜ | 0 | | | | |
 | 3 | G7 | ⬜ | 0 | | | | |

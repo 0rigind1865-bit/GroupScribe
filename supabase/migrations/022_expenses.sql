@@ -20,6 +20,7 @@ create table if not exists expenses (
 create index if not exists expenses_org_date on expenses (org_id, spent_on desc);
 alter table expenses enable row level security;
 
--- 預設 org（平台擁有者自己的公司）先開報帳模組；其他公司由平台擁有者之後再開
+-- 平台擁有者自己的公司（slug 'main'）先開報帳模組；其他公司由平台擁有者之後再開。
+-- ⚠ 不能用 default_org_id()：migration 016 之後它回傳的是「未認領」（unclaimed），不是 main
 update org_settings set modules = array_append(modules, 'expense')
-where org_id = default_org_id() and not ('expense' = any(modules));
+where org_id = (select id from orgs where slug = 'main') and not ('expense' = any(modules));
