@@ -76,7 +76,7 @@ export async function runDailyDigest(): Promise<DigestStats> {
 async function buildDigest(groupId: string, today: string, isAdmin: boolean): Promise<string | null> {
   const db = getDb();
   const [{ data: g }, { data: events }, { data: tasks }] = await Promise.all([
-    db.from('groups').select('name').eq('group_id', groupId).maybeSingle(),
+    db.from('groups').select('name, orgs(slug)').eq('group_id', groupId).maybeSingle(),
     db.from('events').select('title, start_time, location').eq('group_id', groupId)
       .eq('status', 'active').eq('starts_at', today).order('start_time', { nullsFirst: true }),
     db.from('tasks').select('title, assignee, due_at').eq('group_id', groupId)
@@ -109,7 +109,10 @@ async function buildDigest(groupId: string, today: string, isAdmin: boolean): Pr
     const pending = (ev.count ?? 0) + (tk.count ?? 0) + (nt.count ?? 0);
     if (pending > 0) {
       if (lines.length) lines.push('');
-      lines.push(`⚠️ ${pending} 筆待你確認`);
+      // 確認要在管理收件匣做；成員版（下面的「詳細內容」）看得到卻按不了確認
+      const slug = (g as { orgs?: { slug?: string } | null } | null)?.orgs?.slug;
+      const inbox = slug ? liffUrl({ path: `/o/${slug}/inbox`, params: { group: groupId }, src: 'digest' }) : null;
+      lines.push(`⚠️ ${pending} 筆待你確認${inbox ? `\n去確認 👉 ${inbox}` : ''}`);
     }
   }
 

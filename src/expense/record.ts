@@ -94,7 +94,9 @@ export async function recordTextExpense(a: {
 }
 
 /** 1:1 回覆文字：「🧾 記好了：9/25 餐飲 $320（全家）」 */
-export function receiptReply(r: Receipt): string {
+// url：「我的報帳」連結；有的話金額不對可以自己去改，不用找管理者
+export function receiptReply(r: Receipt, url?: string | null): string {
   const md = `${Number(r.spent_on.slice(5, 7))}/${Number(r.spent_on.slice(8, 10))}`;
-  return `🧾 記好了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}\n金額不對請跟管理者說`;
+  const head = `🧾 記好了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}`;
+  return url ? `${head}\n查看或修改 👉 ${url}` : `${head}\n金額不對請跟管理者說`;
 }

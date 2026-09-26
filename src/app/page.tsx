@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { dbConfigured } from '@/db';
 import { isGroupMember, liffId, liffUser } from '@/core/liff';
-import { parseLiffEntry } from '@/core/funnel';
+import { liffStatePath, parseLiffEntry } from '@/core/funnel';
 import { surfaces } from '@/org/surfaces';
 import { BrandBar } from '@/app/ui/intro';
 import { LiffInit } from './g/liff-init';
@@ -24,6 +24,10 @@ export default async function Root({ searchParams }: { searchParams: Promise<Rec
   const sp = await searchParams;
   // LIFF endpoint 設在 / 時，觸點連結的 ?g=／?src=（或包在 liff.state 裡）會先到這裡；
   // 下面的 redirect 會丟掉 query，所以單群深連結要先處理（L1）
+  // LIFF 深連結（/o/acme/inbox 這種）：已登入的人不跑 liff.init，路徑要自己從 liff.state 拆出來，
+  // 不然會被下面的「上次用的身分」帶走。沒登入的人交給 LiffInit，liff.init 會自己轉過去。
+  const dest = uid ? liffStatePath(sp) : null;
+  if (dest) redirect(dest);
   const entry = parseLiffEntry(sp);
   if (uid && entry.g && (await isGroupMember(entry.g, uid)))
     redirect(`/g/${encodeURIComponent(entry.g)}${entry.src ? `?src=${entry.src}` : ''}`);

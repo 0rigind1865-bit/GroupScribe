@@ -16,3 +16,10 @@ export function publicBase(req: NextRequest): string {
   const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? '';
   return `${proto}://${host}`;
 }
+
+/** 登入後回跳、LIFF 深連結的目的地：只接受站內相對路徑；不合格回空字串。
+ *  擋 //evil.com、/\evil.com（部分瀏覽器當成協定相對網址）與控制字元這類開放跳轉。 */
+export function safeNext(v: unknown): string {
+  const s = typeof v === 'string' ? v : '';
+  return /^\/(?![/\\])[\w\-./?=&%~+:@,]*$/.test(s) && s.length <= 512 ? s : '';
+}

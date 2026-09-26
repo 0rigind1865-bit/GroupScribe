@@ -71,13 +71,14 @@ export async function leaveStaleUnclaimed(days = 7): Promise<number> {
 const NOTICE_VERSION = 'v2';
 // LIFF 成員入口網址；未設定 LIFF_ID 時回 null，所有引用處自然省略該行
 // q：觸點來源（src）與單群深連結（g），給漏斗量測用（L1，src/core/funnel.ts）
-export const liffUrl = (q?: { g?: string; src?: string }): string | null => {
+// path：直達某一頁（例如 /o/acme/inbox）；params：該頁要的 query（例如 group）
+export const liffUrl = (q?: { g?: string; src?: string; path?: string; params?: Record<string, string> }): string | null => {
   if (!process.env.LIFF_ID) return null;
-  const p = new URLSearchParams();
+  const p = new URLSearchParams(q?.params);
   if (q?.g) p.set('g', q.g);
   if (q?.src) p.set('src', q.src);
   const qs = p.toString();
-  return `https://liff.line.me/${process.env.LIFF_ID}${qs ? `?${qs}` : ''}`;
+  return `https://liff.line.me/${process.env.LIFF_ID}${q?.path ?? ''}${qs ? `?${qs}` : ''}`;
 };
 
 // 進群告知的內建預設；各 org 可在 /settings 改寫（org_settings.join_notice_text）
@@ -499,13 +500,13 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
       return null;
     });
     // 1:1 收據記好了就回一句（reply 免費；replyToken 有時效，所以在這裡當下回，不排隊）
-    if (receipt && m.replyToken) await connector.reply(m.replyToken, receiptReply(receipt)).catch(() => {});
+    if (receipt && m.replyToken) await connector.reply(m.replyToken, receiptReply(receipt, liffUrl({ path: '/a/expense' }))).catch(() => {});
   }
 
   // 1:1 文字「午餐 120」→ 記一筆報帳並回覆（X2-6）；不是問句才看，問句交給上面的問答
   if (isDm(m.groupId) && m.type === 'text' && m.text && !m.mentionsBot) {
     const exp = await recordTextExpense({ groupId: m.groupId, text: m.text, at: m.timestamp, senderName }).catch(() => null);
-    if (exp && m.replyToken) await connector.reply(m.replyToken, receiptReply(exp)).catch(() => {});
+    if (exp && m.replyToken) await connector.reply(m.replyToken, receiptReply(exp, liffUrl({ path: '/a/expense' }))).catch(() => {});
   }
 
   // 有資訊量的文字才進索引；額度用完只略過索引（訊息已存，/api/reindex 可事後補）

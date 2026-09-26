@@ -63,6 +63,13 @@ test('sumBy：依 key 加總，金額大的先，空 key 歸「（未填）」',
 
 test('receiptReply：日期、分類、金額千分位、店家', () => {
   const t = receiptReply({ amount: 1280, spent_on: '2026-09-05', vendor: '全家', category: '餐飲', invoice_no: '' });
+
+test('receiptReply：有連結就附「查看或修改」，沒有就維持原句', () => {
+  const r = { amount: 90, spent_on: '2026-09-05', vendor: '', category: '交通', invoice_no: '' };
+  assert.match(receiptReply(r, 'https://liff.line.me/X/a/expense'), /查看或修改 👉 https:\/\/liff\.line\.me\/X\/a\/expense$/);
+  assert.match(receiptReply(r), /金額不對請跟管理者說$/);
+  assert.match(receiptReply(r, null), /金額不對請跟管理者說$/);
+});
   assert.match(t, /^🧾 記好了：9\/5 餐飲 \$1,280（全家）/);
   assert.doesNotMatch(receiptReply({ amount: 5, spent_on: '2026-09-05', vendor: '', category: '雜支', invoice_no: '' }), /（/);
 });

@@ -110,7 +110,10 @@ export async function middleware(req: NextRequest) {
 
   // rewrite（非 redirect）：內部改寫顯示登入頁、瀏覽器 URL 不變，
   // 避開反向代理後 req.url 是容器內部 host、又不能用相對 URL 的雙重限制。
-  return NextResponse.rewrite(new URL('/login', req.url));
+  // 帶 next：電腦書籤點進 /o/acme/inbox，登入完回到收件匣，而不是首頁（API 請求不需要回跳）
+  const login = new URL('/login', req.url);
+  if (!pathname.startsWith('/api/') && req.method === 'GET') login.searchParams.set('next', `${pathname}${search}`);
+  return NextResponse.rewrite(login);
 }
 
 export const config = {

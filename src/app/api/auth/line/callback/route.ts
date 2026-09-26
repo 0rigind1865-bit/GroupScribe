@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getDb } from '@/db';
-import { publicBase, redirectTo } from '@/http';
+import { publicBase, redirectTo, safeNext } from '@/http';
 import { adminCookieValue, isAdminLineUser, liffId, sessionCookieValue, verifyIdToken } from '@/core/liff';
 import { ADMIN_TTL } from '@/core/auth';
 
@@ -62,7 +62,9 @@ export async function GET(req: NextRequest) {
   const nextRaw = req.cookies.get('gs_next')?.value;
   const next = nextRaw ? decodeURIComponent(nextRaw) : '';
   // 有 org 就交給 / 依模組與面向落地（src/app/page.tsx），不再寫死考勤——只開群組助理的 org 會 404
-  const res = redirectTo(/^\/(?!\/)/.test(next) ? next : slug ? '/' : '/login?error=noorg');
+  // 沒有任何 org 的人回跳到後台頁只會 404：改說清楚「這個帳號還沒有組織」
+  const back = safeNext(next) && (slug || !next.startsWith('/o/')) ? next : '';
+  const res = redirectTo(back || (slug ? '/' : '/login?error=noorg'));
   res.headers.append('Set-Cookie', 'gs_next=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax; Secure');
   res.headers.append(
     'Set-Cookie',

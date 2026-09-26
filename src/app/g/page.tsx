@@ -1,7 +1,7 @@
 import { dbConfigured } from '@/db';
 import { redirect } from 'next/navigation';
 import { isGroupMember, liffId, liffUser, myGroups } from '@/core/liff';
-import { logFunnel, parseLiffEntry } from '@/core/funnel';
+import { liffStatePath, logFunnel, parseLiffEntry } from '@/core/funnel';
 import { SurfaceSwitcher } from '@/app/ui/surface-switcher';
 import { LiffInit } from './liff-init';
 
@@ -18,10 +18,15 @@ export default async function LiffHome({ searchParams }: { searchParams: Promise
   if (!dbConfigured()) return <main className="p-6 text-gray-500">系統尚未設定資料庫。</main>;
 
   // 單群深連結（L1）：?g=<groupId> 且本人是成員 → 直接進該群（由群組頁記漏斗）；不是成員就忽略 g
-  const entry = parseLiffEntry(await searchParams);
+  const sp = await searchParams;
+  const entry = parseLiffEntry(sp);
   if (entry.g && (await isGroupMember(entry.g, uid)))
     redirect(`/g/${encodeURIComponent(entry.g)}${entry.src ? `?src=${entry.src}` : ''}`);
   await logFunnel({ line_user_id: uid, step: 'liff_open', source: entry.src });
+  // LIFF endpoint 設在 /g 時，深連結的路徑包在 liff.state（同 src/app/page.tsx）
+  // 目的地就是 /g 本身時不轉（已經在這了，轉了會重記一次漏斗）
+  const dest = liffStatePath(sp);
+  if (dest && !/^\/g(\?|$)/.test(dest)) redirect(dest);
 
   const adminUnset = !process.env.ADMIN_LINE_USER_ID?.trim();
   const mine = await myGroups(uid); // 排除未認領與群記已離開的群（core/liff.ts）

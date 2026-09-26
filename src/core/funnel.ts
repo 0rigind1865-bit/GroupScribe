@@ -1,4 +1,5 @@
 import { getDb } from '@/db';
+import { safeNext } from '@/http';
 
 // 漏斗（商業計劃 L1）：記成員從哪個觸點打開 LIFF。
 // 觸點連結帶 ?src=，單群觸點再帶 ?g=<groupId> 直接進該群（見 ingest.ts 的 liffUrl）。
@@ -25,6 +26,17 @@ export function parseLiffEntry(sp: Sp): { g: string | null; src: Source | null }
   const src = q.get('src');
   const g = q.get('g')?.trim();
   return { g: g || null, src: (SOURCES as readonly string[]).includes(src ?? '') ? (src as Source) : null };
+}
+
+/**
+ * LIFF 深連結的目的頁（https://liff.line.me/<id>/o/acme/inbox?group=… 這種）。
+ * LINE 會先開 endpoint，把「/o/acme/inbox?group=…」包在 liff.state；沒 session 的人由 liff.init 轉過去，
+ * 但已有 session cookie 的人不跑 liff.init——伺服端不拆的話，路徑就丟了，人會被帶回上次的頁面。
+ * 只有路徑（/ 開頭）才算；只帶 query（?g=…）的交給 parseLiffEntry。
+ */
+export function liffStatePath(sp: Sp): string | null {
+  const p = safeNext(one(sp['liff.state']));
+  return p && !/^\/(\?|$)/.test(p) ? p : null;
 }
 
 type Row = { org_id?: string | null; group_id?: string | null; line_user_id: string; step: string; source: Source | null };
