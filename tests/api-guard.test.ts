@@ -18,7 +18,8 @@ const API = join(ROOT, 'src/app/api');
 //   org/create＝自助註冊（還沒有 org 可綁，自己驗 liffUser）
 //   platform/＝平台管理（跨所有 org，不屬於任何一個 org，自己驗 isPlatformOwner）
 //   health/＝健康檢查（公開、唯讀、只回 ok 布林，不碰任何 org 資料）
-const WHITELIST = ['webhook/', 'login/', 'liff/', 'auth/', 'digest/', 'attend/', 'org/', 'platform/', 'health/'];
+//   expense/＝報帳模組（非群組助理，不以 group_id 為鍵）：orgAdminAccess(表單 org) 把關＋查詢一律 .eq('org_id')，同考勤
+const WHITELIST = ['webhook/', 'login/', 'liff/', 'auth/', 'digest/', 'attend/', 'org/', 'platform/', 'health/', 'expense/'];
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {

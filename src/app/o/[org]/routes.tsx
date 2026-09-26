@@ -8,7 +8,7 @@
 // path 一律是模組內相對路徑，由 module.base(slug) 或 oh() 補上 /o/<slug>。
 
 export type BadgeKey = 'pending' | 'reviews' | 'pendingEmps';
-export type ModuleId = 'gs' | 'attend';
+export type ModuleId = 'gs' | 'attend' | 'expense';
 
 export type NavItem = {
   key: string; // 穩定 id（active 判斷與測試錨點；不隨 label 改動）
@@ -112,6 +112,12 @@ const I = {
       <circle cx="12" cy="10" r="2.5" />
     </>
   ),
+  receipt: (
+    <>
+      <path d="M6 2h12v20l-3-2-3 2-3-2-3 2z" />
+      <path d="M9 7h6M9 11h6M9 15h4" />
+    </>
+  ),
   rules: (
     <>
       <path d="M4 6h16M4 12h16M4 18h10" />
@@ -153,7 +159,22 @@ export const ATTEND_MODULE: ModuleDef = {
   ],
 };
 
-export const MODULES: ModuleDef[] = [GS_MODULE, ATTEND_MODULE];
+// 報帳（X1，整合 Snaptab）：員工私訊群記收據照 → 自動記一筆；管理者在這裡看、補專案、標已報帳、匯出
+export const EXPENSE_MODULE: ModuleDef = {
+  id: 'expense',
+  label: '報帳',
+  base: (slug) => `/o/${slug}/expense`,
+  ctxParam: null,
+  items: [
+    { key: 'list', path: '', label: '清單', desc: '員工私訊的收據，標已報帳', icon: I.receipt, primary: true },
+    { key: 'report', path: '/report', label: '報帳', desc: '依專案或月份加總、匯出 CSV', icon: I.chart, primary: true },
+  ],
+};
+
+export const MODULES: ModuleDef[] = [GS_MODULE, ATTEND_MODULE, EXPENSE_MODULE];
+
+/** 依 id 取模組定義（nav、頂欄共用；取代各處的三元判斷） */
+export const moduleById = (id: ModuleId): ModuleDef => MODULES.find((m) => m.id === id) ?? GS_MODULE;
 
 /** 手機底部 tab：primary 四格 ＋ 有非 primary 項時合成一格「更多」 */
 export function bottomItems(m: ModuleDef): NavItem[] {
@@ -166,7 +187,9 @@ export function bottomItems(m: ModuleDef): NavItem[] {
 /** /more 頁列出的項目＝沒進底部 tab 的那些 */
 export const moreItems = (m: ModuleDef): NavItem[] => m.items.filter((i) => !i.primary);
 
-/** 從 pathname 反查所屬模組（client 端 nav 用；attend 前綴較長，先比對） */
+/** 從 pathname 反查所屬模組（client 端 nav 用；有子路徑前綴的模組先比對） */
 export function moduleOf(pathname: string): ModuleDef {
-  return /^\/o\/[^/]+\/attend(\/|$)/.test(pathname) ? ATTEND_MODULE : GS_MODULE;
+  if (/^\/o\/[^/]+\/attend(\/|$)/.test(pathname)) return ATTEND_MODULE;
+  if (/^\/o\/[^/]+\/expense(\/|$)/.test(pathname)) return EXPENSE_MODULE;
+  return GS_MODULE;
 }

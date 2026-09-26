@@ -1,4 +1,6 @@
 import { getDb, MEDIA_BUCKET } from '@/db';
+import { orgHasExpense, recordReceipt, receiptReply } from '@/expense/record';
+import type { Receipt } from '@/expense/receipt';
 import { getConnector, getVision } from './config';
 import { indexText } from './indexer';
 import { answer } from './query';
@@ -188,6 +190,17 @@ async function ensureDmGroup(userId: string): Promise<boolean> {
     // ponytail: 屬於多個 org 時取 owner 那個（其次第一筆）；有人要選再做 LIFF 選單
     const { data: mem } = await db.from('org_members').select('org_id, role').eq('line_user_id', userId);
     orgId = (mem ?? []).sort((a: any, b: any) => Number(b.role === 'owner') - Number(a.role === 'owner'))[0]?.org_id ?? null;
+    // 報帳（X1）：員工不是 org 管理員，但所屬公司有開報帳時，也要能私訊收據。
+    // 只限開了報帳的公司——沒開的公司行為完全不變，不會突然開始記員工私訊、燒 AI
+    if (!orgId) {
+      const { data: emps } = await db.from('employees').select('org_id').eq('line_user_id', userId).eq('status', 'active');
+      for (const e of emps ?? []) {
+        if (await orgHasExpense(e.org_id)) {
+          orgId = e.org_id;
+          break;
+        }
+      }
+    }
     if (!orgId) return false; // 不屬任何公司：不記錄
   }
   if (!g || g.org_id !== orgId || g.left_at) {
@@ -481,9 +494,12 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
 
   // 圖片 / PDF：抓原檔 → Storage → Vision 解析 → 索引
   if (m.mediaRef && (m.type === 'image' || m.type === 'pdf' || m.type === 'audio')) {
-    await processMedia(row.id, m, senderName).catch((e) =>
-      console.error('媒體處理失敗（asset 留 pending，可用 POST /api/process 重跑）', e),
-    );
+    const receipt = await processMedia(row.id, m, senderName).catch((e) => {
+      console.error('媒體處理失敗（asset 留 pending，可用 POST /api/process 重跑）', e);
+      return null;
+    });
+    // 1:1 收據記好了就回一句（reply 免費；replyToken 有時效，所以在這裡當下回，不排隊）
+    if (receipt && m.replyToken) await connector.reply(m.replyToken, receiptReply(receipt)).catch(() => {});
   }
 
   // 有資訊量的文字才進索引；額度用完只略過索引（訊息已存，/api/reindex 可事後補）
@@ -494,7 +510,7 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
   }
 }
 
-async function processMedia(messageRowId: string, m: NormalizedMessage, senderName?: string) {
+async function processMedia(messageRowId: string, m: NormalizedMessage, senderName?: string): Promise<Receipt | null> {
   const db = getDb();
   const { data, mime } = await getConnector().fetchMedia(m.mediaRef!);
   const path = `${m.groupId}/${m.messageId ?? messageRowId}`;
@@ -507,7 +523,7 @@ async function processMedia(messageRowId: string, m: NormalizedMessage, senderNa
     .single();
   if (error) throw error;
   // 送 AI 用正規化的 mime：LINE 語音回 audio/x-m4a，Gemini 不認（Storage 仍存原始 Content-Type）
-  await analyzeAsset(asset.id, m.groupId, data, m.type === 'audio' ? mimeOfKind('audio') : mime, m.timestamp, senderName);
+  return analyzeAsset(asset.id, m.groupId, data, m.type === 'audio' ? mimeOfKind('audio') : mime, m.timestamp, senderName);
 }
 
 // Vision 解析＋索引；/api/process 重跑 pending 時也走這裡
@@ -518,7 +534,7 @@ export async function analyzeAsset(
   mime: string,
   at: Date,
   senderName?: string | null,
-) {
+): Promise<Receipt | null> {
   return aiScope(groupId, async () => {
   const r = await getVision().analyze(data, mime);
   // 先建索引再標 done：順序反過來的話，索引失敗（例如 embedding 撞配額）會留下
@@ -535,5 +551,7 @@ export async function analyzeAsset(
       processed_at: new Date().toISOString(),
     })
     .eq('id', assetId);
+  // 1:1 私訊的收據 → 記一筆報帳（X1）；重試路徑也會記，但只有第一次（processMedia）會回覆
+  return r.receipt ? recordReceipt({ assetId, groupId, raw: r.receipt, at, senderName }) : null;
   });
 }

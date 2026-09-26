@@ -126,6 +126,11 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                         考勤後台
                       </a>
                     )}
+                    {mods.includes('expense') && (
+                      <a className="btn btn-sm" href={`/o/${o.slug}/expense`}>
+                        報帳後台
+                      </a>
+                    )}
                     <form action="/api/platform/plan" method="post" className="ml-auto flex flex-wrap items-center gap-1.5">
                       <input type="hidden" name="org_id" value={o.id} />
                       <select className="input h-8 text-xs" name="plan" defaultValue={plan} aria-label="方案">

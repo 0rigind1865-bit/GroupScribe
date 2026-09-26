@@ -18,7 +18,7 @@ import { enabledModuleIds } from './module-ids';
 //   群組管理／考勤管理 ＝ org_members 有他（每個 org 各一組，依該 org 開的模組）；平台擁有者另加預設 org 全開
 //   平台管理 ＝ 平台擁有者（後台密碼，或 ADMIN_LINE_USER_ID 的 LINE 帳號）
 
-export type SurfaceId = 'groups' | 'punch' | 'gs' | 'attend' | 'platform';
+export type SurfaceId = 'groups' | 'punch' | 'gs' | 'attend' | 'expense' | 'platform';
 
 export type Surface = {
   key: string; // 唯一：同一人管多個 org 時 gs/attend 會各有一組（'gs:acme'）
@@ -61,7 +61,7 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
   if (owner) {
     const slug = process.env.DEFAULT_ORG_SLUG ?? 'main';
     const { data } = await db.from('orgs').select('name').eq('slug', slug).maybeSingle();
-    orgs.push({ slug, name: data?.name ?? slug, modules: new Set(['gs', 'attend']) });
+    orgs.push({ slug, name: data?.name ?? slug, modules: new Set(['gs', 'attend', 'expense']) });
   }
   if (uid) {
     const { data } = await db.from('org_members').select('orgs(slug, name, org_settings(modules))').eq('line_user_id', uid);
@@ -79,6 +79,8 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
       list.push({ key: `gs:${o.slug}`, id: 'gs', slug: o.slug, label: `群組管理${tail}`, desc: '收件匣把關、所有群的今天總覽、群組與方案設定', href: `/o/${o.slug}`, rank: 3 + i * 0.01 });
     if (o.modules.has('attend'))
       list.push({ key: `attend:${o.slug}`, id: 'attend', slug: o.slug, label: `考勤管理${tail}`, desc: '員工管理、補卡審核、打卡報表與薪資', href: `/o/${o.slug}/attend`, rank: 4 + i * 0.01 });
+    if (o.modules.has('expense'))
+      list.push({ key: `expense:${o.slug}`, id: 'expense', slug: o.slug, label: `報帳管理${tail}`, desc: '員工私訊的收據、標已報帳、匯出 CSV', href: `/o/${o.slug}/expense`, rank: 4.5 + i * 0.01 });
   });
 
   // 4. 平台擁有者 → 平台管理（所有公司、未認領的群、改方案）

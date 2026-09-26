@@ -37,7 +37,8 @@ export interface LLMProvider {
 }
 
 export interface VisionProvider {
-  analyze(data: Buffer, mime: string): Promise<{ ocrText: string; summary: string; category: string }>;
+  // receipt：是收據發票時 AI 順便讀出的金額／日期／店家等原始值（未正規化，見 src/expense/receipt.ts）；否則 null
+  analyze(data: Buffer, mime: string): Promise<{ ocrText: string; summary: string; category: string; receipt?: unknown }>;
 }
 
 export interface EmbeddingProvider {

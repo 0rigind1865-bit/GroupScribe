@@ -1,4 +1,5 @@
 import type { EmbeddingProvider, LLMProvider, VisionProvider } from '@/core/types';
+import { EXPENSE_CATEGORIES } from '@/expense/receipt';
 import { getDb } from '@/db';
 import { currentSettings, refreshSettings } from '@/core/settings';
 import { bumpOrgUsage } from '@/core/quota';
@@ -96,7 +97,8 @@ export const geminiVision: VisionProvider = {
     const prompt = audio
       ? // 語音：逐字稿放 ocr_text，讓它跟圖片/PDF 走同一條索引與抽取路徑（下游零改動）
         '把這段語音逐字轉寫成繁體中文，回覆 JSON：{"ocr_text":"完整逐字稿（聽不清楚的地方寫 ???，不要臆測）","summary":"一到兩句話的重點","category":"語音"}'
-      : '分析這份圖片或文件，回覆 JSON：{"ocr_text":"其中所有可辨識的文字","summary":"一到兩句話的內容描述","category":"報價單、收據發票、現場照片、圖表、文件、其他 擇一"}';
+      : // 收據欄位同一次呼叫一起要（X1 報帳）：不多花一次 AI；不是收據就回 null
+        `分析這份圖片或文件，回覆 JSON：{"ocr_text":"其中所有可辨識的文字","summary":"一到兩句話的內容描述","category":"報價單、收據發票、現場照片、圖表、文件、其他 擇一","receipt":null}。若 category 是收據發票，receipt 改為 {"amount":"實付總金額（數字）","date":"消費日期 YYYY-MM-DD","vendor":"店家名稱","category":"${EXPENSE_CATEGORIES.join('、')} 擇一","invoice_no":"統一發票號碼（兩碼英文＋八碼數字，沒有就空字串）"}`;
     const json = await post(`models/${GEN_MODEL()}:generateContent`, {
       contents: [
         { parts: [{ text: prompt }, { inline_data: { mime_type: mime, data: data.toString('base64') } }] },
@@ -109,6 +111,7 @@ export const geminiVision: VisionProvider = {
       ocrText: parsed.ocr_text ?? '',
       summary: parsed.summary ?? '',
       category: parsed.category ?? '其他',
+      receipt: parsed.receipt ?? null,
     };
   },
 };

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { visibleModules } from '@/org/modules';
-import { ATTEND_MODULE, GS_MODULE, type ModuleId } from './routes';
+import { moduleById, type ModuleId } from './routes';
 import { SurfaceSwitcher } from '@/app/ui/surface-switcher';
 import { TopNav, type Counts } from './nav';
 
@@ -21,7 +21,7 @@ export async function ShellHeader({
 }) {
   const access = await visibleModules(slug);
   if (!access) notFound();
-  const mod = moduleId === 'attend' ? ATTEND_MODULE : GS_MODULE;
+  const mod = moduleById(moduleId);
 
   return (
     <header className="sticky top-0 z-30 border-b border-gray-200 bg-white px-4 py-2 md:py-3">

@@ -1,5 +1,5 @@
 import { cache } from 'react';
-import { ATTEND_MODULE, GS_MODULE, type ModuleDef } from '@/app/o/[org]/routes';
+import { ATTEND_MODULE, EXPENSE_MODULE, GS_MODULE, type ModuleDef } from '@/app/o/[org]/routes';
 import { isPlatformOwner, orgBySlug, orgRole, orgSettings, type Org } from './orgs';
 import { enabledModuleIds } from './module-ids';
 
@@ -19,7 +19,7 @@ export type OrgAccess = { org: Org; modules: ModuleDef[]; owner: boolean };
 /** org_settings.modules → 模組清單（純邏輯在 module-ids.ts，供測試） */
 export function modulesOf(setting: unknown): ModuleDef[] {
   const ids = enabledModuleIds(setting);
-  return [GS_MODULE, ATTEND_MODULE].filter((m) => ids.includes(m.id));
+  return [GS_MODULE, ATTEND_MODULE, EXPENSE_MODULE].filter((m) => ids.includes(m.id));
 }
 
 // 同一次請求裡三層 layout 都會問，cache() 去重（orgBySlug 另有 30s TTL 快取）
@@ -29,6 +29,6 @@ export const visibleModules = cache(async (slug: string): Promise<OrgAccess | nu
   const owner = await isPlatformOwner();
   const role = owner ? 'owner' : await orgRole(org.id);
   if (!owner && !role) return null; // 兩者皆非：呼叫端 notFound()，不洩漏 org 是否存在
-  const modules = owner ? [GS_MODULE, ATTEND_MODULE] : modulesOf((await orgSettings(org.id)).modules);
+  const modules = owner ? [GS_MODULE, ATTEND_MODULE, EXPENSE_MODULE] : modulesOf((await orgSettings(org.id)).modules);
   return { org, modules, owner };
 });

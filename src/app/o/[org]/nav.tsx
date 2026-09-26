@@ -3,9 +3,8 @@
 import { usePathname, useSearchParams } from 'next/navigation';
 import { FloatingNav } from '@/app/ui/floating-nav';
 import {
-  ATTEND_MODULE,
-  GS_MODULE,
   bottomItems,
+  moduleById,
   moduleOf,
   type BadgeKey,
   type ModuleDef,
@@ -25,7 +24,7 @@ export type Counts = Partial<Record<BadgeKey, number>>;
 // 只收 moduleId 字串，不收整個 ModuleDef——ModuleDef 帶 base() 函式，
 // 跨 server→client 邊界傳函式會被 React 擋下（"Functions cannot be passed
 // directly to Client Components"）。routes.tsx 只有常數與 JSX，client 端直接 import 即可。
-const modOf = (id: ModuleId) => (id === 'attend' ? ATTEND_MODULE : GS_MODULE);
+const modOf = moduleById;
 
 function useNav(module: ModuleDef) {
   const full = usePathname();
