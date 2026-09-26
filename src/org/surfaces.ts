@@ -4,7 +4,7 @@ import { liffUser, myGroups } from '@/core/liff';
 import { myEmployees } from '@/attend/auth';
 import { isPlatformOwner } from './orgs';
 import { enabledModuleIds } from './module-ids';
-import { orgHasExpense } from '@/expense/record';
+import { myExpenseIdentity } from '@/expense/mine';
 
 // 全站「你能去哪些地方」的單一判定點。
 //
@@ -51,12 +51,9 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
   if (employees.length) {
     list.push({ key: 'punch', id: 'punch', label: '我要打卡', desc: '上下班打卡、看打卡紀錄、申請補卡', href: '/a', rank: 1 });
   }
-  // 1b. 在職員工且公司有開報帳 → 我的報帳（X2-1）
-  for (const e of employees) {
-    if (e.status === 'active' && (await orgHasExpense(e.org_id))) {
-      list.push({ key: 'myexpense', id: 'myexpense', label: '我的報帳', desc: '記一筆墊付的錢、看自己的報帳清單', href: '/a/expense', rank: 1.5 });
-      break;
-    }
+  // 1b. 公司有開報帳的在職員工或管理者 → 我的報帳（X2／Snaptab 全功能移植）
+  if (uid && (await myExpenseIdentity())) {
+    list.push({ key: 'myexpense', id: 'myexpense', label: '我的報帳', desc: '記一筆墊付的錢、看自己的報帳清單', href: '/a/expense', rank: 1.5 });
   }
 
   // 2. 群組成員 → 成員版（以「現在在不在群裡」為準，不是「有沒有講過話」）

@@ -1,7 +1,8 @@
 // 報帳 v2 欄位（migration 023）的向後相容寫入：欄位還不存在時，自動退回只寫 v1 欄位。
 // 早上可能先部署、後貼 SQL——這段時間員工記帳不能失敗。
 
-export const V2_FIELDS = ['pay_method', 'source', 'photo_path', 'lat', 'lng', 'place_name'] as const;
+// v3（migration 027）的 spent_at 也算：還沒貼 027 時一樣拿掉重寫
+export const V2_FIELDS = ['pay_method', 'source', 'photo_path', 'lat', 'lng', 'place_name', 'spent_at'] as const;
 
 type Err = { code?: string; message?: string } | null;
 

@@ -199,3 +199,71 @@ test('發票 QR：品項接續到右碼；不是發票左碼 → null', () => {
   assert.equal(d?.complete, false); // 整張 3 項、只拿到 2 項
   assert.equal(parseInvoiceCodes({ data: 'https://example.com' }), null);
 });
+
+// ── Snaptab 全功能移植：計算機、AI 分類 ──
+import { evaluate, tap } from '../src/expense/calc';
+import { classifyNote } from '../src/expense/classify';
+
+test('計算機 evaluate：先乘除後加減、除以 0 忽略、結尾運算子略過、四捨五入兩位', () => {
+  assert.equal(evaluate('120+35×2'), 190);
+  assert.equal(evaluate('100÷0+5'), 105);
+  assert.equal(evaluate('120+'), 120);
+  assert.equal(evaluate('10÷3'), 3.33);
+  assert.equal(evaluate(''), 0);
+});
+
+test('計算機 tap：不能用運算子開頭、連按換掉、前導 0 被取代、= 換成結果、最長 18 字', () => {
+  assert.equal(tap('', '+'), '');
+  assert.equal(tap('12+', '×'), '12×');
+  assert.equal(tap('0', '5'), '5');
+  assert.equal(tap('12+0', '7'), '12+7');
+  assert.equal(tap('12+3', '='), '15');
+  assert.equal(tap('123', 'del'), '12');
+  assert.equal(tap('1'.repeat(18), '2'), '1'.repeat(18));
+});
+
+test('AI 分類：預設分類靠概念、自訂分類靠名稱、看不出來回 null', () => {
+  const cats = ['交通', '餐飲', '住宿', '停車過路', '材料耗材', '雜支'];
+  assert.equal(classifyNote('工班便當 12 個', cats), '餐飲');
+  assert.equal(classifyNote('中油加滿', cats), '交通');
+  assert.equal(classifyNote('國道過路費', cats), '停車過路');
+  assert.equal(classifyNote('買螺絲跟膠帶', cats), '材料耗材');
+  assert.equal(classifyNote('機票 台北高雄', ['機票', '雜支']), '機票');
+  assert.equal(classifyNote('今天天氣很好', cats), null);
+});
+
+// ── 離線暫存（瀏覽器 localStorage 用假的代替）──
+import { enqueue, flushOutbox, readOutbox, MAX_PENDING } from '../src/expense/outbox';
+
+test('離線暫存：滿了不收、補送成功才移除、送失敗就停在原處保留順序', async () => {
+  const mem = new Map<string, string>();
+  (globalThis as any).localStorage = { getItem: (k: string) => mem.get(k) ?? null, setItem: (k: string, v: string) => void mem.set(k, v) };
+  for (let i = 0; i < MAX_PENDING; i++) assert.ok(enqueue({ client_id: `c${i}`, fields: { amount: '1' }, at: i }));
+  assert.equal(enqueue({ client_id: 'over', fields: {}, at: 99 }), false);
+  let n = 0;
+  const left = await flushOutbox(async () => ++n <= 3); // 前 3 筆成功、第 4 筆失敗
+  assert.equal(left, MAX_PENDING - 3);
+  assert.equal(readOutbox()[0].client_id, 'c3');
+  delete (globalThis as any).localStorage;
+});
+
+// ── CSV 匯出（員工 App 與後台共用）──
+import { toCsv } from '../src/expense/csv';
+
+test('toCsv：新到舊、含時間與付款方式、表尾小計只列 >0 的付款方式、逗號跳脫', () => {
+  const base = { vendor: '', project: 'A 案', invoice_no: '', place_name: '', reimbursed: false, photo: null, person: '小明' };
+  const csv = toCsv(
+    [
+      { ...base, id: '1', amount: 100, category: '餐飲', note: '便當, 飲料', pay_method: '代墊', spent_on: '2026-09-25', spent_at: '2026-09-25T04:30:00.000Z' },
+      { ...base, id: '2', amount: 50, category: '交通', note: '', pay_method: '公司卡', spent_on: '2026-09-26', spent_at: null },
+    ],
+    { includePerson: true },
+  );
+  const lines = csv.replace('﻿', '').split('\r\n');
+  assert.equal(lines[0], '日期,時間,分類,店家,用途,金額,付款方式,發票號碼,案場,地點,報帳狀態,人');
+  assert.match(lines[1], /^2026\/09\/26,,交通/); // 新的在前
+  assert.match(lines[2], /^2026\/09\/25,12:30,餐飲,,"便當, 飲料",100,代墊/);
+  assert.ok(lines.includes('合計,,,,,150'));
+  assert.ok(lines.includes('代墊請款,,,,,100'));
+  assert.ok(!lines.some((l) => l.startsWith('現金')));
+});

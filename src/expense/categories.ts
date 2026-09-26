@@ -1,5 +1,6 @@
 import { getDb } from '@/db';
 import { EXPENSE_CATEGORIES } from './receipt';
+import { defaultIconFor, normalizeIcon } from './icon-names';
 
 // 自訂分類（X2-4，Snaptab CategoryManager）：每家公司一份，存 org_settings.expense_categories。
 // null、空、或欄位還不存在（migration 023 未跑）→ 用預設六類。
@@ -26,4 +27,32 @@ export async function orgCategories(orgId: string): Promise<string[]> {
   const { data, error } = await getDb().from('org_settings').select('expense_categories').eq('org_id', orgId).maybeSingle();
   const list = !error && Array.isArray(data?.expense_categories) ? (data.expense_categories as string[]) : [];
   return list.length ? list : [...EXPENSE_CATEGORIES];
+}
+
+export type CategoryItem = { name: string; icon: string };
+
+/** 分類＋圖示（Snaptab 的分類格用）；圖示沒設或欄位還不存在（migration 027）→ 依名稱猜 */
+export async function orgCategoryItems(orgId: string): Promise<CategoryItem[]> {
+  const [names, { data, error }] = await Promise.all([
+    orgCategories(orgId),
+    getDb().from('org_settings').select('expense_category_icons').eq('org_id', orgId).maybeSingle(),
+  ]);
+  const icons = (!error && data?.expense_category_icons && typeof data.expense_category_icons === 'object' ? data.expense_category_icons : {}) as Record<string, string>;
+  return names.map((name) => ({ name, icon: icons[name] ? normalizeIcon(icons[name]) : defaultIconFor(name) }));
+}
+
+/** 儲存分類＋圖示（員工端管理者、後台共用）。名稱規則同 normalizeCategories；圖示欄位不存在時只存名稱 */
+export async function saveCategoryItems(orgId: string, raw: unknown): Promise<{ ok: boolean; error?: string }> {
+  if (!Array.isArray(raw)) return { ok: false, error: '格式不對' };
+  const items = raw.filter((x): x is { name: string; icon?: string } => !!x && typeof x.name === 'string');
+  const names = normalizeCategories(items.map((x) => x.name).join('\n'));
+  const icons: Record<string, string> = {};
+  for (const x of items) if (names.includes(x.name.trim().slice(0, 10))) icons[x.name.trim().slice(0, 10)] = normalizeIcon(x.icon);
+  const db = getDb();
+  const now = new Date().toISOString();
+  const { error } = await db.from('org_settings').update({ expense_categories: names, expense_category_icons: icons, updated_at: now }).eq('org_id', orgId);
+  if (!error) return { ok: true };
+  // migration 027 還沒跑：先只存名稱
+  const { error: e2 } = await db.from('org_settings').update({ expense_categories: names, updated_at: now }).eq('org_id', orgId);
+  return e2 ? { ok: false, error: '儲存失敗（migration 023 跑了嗎？）' } : { ok: true };
 }
