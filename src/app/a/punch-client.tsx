@@ -43,7 +43,9 @@ function distance(lat1: number, lng1: number, lat2: number, lng2: number) {
   return 6371000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-export function PunchPanel({ locations, labels }: { locations: PunchLocation[]; labels: PunchLabels }) {
+// next：今天下一步該打哪一張卡（最後一筆是上班 → 下班）。實心主鈕跟著它走——
+// 晚上下班打開頁面，最顯眼的若還是「上班」，趕時間就會按錯、多一筆上班卡（審查 F21）。
+export function PunchPanel({ locations, labels, next = 'in' }: { locations: PunchLocation[]; labels: PunchLabels; next?: 'in' | 'out' }) {
   const [busy, setBusy] = useState<'in' | 'out' | null>(null);
   const [err, setErr] = useState('');
   const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -228,7 +230,7 @@ export function PunchPanel({ locations, labels }: { locations: PunchLocation[]; 
           type="button"
           onClick={() => punch('in')}
           disabled={!!busy || blocked}
-          className="btn-primary py-4 text-lg font-bold disabled:opacity-50"
+          className={`${next === 'in' ? 'btn-primary' : 'btn'} py-4 text-lg font-bold disabled:opacity-50`}
         >
           {busy === 'in' ? labels.locating : labels.punchIn}
         </button>
@@ -236,7 +238,7 @@ export function PunchPanel({ locations, labels }: { locations: PunchLocation[]; 
           type="button"
           onClick={() => punch('out')}
           disabled={!!busy || blocked}
-          className="btn py-4 text-lg font-bold disabled:opacity-50"
+          className={`${next === 'out' ? 'btn-primary' : 'btn'} py-4 text-lg font-bold disabled:opacity-50`}
         >
           {busy === 'out' ? labels.locating : labels.punchOut}
         </button>

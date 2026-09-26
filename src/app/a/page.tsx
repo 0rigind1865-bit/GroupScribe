@@ -121,6 +121,7 @@ export default async function AttendHome({
 
       <PunchPanel
         locations={locations}
+        next={todayStatus?.punches.at(-1)?.type === 'in' ? 'out' : 'in'}
         labels={{
           punchIn: tt('PUNCH_IN_BTN'),
           punchOut: tt('PUNCH_OUT_BTN'),
