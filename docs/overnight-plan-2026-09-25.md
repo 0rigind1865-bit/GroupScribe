@@ -93,7 +93,7 @@
 | 11 | G3 | ✅ | 1 | （本 commit） | 19:21 | 19:40 | migration 025：7 張內容表加 org_id、insert 觸發器帶入、groups 換公司時觸發器連動、backfill 可重跑；應用程式零改動 |
 | 12 | G5 | ✅ | 1 | （本 commit） | 19:46 | 20:00 | createLineConnector(creds)＋envCreds；line.ts 內 env 只剩 envCreds 一處；lineConnector 與 getConnector 呼叫點不變；驗簽測試 |
 | 13 | A6 | ✅ | 1 | （本 commit） | 20:01 | 20:12 | scripts/seed-owner.ts（未執行）；唯讀查詢 main 有 1 位 owner → 移除 callback 自動種子 |
-| 14 | A8 | suspended 狀態擋 AI＋橫幅 | C | 是 | 中 |
+| 14 | A8 | ✅ | 1 | （本 commit） | 20:13 | 20:30 | migration 026 org_settings.status；suspended 時 aiScope 丟 QuotaError（整理、讀圖、問答、記帳解析都停，訊息照存）；後台每頁橫幅；欄位未建視為 active |
 | 15 | E1 | 抽取回歸集：fixture＋比對器（不跑） | C | 否 | 低 |
 | 16 | A10 | 設計夥伴一頁合約草稿 | C | 否 | 低 |
 
@@ -348,8 +348,8 @@
 
 ## 5. 進度回寫區（agent 每個任務更新）
 
-**目前狀態**：執行中（任務 14 A8）
-**最後更新**：2026-09-26 20:12
+**目前狀態**：執行中（任務 15 E1）
+**最後更新**：2026-09-26 20:30
 **起始 commit**：`de67eae`
 
 | 順序 | 代號 | 狀態 | 嘗試 | commit | 開始 | 結束 | 一句話結果 |

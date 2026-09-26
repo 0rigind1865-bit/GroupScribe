@@ -2,6 +2,8 @@ import { Suspense, type ReactNode } from 'react';
 import { getDb } from '@/db';
 import { orgBySlug, orgGroups } from '@/org/orgs';
 import { visibleModules } from '@/org/modules';
+import { orgAiBudget } from '@/core/quota';
+import { Banner } from '@/app/ui/banner';
 import { notFound } from 'next/navigation';
 import { GroupSwitcher, type GroupOption } from '@/app/ui/group-switcher';
 import { ShellHeader } from '../shell-header';
@@ -47,7 +49,15 @@ export default async function AdminLayout({
           context={<GroupSwitcher groups={groups as GroupOption[]} />}
         />
       </Suspense>
-      <div className="nav-gap md:!pb-0">{children}</div>
+      <div className="nav-gap md:!pb-0">
+        {/* 停權（A8）：每一頁都要看得到為什麼不再整理 */}
+        {(await orgAiBudget(org.id)).suspended && (
+          <div className="mx-auto max-w-3xl px-4 pt-4 md:px-5">
+            <Banner tone="warn">此公司的服務已暫停：訊息照常保存，但 AI 整理、問答與讀圖都先停下。請聯絡群記恢復。</Banner>
+          </div>
+        )}
+        {children}
+      </div>
       <Suspense fallback={null}>
         <BottomNav moduleId="gs" counts={counts} />
       </Suspense>

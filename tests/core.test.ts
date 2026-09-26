@@ -286,3 +286,13 @@ test('進群告知：含入口與法務連結的完整輸出 ≤ 400 字，且�
     if (saved.base === undefined) delete process.env.APP_BASE_URL;
   }
 });
+
+// ── A8 停權：查詢出錯視為沒停權 ──
+import { isSuspended } from '../src/core/quota';
+
+test('isSuspended：suspended 擋、active 放、查詢出錯（欄位還沒建）視為 active', () => {
+  assert.equal(isSuspended({ status: 'suspended' }, null), true);
+  assert.equal(isSuspended({ status: 'active' }, null), false);
+  assert.equal(isSuspended(null, null), false);
+  assert.equal(isSuspended({ status: 'suspended' }, { code: '42703' }), false);
+});
