@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { dbConfigured, getDb } from '@/db';
 import { SetupNotice } from '../setup-notice';
 import { ExtractButton } from './extract-button';
@@ -21,7 +21,7 @@ export default async function ImportPage({
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'gs');
   if (!org) notFound();
   const { inserted, indexed, archived, error, group } = await searchParams;
   const db = getDb();

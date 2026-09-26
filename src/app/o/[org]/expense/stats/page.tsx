@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { dbConfigured, getDb } from '@/db';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { Banner } from '@/app/ui/banner';
 import { Empty } from '@/app/ui/empty';
 import { pivot, type Pivot } from '@/expense/query';
@@ -52,7 +52,7 @@ function PivotTable({ title, p }: { title: string; p: Pivot }) {
 export default async function ExpenseStats({ params }: { params: Promise<{ org: string }> }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'expense');
   if (!org) notFound();
   const [{ data, error }, cats] = await Promise.all([
     // ponytail: 一次載最近 5000 筆在瀏覽器裡算；一家公司真的超過再改成資料庫加總

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/db';
-import { orgAdminAccess } from '@/org/orgs';
+import { moduleAccess } from '@/org/orgs';
 import { expenseQuery } from '@/expense/query';
 import { rowToItem } from '@/expense/items';
 import { toCsv } from '@/expense/csv';
@@ -9,7 +9,7 @@ import { toCsv } from '@/expense/csv';
 // 不用 xlsx 套件（使用者 2026-09-26 決定維持 CSV）。篩選條件與清單頁同一套（expenseQuery）。
 export async function GET(req: NextRequest) {
   const sp = req.nextUrl.searchParams;
-  const access = await orgAdminAccess(sp.get('org') ?? '');
+  const access = await moduleAccess(sp.get('org') ?? '', 'expense');
   if (!access) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const f = {
     status: sp.get('status') ?? 'all',

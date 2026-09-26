@@ -1,5 +1,5 @@
 import { getDb } from '@/db';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { oh } from '@/org/href';
 import { StatGrid } from '@/app/ui/stat';
 import { Empty } from '@/app/ui/empty';
@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 // 授權在 layout 完成；此頁只讀。
 export default async function AttendOverview({ params }: { params: Promise<{ org: string }> }) {
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'attend');
   if (!org) notFound();
   const db = getDb();
 

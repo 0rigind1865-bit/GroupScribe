@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { isPlatformOwner, orgBySlug } from '@/org/orgs';
+import { isPlatformOwner, requireModule } from '@/org/orgs';
 import { Banner } from '@/app/ui/banner';
 import { dbConfigured, getDb } from '@/db';
 import { SetupNotice } from '../setup-notice';
@@ -23,7 +23,7 @@ export default async function GroupsPage({
   const { profile_error, save_error, claimed } = await searchParams;
   const db = getDb();
 
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'gs');
   if (!org) notFound();
   const { data: groups } = await db.from('groups_view').select('*').eq('org_id', org.id).order('last_at', { ascending: false });
   const { data: profRows, error: profErr } = await db

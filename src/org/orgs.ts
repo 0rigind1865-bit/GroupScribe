@@ -1,8 +1,11 @@
+import { cache as reqCache } from 'react';
 import { cookies } from 'next/headers';
+import { notFound } from 'next/navigation';
 import type { NextRequest } from 'next/server';
 import { getDb } from '@/db';
 import { verifyAdminSession } from '@/core/auth';
 import { liffUser } from '@/core/liff';
+import { enabledModuleIds, isMissingModulesColumn, scopedModuleIds, type ModuleId } from './module-ids';
 
 // 多租戶（migration 012）：org 解析與授權的唯一收口。
 // 隔離策略：org_id 只掛 groups/channels 兩個實體表，其餘表經 group_id 間接歸屬——
@@ -34,17 +37,24 @@ export async function isPlatformOwner(): Promise<boolean> {
   return verifyAdminSession((await cookies()).get('gs_auth')?.value);
 }
 
-/** 目前 LIFF 使用者在該 org 的角色；非成員回 null */
-export async function orgRole(orgId: string): Promise<'owner' | 'admin' | null> {
+export type OrgMember = { role: 'owner' | 'admin'; modules: unknown };
+
+/** 目前 LIFF 使用者在該 org 的管理者列（角色＋被授權的模組）；非成員回 null */
+export async function orgMember(orgId: string): Promise<OrgMember | null> {
   const userId = await liffUser();
   if (!userId) return null;
-  const { data } = await getDb()
-    .from('org_members')
-    .select('role')
-    .eq('org_id', orgId)
-    .eq('line_user_id', userId)
-    .maybeSingle();
-  return (data?.role as 'owner' | 'admin') ?? null;
+  const q = (cols: string) => getDb().from('org_members').select(cols).eq('org_id', orgId).eq('line_user_id', userId).maybeSingle();
+  let { data, error } = await q('role, modules');
+  // migration 028 還沒跑（沒有 modules 欄）→ 退回只查角色＝既有行為，不能因此把所有管理員鎖在門外
+  if (isMissingModulesColumn(error)) ({ data, error } = await q('role'));
+  if (error) return null; // 其他錯誤一律當沒權限（fail closed）
+  const row = data as unknown as { role: OrgMember['role']; modules?: unknown } | null;
+  return row ? { role: row.role, modules: row.modules ?? null } : null;
+}
+
+/** 目前 LIFF 使用者在該 org 的角色；非成員回 null */
+export async function orgRole(orgId: string): Promise<'owner' | 'admin' | null> {
+  return (await orgMember(orgId))?.role ?? null;
 }
 
 export type OrgAccess = { org: Org; via: 'platform' | 'member' };
@@ -57,6 +67,37 @@ export async function orgAdminAccess(slug: string): Promise<OrgAccess | null> {
   if (await orgRole(org.id)) return { org, via: 'member' };
   return null;
 }
+
+/**
+ * 模組管理端點的授權：公司有開這個模組，而且這位管理者被授權管它（org_members.modules）。
+ * 考勤／報帳／群組助理的 API 一律走這支，不要再直接用 orgAdminAccess——
+ * 否則只被授權考勤的人可以直接打群組助理的 API（tests/api-guard.test.ts 會擋）。
+ */
+export async function moduleAccess(slug: string, module: ModuleId): Promise<OrgAccess | null> {
+  const org = await orgBySlug(slug);
+  if (!org) return null;
+  const owner = await isPlatformOwner();
+  const member = owner ? null : await orgMember(org.id);
+  if (!owner && !member) return null;
+  // 平台擁有者＝全部模組（與 visibleModules 一致，不看公司開關）
+  if (owner) return { org, via: 'platform' };
+  const orgMods = enabledModuleIds((await orgSettings(org.id)).modules);
+  return scopedModuleIds(orgMods, member!.role, member!.modules).includes(module) ? { org, via: 'member' } : null;
+}
+
+/**
+ * 管理端每一頁的門禁：沒權限就 404。每支 page.tsx 開頭都要呼叫（tests/api-guard.test.ts 會擋）。
+ *
+ * 為什麼不能只靠 layout：Next 的 RSC 請求可以帶一份自稱「上層 layout 已經有了」的 router state，
+ * 伺服器就只 render page、跳過 layout——layout 裡的 notFound() 根本不會執行。
+ * 2026-09-26 在本機實測：非成員的 LINE 身分偽造這個 header，就能讀到任何公司的待辦。
+ * 所以 layout 的檢查只算 UX，真正的門在這裡。
+ */
+export const requireModule = reqCache(async (slug: string, module: ModuleId): Promise<OrgAccess> => {
+  const access = await moduleAccess(slug, module);
+  if (!access) notFound();
+  return access;
+});
 
 /** 該 org 的群組清單（groups_view 已含 org_id，migration 012）。頁面一律以此為準。 */
 export async function orgGroups(orgId: string) {
@@ -103,7 +144,7 @@ export function orgSlugFrom(form: FormData | null, referer: string | null): stri
 export async function gsAccess(req: NextRequest, form: FormData | null): Promise<GsAccess | null> {
   const slug = orgSlugFrom(form, req.headers.get('referer'));
   if (!slug) return null;
-  const access = await orgAdminAccess(slug);
+  const access = await moduleAccess(slug, 'gs');
   if (!access) return null;
   const groupIds = (await orgGroups(access.org.id)).map((g) => g.group_id);
   const set = new Set(groupIds);

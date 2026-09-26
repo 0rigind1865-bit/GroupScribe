@@ -1,18 +1,18 @@
 import { NextRequest } from 'next/server';
 import { getDb } from '@/db';
 import { redirectTo } from '@/http';
-import { orgAdminAccess } from '@/org/orgs';
+import { moduleAccess } from '@/org/orgs';
 import { oh } from '@/org/href';
 import { PAY_METHODS, parseAmount, parseDate } from '@/expense/receipt';
 import { withV2Fallback } from '@/expense/store';
 import { orgCategories } from '@/expense/categories';
 
 // 報帳寫入（X1）：改欄位、標已報帳／改回、刪除。
-// 把關：orgAdminAccess(表單 org) → 每個查詢都 .eq('org_id')，拿到別家的 id 也改不到。
+// 把關：moduleAccess(表單 org) → 每個查詢都 .eq('org_id')，拿到別家的 id 也改不到。
 export async function POST(req: NextRequest) {
   const form = await req.formData();
   const slug = String(form.get('org') ?? '');
-  const access = await orgAdminAccess(slug);
+  const access = await moduleAccess(slug, 'expense');
   if (!access) return new Response('沒有權限', { status: 403 });
   const home = oh(slug, '/expense');
   const backRaw = String(form.get('back') ?? '');

@@ -92,3 +92,80 @@ test('enabledModuleIds：依欄位開模組，順序固定為 gs → attend，�
   assert.deepEqual(enabledModuleIds(['attend', 'gs']), ['gs', 'attend']);
   assert.deepEqual(enabledModuleIds(['bogus']), []);
 });
+
+// ── 管理權依模組授權（migration 028）──
+// 在考勤「員工管理」把會計設成管理員，原本會連群組助理一起給（能讀全公司 LINE 群組整理）。
+import { attendAdminToggle, isMissingModulesColumn, scopedModuleIds } from '../src/org/module-ids';
+
+test('考勤／報帳後台 API 一律走 moduleAccess，不准用裸的 orgAdminAccess', () => {
+  const bad: string[] = [];
+  for (const file of walk(API)) {
+    const rel = file.slice(API.length + 1);
+    if (!rel.startsWith('attend/') && !rel.startsWith('expense/')) continue;
+    if (/\borgAdminAccess\(/.test(readFileSync(file, 'utf8'))) bad.push(rel);
+  }
+  assert.deepEqual(bad, [], `這些 API 只驗「是不是公司管理員」，沒驗「有沒有被授權管這個模組」：\n${bad.join('\n')}`);
+});
+
+test('scopedModuleIds：只被授權考勤的人拿不到群組助理', () => {
+  assert.deepEqual(scopedModuleIds(['gs', 'attend', 'expense'], 'admin', ['attend']), ['attend']);
+});
+
+test('scopedModuleIds：null＝公司開的全部（既有管理員行為不變）；owner 不受限', () => {
+  assert.deepEqual(scopedModuleIds(['gs', 'attend'], 'admin', null), ['gs', 'attend']);
+  assert.deepEqual(scopedModuleIds(['gs', 'attend'], 'owner', ['attend']), ['gs', 'attend']);
+});
+
+test('scopedModuleIds：授權了但公司沒開的模組不算；未知值忽略', () => {
+  assert.deepEqual(scopedModuleIds(['attend'], 'admin', ['gs', 'attend', 'bogus']), ['attend']);
+  assert.deepEqual(scopedModuleIds(['gs'], 'admin', []), []);
+});
+
+test('attendAdminToggle：新人設為管理員＝只給考勤', () => {
+  assert.deepEqual(attendAdminToggle(null, ['gs', 'attend'], true), ['attend']);
+  assert.equal(attendAdminToggle(null, ['gs', 'attend'], false), 'keep');
+});
+
+test('attendAdminToggle：owner 永遠不動', () => {
+  assert.equal(attendAdminToggle({ role: 'owner', modules: null }, ['gs', 'attend'], false), 'keep');
+  assert.equal(attendAdminToggle({ role: 'owner', modules: ['gs'] }, ['gs', 'attend'], true), 'keep');
+});
+
+test('attendAdminToggle：只動考勤那一格，不碰其他模組的權限', () => {
+  // 舊管理員（null＝整家公司）按移除 → 完整撤權（改版前語意；否則群組助理權限留著、徽章卻消失）
+  assert.equal(attendAdminToggle({ role: 'admin', modules: null }, ['gs', 'attend'], false), 'delete');
+  assert.equal(attendAdminToggle({ role: 'admin', modules: null }, ['gs', 'attend'], true), 'keep');
+  // 只管群組助理的人加上考勤
+  assert.deepEqual(attendAdminToggle({ role: 'admin', modules: ['gs'] }, ['gs', 'attend'], true), ['gs', 'attend']);
+  // 拿掉最後一格 → 整列刪掉
+  assert.equal(attendAdminToggle({ role: 'admin', modules: ['attend'] }, ['gs', 'attend'], false), 'delete');
+  assert.equal(attendAdminToggle({ role: 'admin', modules: null }, ['attend'], false), 'delete');
+  // 同時管群組助理＋考勤（新制）的人拿掉考勤 → 只剩群組助理
+  assert.deepEqual(attendAdminToggle({ role: 'admin', modules: ['gs', 'attend'] }, ['gs', 'attend'], false), ['gs']);
+});
+
+test('isMissingModulesColumn：只有「欄位不存在」才退回舊查詢，網路錯誤不行', () => {
+  assert.equal(isMissingModulesColumn({ code: '42703', message: 'column org_members.modules does not exist' }), true);
+  assert.equal(isMissingModulesColumn({ message: 'TypeError: fetch failed' }), false);
+  assert.equal(isMissingModulesColumn({ code: '57014', message: 'canceling statement due to statement timeout' }), false);
+  assert.equal(isMissingModulesColumn(null), false);
+});
+
+test('管理端每一頁都自己驗模組權限（requireModule），不能只靠 layout', () => {
+  // Next 的 RSC 請求可以偽造 router state 跳過 layout，只 render page（2026-09-26 本機實測可讀到別家公司的待辦）
+  const O = join(ROOT, 'src/app/o/[org]');
+  const MOD: Record<string, string> = { '(admin)': 'gs', attend: 'attend', expense: 'expense' };
+  const pages = (dir: string): string[] =>
+    readdirSync(dir).flatMap((n) => {
+      const p = join(dir, n);
+      return statSync(p).isDirectory() ? pages(p) : n === 'page.tsx' ? [p] : [];
+    });
+  const bad: string[] = [];
+  for (const file of pages(O)) {
+    const rel = file.slice(O.length + 1);
+    const mod = MOD[rel.split('/')[0]];
+    const src = readFileSync(file, 'utf8');
+    if (!mod || !new RegExp(`requireModule\\([^,]+,\\s*'${mod}'\\)`).test(src)) bad.push(`${rel}（應呼叫 requireModule(…, '${mod ?? '?'}')）`);
+  }
+  assert.deepEqual(bad, [], `這些頁面沒有自己的權限門禁：\n${bad.join('\n')}`);
+});

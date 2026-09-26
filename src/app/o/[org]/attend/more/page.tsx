@@ -1,4 +1,5 @@
 import { MoreList } from '../../more-list';
+import { requireModule } from '@/org/orgs';
 import { ATTEND_MODULE } from '../../routes';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,7 @@ export default async function AttendMorePage({
   searchParams: Promise<{ emp?: string }>;
 }) {
   const { org: slug } = await params;
+  await requireModule(slug, 'attend');
   const { emp } = await searchParams;
   return <MoreList slug={slug} module={ATTEND_MODULE} ctx={{ emp }} />;
 }

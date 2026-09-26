@@ -3,7 +3,7 @@ import { DEFAULT_NOTICE } from '@/core/ingest';
 import { SetupNotice } from '../setup-notice';
 import { messageQuota } from '@/connectors/line';
 import { refreshSettings, DEFAULT_EMBEDDING_MODEL } from '@/core/settings';
-import { orgAdminAccess, orgGroups } from '@/org/orgs';
+import { orgGroups, requireModule } from '@/org/orgs';
 import { notFound } from 'next/navigation';
 import { Banner } from '@/app/ui/banner';
 
@@ -39,7 +39,7 @@ export default async function SettingsPage({
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { saved, error, processed } = await searchParams;
-  const access = await orgAdminAccess((await params).org);
+  const access = await requireModule((await params).org, 'gs');
   if (!access) notFound();
   // 收訊／LINE 額度／AI 用量與模型是全站共用的平台數字（商業計劃 G1、U11）：只給平台擁有者看。
   // 公司管理員只看自己的進群告知與自己群組的抽取品質。

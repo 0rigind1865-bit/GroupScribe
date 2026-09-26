@@ -1,6 +1,7 @@
 import { getDb } from '@/db';
 import { notFound } from 'next/navigation';
-import { orgBySlug, orgSettings } from '@/org/orgs';
+import { orgSettings, requireModule } from '@/org/orgs';
+import { enabledModuleIds, isMissingModulesColumn, scopedModuleIds } from '@/org/module-ids';
 import { liffUrl } from '@/core/ingest';
 import type { Employee } from '@/attend/auth';
 import { Banner } from '@/app/ui/banner';
@@ -26,18 +27,27 @@ export default async function EmployeesPage({
   searchParams: Promise<{ emp?: string; err?: string }>;
 }) {
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'attend');
   if (!org) notFound();
   const { emp: openId, err } = await searchParams;
   const db = getDb();
 
-  const [{ data: emps }, settings, { data: admins }] = await Promise.all([
+  const members = (cols: string) => db.from('org_members').select(cols).eq('org_id', org.id);
+  const [{ data: emps }, settings, first] = await Promise.all([
     db.from('employees').select('*').eq('org_id', org.id).order('status').order('display_name'),
     orgSettings(org.id),
-    db.from('org_members').select('line_user_id, role').eq('org_id', org.id),
+    members('line_user_id, role, modules'),
   ]);
+  const admins = (isMissingModulesColumn(first.error) ? (await members('line_user_id, role')).data : first.data) as
+    | { line_user_id: string; role: string; modules?: string[] | null }[]
+    | null;
   const employees = (emps ?? []) as Employee[];
+  const orgMods = enabledModuleIds(settings.modules);
   const adminSet = new Map((admins ?? []).map((a) => [a.line_user_id, a.role]));
+  // 這一頁的「管理員」＝能管考勤的人（migration 028：管理權依模組授權）
+  const attendAdmins = new Set(
+    (admins ?? []).filter((a) => scopedModuleIds(orgMods, a.role, a.modules ?? null).includes('attend')).map((a) => a.line_user_id),
+  );
   const joinCode = (settings.attend_join_code as string | null) ?? null;
   const liff = liffUrl();
   const joinLink = liff && joinCode ? `${liff}/a/join?org=${slug}&code=${joinCode}` : null;
@@ -82,14 +92,14 @@ export default async function EmployeesPage({
       <section className="space-y-3">
         {employees.map((e) => {
           const [label, tone] = STATUS_BADGE[e.status] ?? [e.status, 'neutral' as Tone];
-          const isAdmin = adminSet.has(e.line_user_id);
+          const isAdmin = attendAdmins.has(e.line_user_id);
           const open = openId === e.id;
           return (
             <details key={e.id} className="card" open={open}>
               <summary className="flex cursor-pointer items-center gap-2">
                 <span className="font-bold">{e.display_name}</span>
                 <span className="text-xs text-gray-500">{e.dept ?? ''}</span>
-                {isAdmin && <OutlineBadge>管理員</OutlineBadge>}
+                {isAdmin && <OutlineBadge>考勤管理員</OutlineBadge>}
                 <span className="ml-auto">
                   <Badge tone={tone}>{label}</Badge>
                 </span>
@@ -123,9 +133,9 @@ export default async function EmployeesPage({
                   )}
                   {adminSet.get(e.line_user_id) !== 'owner' &&
                     (isAdmin ? (
-                      <button className="btn px-3 py-1.5" name="action" value="admin_off">移除管理權</button>
+                      <button className="btn px-3 py-1.5" name="action" value="admin_off">移除考勤管理權</button>
                     ) : (
-                      <button className="btn px-3 py-1.5" name="action" value="admin_on">設為管理員</button>
+                      <button className="btn px-3 py-1.5" name="action" value="admin_on">設為考勤管理員</button>
                     ))}
                   <a className="btn ml-auto px-3 py-1.5" href={`/o/${slug}/attend/report?emp=${e.id}`}>月曆與薪資 →</a>
                 </form>

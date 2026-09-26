@@ -1,6 +1,7 @@
 import { getDb } from '@/db';
 import { liffUser } from '@/core/liff';
 import { orgHasExpense } from './record';
+import { isMissingModulesColumn, scopedModuleIds } from '@/org/module-ids';
 import { PAY_METHODS, parseAmount, parseDate } from './receipt';
 
 // 我的報帳（X2／Snaptab 全功能移植）：身分一律從 LIFF session 反查，絕不信表單傳來的人或公司。
@@ -12,12 +13,17 @@ export async function myExpenseIdentity(): Promise<ExpenseMe | null> {
   const uid = await liffUser();
   if (!uid) return null;
   const db = getDb();
-  const [{ data: mem }, { data: emps }] = await Promise.all([
-    db.from('org_members').select('org_id, display_name').eq('line_user_id', uid),
+  const members = (cols: string) => db.from('org_members').select(cols).eq('line_user_id', uid);
+  const [first, { data: emps }] = await Promise.all([
+    members('org_id, display_name, role, modules'),
     db.from('employees').select('org_id, display_name').eq('line_user_id', uid).eq('status', 'active'),
   ]);
+  const mem = (isMissingModulesColumn(first.error) ? (await members('org_id, display_name, role')).data : first.data) as
+    | { org_id: string; display_name: string | null; role: string; modules?: unknown }[]
+    | null;
   for (const m of mem ?? [])
-    if (await orgHasExpense(m.org_id)) {
+    // 管理者身分只算「被授權管報帳」的（migration 028）；只管考勤的人走下面的員工身分
+    if (scopedModuleIds(['expense'], m.role, m.modules ?? null).length && (await orgHasExpense(m.org_id))) {
       const emp = (emps ?? []).find((e) => e.org_id === m.org_id);
       return { org_id: m.org_id, line_user_id: uid, display_name: emp?.display_name ?? m.display_name ?? '我', canManage: true };
     }

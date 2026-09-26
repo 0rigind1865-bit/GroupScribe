@@ -3,7 +3,7 @@ import { getDb } from '@/db';
 import { liffUser, myGroups } from '@/core/liff';
 import { myEmployees } from '@/attend/auth';
 import { isPlatformOwner } from './orgs';
-import { enabledModuleIds } from './module-ids';
+import { enabledModuleIds, isMissingModulesColumn, scopedModuleIds } from './module-ids';
 import { myExpenseIdentity } from '@/expense/mine';
 
 // 全站「你能去哪些地方」的單一判定點。
@@ -16,7 +16,7 @@ import { myExpenseIdentity } from '@/expense/mine';
 // 身分怎麼判定（全部以 LINE 帳號編號為準，每次請求重查，撤權立即生效）：
 //   我要打卡  ＝ employees 有這個 LINE 帳號
 //   我的群組  ＝ 他「現在」在某個已認領的群裡（LINE 群成員 API，見 core/liff.ts myGroups）
-//   群組管理／考勤管理 ＝ org_members 有他（每個 org 各一組，依該 org 開的模組）；平台擁有者另加預設 org 全開
+//   群組管理／考勤管理 ＝ org_members 有他（每個 org 各一組，依該 org 開的模組 ∩ 他被授權的模組）；平台擁有者另加預設 org 全開
 //   平台管理 ＝ 平台擁有者（後台密碼，或 ADMIN_LINE_USER_ID 的 LINE 帳號）
 
 export type SurfaceId = 'groups' | 'punch' | 'myexpense' | 'gs' | 'attend' | 'expense' | 'platform';
@@ -69,11 +69,19 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
     orgs.push({ slug, name: data?.name ?? slug, modules: new Set(['gs', 'attend', 'expense']) });
   }
   if (uid) {
-    const { data } = await db.from('org_members').select('orgs(slug, name, org_settings(modules))').eq('line_user_id', uid);
-    for (const r of data ?? []) {
-      const o = (r as { orgs?: { slug?: string; name?: string; org_settings?: { modules?: unknown } | null } }).orgs;
+    const q = (cols: string) => db.from('org_members').select(cols).eq('line_user_id', uid);
+    let { data, error } = await q('role, modules, orgs(slug, name, org_settings(modules))');
+    if (isMissingModulesColumn(error)) ({ data, error } = await q('role, orgs(slug, name, org_settings(modules))')); // migration 028 前
+    for (const r of (data ?? []) as {
+      role?: string;
+      modules?: unknown;
+      orgs?: { slug?: string; name?: string; org_settings?: { modules?: unknown } | null };
+    }[]) {
+      const o = r.orgs;
       if (!o?.slug || orgs.some((x) => x.slug === o.slug)) continue;
-      orgs.push({ slug: o.slug, name: o.name ?? o.slug, modules: new Set(enabledModuleIds(o.org_settings?.modules)) });
+      // 公司開的 ∩ 這位管理者被授權的（migration 028）：只管考勤的人不會看到「群組管理」
+      const ids = scopedModuleIds(enabledModuleIds(o.org_settings?.modules), r.role ?? null, r.modules ?? null);
+      orgs.push({ slug: o.slug, name: o.name ?? o.slug, modules: new Set(ids) });
     }
   }
   const many = orgs.length > 1; // 管多家時名稱要帶公司名，否則分不出來

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { enabledModuleIds, isMissingModulesColumn, scopedModuleIds } from '@/org/module-ids';
 import { notFound } from 'next/navigation';
 import { getDb } from '@/db';
 import { liffUser, verifyClaimToken } from '@/core/liff';
@@ -48,11 +49,18 @@ export default async function ClaimPage({
 
   // 可認領到哪些 org：平台擁有者＝全部（排除未認領）；其餘＝自己是 org_members 的
   let orgs: { slug: string; name: string }[] = [];
+  let memberNoGs = false; // 是某家公司的管理者，但沒被授權管群組助理（例如只管考勤）
   if (owner) {
     orgs = ((await db.from('orgs').select('slug, name').neq('slug', 'unclaimed').order('name')).data ?? []) as typeof orgs;
   } else if (uid) {
-    const { data } = await db.from('org_members').select('orgs(slug, name)').eq('line_user_id', uid);
-    orgs = (data ?? []).map((r: any) => r.orgs).filter(Boolean);
+    // 認領群組是群組助理的管理動作：只列被授權管群組助理的公司（migration 028）
+    const q = (cols: string) => db.from('org_members').select(cols).eq('line_user_id', uid);
+    let { data, error } = await q('role, modules, orgs(slug, name, org_settings(modules))');
+    if (isMissingModulesColumn(error)) ({ data, error } = await q('role, orgs(slug, name, org_settings(modules))'));
+    orgs = ((data ?? []) as any[])
+      .filter((r) => r.orgs && scopedModuleIds(enabledModuleIds(r.orgs.org_settings?.modules), r.role, r.modules ?? null).includes('gs'))
+      .map((r) => ({ slug: r.orgs.slug, name: r.orgs.name }));
+    memberNoGs = !orgs.length && (data ?? []).length > 0;
   }
   const groupName = cur?.name ?? groupId;
   // 剩餘額度（只有單一 org 時顯示；多 org 由端點擋）
@@ -99,6 +107,9 @@ export default async function ClaimPage({
               </a>
             )}
           </>
+        ) : memberNoGs ? (
+          // 別叫他去建立新組織：他已經在公司裡，只是沒有群組助理的管理權
+          <p className="text-sm text-gray-700">你在公司裡沒有「群組管理」的權限，無法認領群組。請公司擁有者幫你認領，或開通你的群組管理權。</p>
         ) : !orgs.length ? (
           <>
             <p className="text-sm text-gray-700">你的 LINE 帳號還沒有組織。免費建立一個，回來再點一次這個連結就能認領。</p>

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { oh } from '@/org/href';
 import { Banner, Flash } from '@/app/ui/banner';
 import { Badge } from '@/app/ui/badge';
@@ -14,7 +14,7 @@ import { SetupNotice } from '../(admin)/setup-notice';
 export const dynamic = 'force-dynamic';
 
 // 報帳清單（X1）：員工私訊群記的收據照，AI 讀出金額後自動記一筆。
-// 管理者在這裡補專案、改讀錯的金額、標「已報帳」。寫入全走 /api/expense/update（orgAdminAccess＋綁 org_id）。
+// 管理者在這裡補專案、改讀錯的金額、標「已報帳」。寫入全走 /api/expense/update（moduleAccess＋綁 org_id）。
 
 const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
 const money = (n: number) => `$${n.toLocaleString('en-US')}`;
@@ -32,7 +32,7 @@ export default async function ExpenseList({
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'expense');
   if (!org) notFound();
   const sp = await searchParams;
   const f: ExpenseFilter = { status: sp.status ?? 'open', who: sp.who, project: sp.project, month: sp.month };

@@ -1,6 +1,6 @@
 import { getDb } from '@/db';
 import { notFound } from 'next/navigation';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { currentRuleSet } from '@/attend/rules-store';
 import { workDate } from '@/attend/util';
 import { Banner } from '@/app/ui/banner';
@@ -19,7 +19,7 @@ export default async function RulesPage({
   searchParams: Promise<{ ok?: string; err?: string; msg?: string; tab?: string }>;
 }) {
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'attend');
   if (!org) notFound();
   const sp = await searchParams;
   const db = getDb();

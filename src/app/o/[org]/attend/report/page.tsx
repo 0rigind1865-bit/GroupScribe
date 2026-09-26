@@ -1,6 +1,6 @@
 import { getDb } from '@/db';
 import { notFound } from 'next/navigation';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { monthData } from '@/attend/data';
 import { dayInOut } from '@/attend/abnormal';
 import { isYm, shiftMonth, workDate } from '@/attend/util';
@@ -36,7 +36,7 @@ export default async function AttendCalendar({
   searchParams: Promise<{ emp?: string; month?: string; err?: string; ok?: string }>;
 }) {
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'attend');
   if (!org) notFound();
   const sp = await searchParams;
   const db = getDb();

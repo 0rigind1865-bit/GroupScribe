@@ -1,4 +1,5 @@
 import { liffUrl } from '@/core/ingest';
+import { requireModule } from '@/org/orgs';
 import { MoreList } from '../../more-list';
 import { GS_MODULE } from '../../routes';
 
@@ -15,6 +16,7 @@ export default async function MorePage({
   searchParams: Promise<{ group?: string }>;
 }) {
   const { org: slug } = await params;
+  await requireModule(slug, 'gs');
   const { group } = await searchParams;
   const liff = liffUrl(); // 未設 LIFF_ID 時整塊不出現
 

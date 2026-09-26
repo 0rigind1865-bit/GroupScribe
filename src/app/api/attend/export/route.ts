@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/db';
-import { orgAdminAccess } from '@/attend/auth';
+import { moduleAccess } from '@/org/orgs';
 import { monthData } from '@/attend/data';
 import { dayInOut } from '@/attend/abnormal';
 import { isYm } from '@/attend/util';
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   const month = req.nextUrl.searchParams.get('month') ?? '';
   if (!slug || !empId || !isYm(month)) return NextResponse.json({ error: '參數不足' }, { status: 400 });
 
-  const access = await orgAdminAccess(slug);
+  const access = await moduleAccess(slug, 'attend');
   if (!access) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const db = getDb();
 

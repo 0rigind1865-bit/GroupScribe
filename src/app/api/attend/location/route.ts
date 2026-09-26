@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { redirectTo } from '@/http';
-import { orgAdminAccess } from '@/attend/auth';
+import { moduleAccess } from '@/org/orgs';
 
 // 打卡地點管理（對等舊 addLocation；舊系統這支完全沒有授權——任何人拿到 URL 就能
 // 在自家新增地點遠端打卡。這裡照三重把關收緊）。
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
   const slug = String(form.get('org') ?? '');
   const action = String(form.get('action') ?? 'add');
 
-  const access = await orgAdminAccess(slug);
+  const access = await moduleAccess(slug, 'attend');
   if (!access) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const back = `/o/${slug}/attend/locations`;
   const db = getDb();

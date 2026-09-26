@@ -1,13 +1,14 @@
 import { cache } from 'react';
 import { ATTEND_MODULE, EXPENSE_MODULE, GS_MODULE, type ModuleDef } from '@/app/o/[org]/routes';
-import { isPlatformOwner, orgBySlug, orgRole, orgSettings, type Org } from './orgs';
-import { enabledModuleIds } from './module-ids';
+import { isPlatformOwner, orgBySlug, orgMember, orgSettings, type Org } from './orgs';
+import { enabledModuleIds, scopedModuleIds } from './module-ids';
 
 // 模組可見性的單一判定點。
 //
 // 規則一句話（商業計劃 2.1 節 A1 之後）：
 //   平台擁有者 ＝ 全部模組
 //   org_members ＝ org_settings.modules 開的那些（migration 015；沒有列 → 只有考勤，維持開放前的狀態）
+//                  再 ∩ 這位管理者被授權的模組（org_members.modules，migration 028；null＝全部）
 //
 // 為什麼「看不到」比「點了才發現被鎖」重要（使用者定調）：
 //   LINE 群組裡可能有別家公司的人，他們該看得到本群的群組助理內容，
@@ -27,8 +28,10 @@ export const visibleModules = cache(async (slug: string): Promise<OrgAccess | nu
   const org = await orgBySlug(slug);
   if (!org) return null;
   const owner = await isPlatformOwner();
-  const role = owner ? 'owner' : await orgRole(org.id);
-  if (!owner && !role) return null; // 兩者皆非：呼叫端 notFound()，不洩漏 org 是否存在
-  const modules = owner ? [GS_MODULE, ATTEND_MODULE, EXPENSE_MODULE] : modulesOf((await orgSettings(org.id)).modules);
-  return { org, modules, owner };
+  const member = owner ? null : await orgMember(org.id);
+  if (!owner && !member) return null; // 兩者皆非：呼叫端 notFound()，不洩漏 org 是否存在
+  if (owner) return { org, modules: [GS_MODULE, ATTEND_MODULE, EXPENSE_MODULE], owner };
+  // 公司開的模組 ∩ 這位管理者被授權的模組（migration 028）：只被授權考勤的人看不到群組助理
+  const ids = scopedModuleIds(enabledModuleIds((await orgSettings(org.id)).modules), member!.role, member!.modules);
+  return { org, modules: modulesOf(ids), owner };
 });

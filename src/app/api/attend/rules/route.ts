@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { redirectTo } from '@/http';
-import { orgAdminAccess } from '@/attend/auth';
+import { moduleAccess } from '@/org/orgs';
 import { liffUser } from '@/core/liff';
 import { currentRuleSet, parseRules } from '@/attend/rules-store';
 import { runDayScript } from '@/attend/sandbox';
@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
   const slug = String(form.get('org') ?? '');
   const action = String(form.get('action') ?? 'save');
 
-  const access = await orgAdminAccess(slug);
+  const access = await moduleAccess(slug, 'attend');
   if (!access) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const back = `/o/${slug}/attend/rules`;
   const db = getDb();

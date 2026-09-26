@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { oh } from '@/org/href';
 import { TaskCircle, TimeChip, realAssignee } from '@/app/ui/item-marker';
 import { dbConfigured, getDb } from '@/db';
@@ -44,7 +44,7 @@ export default async function Today({
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'gs');
   if (!org) notFound();
   const { group: groupParam, q, view } = await searchParams;
   const timeline = view === 'timeline' || !!q; // 原始訊息表格降到深一層視圖（U2）；有搜尋詞時當然要顯示結果

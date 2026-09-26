@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
 import { TaskCircle, realAssignee } from '@/app/ui/item-marker';
 import { fmtDate, isOverdue } from '@/core/date';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb } from '@/db';
 import { relatedItems, type RelatedItem } from '@/core/links';
@@ -88,7 +88,7 @@ export default async function TasksPage({
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await routeParams;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'gs');
   if (!org) notFound();
   const params = await searchParams;
   const db = getDb();

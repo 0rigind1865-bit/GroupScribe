@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { dbConfigured, getDb } from '@/db';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { Banner } from '@/app/ui/banner';
 import { Empty } from '@/app/ui/empty';
 import { StatGrid } from '@/app/ui/stat';
@@ -40,7 +40,7 @@ export default async function ExpenseReport({
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'expense');
   if (!org) notFound();
   const sp = await searchParams;
   const f: ExpenseFilter = { status: sp.status ?? 'all', project: sp.project, month: sp.month };

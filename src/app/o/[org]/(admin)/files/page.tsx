@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { oh } from '@/org/href';
 import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
@@ -46,7 +46,7 @@ export default async function FilesPage({
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await routeParams;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'gs');
   if (!org) notFound();
   const params = await searchParams;
   const db = getDb();

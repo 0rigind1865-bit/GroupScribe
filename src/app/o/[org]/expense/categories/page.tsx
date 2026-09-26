@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { dbConfigured } from '@/db';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { orgCategoryItems, MAX_CATEGORIES } from '@/expense/categories';
 import { EXPENSE_CATEGORIES } from '@/expense/receipt';
 import { defaultIconFor } from '@/expense/icon-names';
@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export default async function ExpenseCategories({ params }: { params: Promise<{ org: string }> }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'expense');
   if (!org) notFound();
   const items = await orgCategoryItems(org.id);
   return (

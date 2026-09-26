@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { redirectTo } from '@/http';
-import { orgAdminAccess } from '@/attend/auth';
+import { moduleAccess } from '@/org/orgs';
 import { liffUser } from '@/core/liff';
 import { monthData } from '@/attend/data';
 import { dayInOut } from '@/attend/abnormal';
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '參數不足' }, { status: 400 });
   }
 
-  const access = await orgAdminAccess(slug);
+  const access = await moduleAccess(slug, 'attend');
   if (!access) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const back = `/o/${slug}/attend/report?emp=${empId}&month=${month}`;
   const db = getDb();

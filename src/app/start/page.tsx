@@ -1,5 +1,5 @@
-import { getDb } from '@/db';
 import { liffUser } from '@/core/liff';
+import { surfaces } from '@/org/surfaces';
 import { BrandBar } from '@/app/ui/intro';
 
 export const dynamic = 'force-dynamic';
@@ -40,8 +40,8 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
     );
   }
 
-  const { data: mine } = await getDb().from('org_members').select('orgs(slug, name)').eq('line_user_id', uid);
-  const orgs = (mine ?? []).map((r: any) => r.orgs).filter(Boolean) as { slug: string; name: string }[];
+  // 已經管理的地方：用 surfaces()（已照模組授權算好），不要寫死 /o/<slug>——只管考勤的人點進群組助理會 404
+  const orgs = (await surfaces()).list.filter((s) => s.slug).map((s) => ({ key: s.key, name: s.label, href: `/go/${encodeURIComponent(s.key)}` }));
 
   return (
     <main className="mx-auto max-w-md px-4 pb-6">
@@ -53,9 +53,9 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
         </div>
         {orgs.length > 0 && (
           <div className="rounded-lg bg-gray-50 p-3 text-sm">
-            <p className="mb-1 font-medium text-gray-700">你已經是這些組織的管理員</p>
+            <p className="mb-1 font-medium text-gray-700">你已經在管理這些地方</p>
             {orgs.map((o) => (
-              <a key={o.slug} className="block text-emerald-700 underline" href={`/o/${o.slug}`}>
+              <a key={o.key} className="block text-emerald-700 underline" href={o.href}>
                 {o.name}
               </a>
             ))}

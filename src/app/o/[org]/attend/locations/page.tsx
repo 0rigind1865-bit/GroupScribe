@@ -1,6 +1,6 @@
 import { getDb } from '@/db';
 import { notFound } from 'next/navigation';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { Banner } from '@/app/ui/banner';
 import { Empty } from '@/app/ui/empty';
 
@@ -24,7 +24,7 @@ export default async function LocationsPage({
   searchParams: Promise<{ ok?: string; err?: string }>;
 }) {
   const { org: slug } = await params;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'attend');
   if (!org) notFound();
   const { ok, err } = await searchParams;
 

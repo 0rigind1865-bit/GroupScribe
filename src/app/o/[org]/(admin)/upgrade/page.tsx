@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getDb } from '@/db';
-import { orgBySlug, orgSettings } from '@/org/orgs';
+import { orgSettings, requireModule } from '@/org/orgs';
 import { Banner } from '@/app/ui/banner';
 import { orgAiBudget } from '@/core/quota';
 
@@ -25,7 +25,7 @@ export default async function UpgradePage({
 }) {
   const { org: slug } = await params;
   const { limit } = await searchParams;
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'gs');
   if (!org) notFound();
   const st = await orgSettings(org.id);
   const plan = String(st.plan ?? 'free');

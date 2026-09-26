@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { orgBySlug } from '@/org/orgs';
+import { requireModule } from '@/org/orgs';
 import { oh } from '@/org/href';
 import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
 import { dbConfigured, getDb } from '@/db';
@@ -42,7 +42,7 @@ export default async function InboxPage({
   const { group: groupParam } = await searchParams;
   const db = getDb();
 
-  const org = await orgBySlug(slug);
+  const { org } = await requireModule(slug, 'gs');
   if (!org) notFound();
   const { data: groupRows } = await db.from('groups_view').select('group_id, name').eq('org_id', org.id);
   const nameOf = new Map((groupRows ?? []).map((g: any) => [g.group_id, g.name ?? g.group_id]));
