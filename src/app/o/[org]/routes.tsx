@@ -28,7 +28,8 @@ export type ModuleDef = {
   items: NavItem[];
 };
 
-const I = {
+// 圖示單一來源：路由表、身分列（src/org/surface-meta.tsx）共用，不要複製 path
+export const I = {
   today: (
     <>
       <rect x="3" y="5" width="18" height="16" rx="2" />
@@ -122,6 +123,33 @@ const I = {
     <>
       <path d="M4 6h16M4 12h16M4 18h10" />
       <circle cx="18" cy="18" r="2.5" />
+    </>
+  ),
+  // 身分列：群組／群組助理（雙對話框，刻意不同於公告的單泡泡）、平台（格狀）、角色（人像＝個人、公事包＝管理）
+  chat: (
+    <>
+      <path d="M4 5h11v8H8l-4 3z" />
+      <path d="M15 9h5v8l-3-2h-6v-2" />
+    </>
+  ),
+  grid: (
+    <>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="7" height="7" rx="1" />
+    </>
+  ),
+  person: (
+    <>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" />
+    </>
+  ),
+  briefcase: (
+    <>
+      <rect x="3" y="7" width="18" height="13" rx="2" />
+      <path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2M3 13h18" />
     </>
   ),
 };

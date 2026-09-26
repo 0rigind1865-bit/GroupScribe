@@ -66,15 +66,15 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
   }
   const slugsFor = (ids: string[]) => ids.map((id) => slugOf.get(id)).filter((x): x is string => !!x);
   if (employees.length) {
-    list.push({ key: 'punch', id: 'punch', role: 'me', slugs: slugsFor(employees.map((e) => e.org_id)), label: '我要打卡', desc: '上下班打卡、看打卡紀錄、申請補卡', href: '/a', rank: 1 });
+    list.push({ key: 'punch', id: 'punch', role: 'me', slugs: slugsFor(employees.map((e) => e.org_id)), label: '打卡', desc: '上下班打卡、看打卡紀錄、申請補卡', href: '/a', rank: 1 });
   }
   if (exp) {
-    list.push({ key: 'myexpense', id: 'myexpense', role: 'me', slugs: slugsFor([exp.org_id]), label: '我的報帳', desc: '記一筆墊付的錢、看自己的報帳清單', href: '/a/expense', rank: 1.5 });
+    list.push({ key: 'myexpense', id: 'myexpense', role: 'me', slugs: slugsFor([exp.org_id]), label: '報帳', desc: '記一筆墊付的錢、看自己的報帳清單', href: '/a/expense', rank: 1.5 });
   }
 
   // 2. 群組成員 → 成員版（以「現在在不在群裡」為準，不是「有沒有講過話」）
   if (uid && (await myGroups(uid, { first: true })).length) {
-    list.push({ key: 'groups', id: 'groups', role: 'me', label: '我的群組', desc: '看你所在群組的行程、待辦、公告，順手確認 AI 整理的內容', href: '/g', rank: 2 });
+    list.push({ key: 'groups', id: 'groups', role: 'me', label: '群組', desc: '看你所在群組的行程、待辦、公告，順手確認 AI 整理的內容', href: '/g', rank: 2 });
   }
 
   // 3. 管理員 → 每個 org 各一組（依該 org 開的模組）
@@ -111,17 +111,16 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
       orgs.push({ slug: o.slug, name: o.name ?? o.slug, modules: new Set(ids) });
     }
   }
-  const many = orgs.length > 1; // 管多家時名稱要帶公司名，否則分不出來
+  // label 只是工具名；多家公司時的「考勤 · 公司A」由畫面依 orgName 組（src/org/surface-meta.tsx）
   orgs.forEach((o, i) => {
-    const tail = many ? `・${o.name}` : '';
     // 群組管理排在考勤管理前面：平台擁有者（用密碼登入、沒有 LINE 身分）的主場是群組助理
     const base = { slug: o.slug, orgName: o.name, role: 'admin' as const };
     if (o.modules.has('gs'))
-      list.push({ ...base, key: `gs:${o.slug}`, id: 'gs', label: `群組管理${tail}`, desc: '收件匣把關、所有群的今天總覽、群組與方案設定', href: `/o/${o.slug}`, rank: 3 + i * 0.01 });
+      list.push({ ...base, key: `gs:${o.slug}`, id: 'gs', label: '群組助理', desc: '收件匣把關、所有群的今天總覽、群組與方案設定', href: `/o/${o.slug}`, rank: 3 + i * 0.01 });
     if (o.modules.has('attend'))
-      list.push({ ...base, key: `attend:${o.slug}`, id: 'attend', label: `考勤管理${tail}`, desc: '員工管理、補卡審核、打卡報表與薪資', href: `/o/${o.slug}/attend`, rank: 4 + i * 0.01 });
+      list.push({ ...base, key: `attend:${o.slug}`, id: 'attend', label: '考勤', desc: '員工管理、補卡審核、打卡報表與薪資', href: `/o/${o.slug}/attend`, rank: 4 + i * 0.01 });
     if (o.modules.has('expense'))
-      list.push({ ...base, key: `expense:${o.slug}`, id: 'expense', label: `報帳管理${tail}`, desc: '員工私訊的收據、標已報帳、匯出 CSV', href: `/o/${o.slug}/expense`, rank: 4.5 + i * 0.01 });
+      list.push({ ...base, key: `expense:${o.slug}`, id: 'expense', label: '報帳', desc: '員工私訊的收據、標已報帳、匯出 CSV', href: `/o/${o.slug}/expense`, rank: 4.5 + i * 0.01 });
   });
 
   // 4. 平台擁有者 → 平台管理（所有公司、未認領的群、改方案）

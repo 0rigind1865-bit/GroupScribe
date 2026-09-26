@@ -41,7 +41,10 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
   }
 
   // 已經管理的地方：用 surfaces()（已照模組授權算好），不要寫死 /o/<slug>——只管考勤的人點進群組助理會 404
-  const orgs = (await surfaces()).list.filter((s) => s.slug).map((s) => ({ key: s.key, name: s.label, href: `/go/${encodeURIComponent(s.key)}` }));
+  // 名稱「考勤 · 公司名」：管兩家公司時才分得出哪一個（審查 F45）
+  const orgs = (await surfaces()).list
+    .filter((s) => s.role === 'admin' && s.slug)
+    .map((s) => ({ key: s.key, name: s.orgName ? `${s.label} · ${s.orgName}` : s.label, href: `/go/${encodeURIComponent(s.key)}` }));
 
   return (
     <main className="mx-auto max-w-md px-4 pb-6">
