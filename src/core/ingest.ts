@@ -1,5 +1,5 @@
 import { getDb, MEDIA_BUCKET } from '@/db';
-import { orgHasExpense, receiptCategoriesOf, recordReceipt, receiptReply } from '@/expense/record';
+import { orgHasExpense, receiptCategoriesOf, recordReceipt, recordTextExpense, receiptReply } from '@/expense/record';
 import type { Receipt } from '@/expense/receipt';
 import { getConnector, getVision } from './config';
 import { indexText } from './indexer';
@@ -502,6 +502,12 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
     if (receipt && m.replyToken) await connector.reply(m.replyToken, receiptReply(receipt)).catch(() => {});
   }
 
+  // 1:1 文字「午餐 120」→ 記一筆報帳並回覆（X2-6）；不是問句才看，問句交給上面的問答
+  if (isDm(m.groupId) && m.type === 'text' && m.text && !m.mentionsBot) {
+    const exp = await recordTextExpense({ groupId: m.groupId, text: m.text, at: m.timestamp, senderName }).catch(() => null);
+    if (exp && m.replyToken) await connector.reply(m.replyToken, receiptReply(exp)).catch(() => {});
+  }
+
   // 有資訊量的文字才進索引；額度用完只略過索引（訊息已存，/api/reindex 可事後補）
   if (m.type === 'text' && !lowInfo && m.text) {
     await indexText(m.groupId, 'message', row.id, label(m.timestamp, senderName) + m.text, m.timestamp).catch((e) => {
@@ -554,6 +560,9 @@ export async function analyzeAsset(
     })
     .eq('id', assetId);
   // 1:1 私訊的收據 → 記一筆報帳（X1）；重試路徑也會記，但只有第一次（processMedia）會回覆
-  return r.receipt ? recordReceipt({ assetId, groupId, raw: r.receipt, at, senderName }) : null;
+  if (r.receipt) return recordReceipt({ assetId, groupId, raw: r.receipt, at, senderName });
+  // 1:1 語音「午餐 120」→ 逐字稿走文字記帳（X2-6）
+  if (mime.startsWith('audio/') && r.ocrText) return recordTextExpense({ groupId, text: r.ocrText, at, senderName, assetId });
+  return null;
   });
 }

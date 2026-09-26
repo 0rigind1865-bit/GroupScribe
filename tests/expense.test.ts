@@ -154,3 +154,25 @@ test('pivot：交叉加總、列欄依合計排序、可指定列順序', () => 
   assert.equal(p.total, 460);
   assert.deepEqual(pivot(rows, (r) => r.m, (r) => r.c, (a, b) => a.localeCompare(b)).rows, ['2026-08', '2026-09']);
 });
+
+// ── 文字／語音記帳（X2-6）：寧可漏記不要誤記 ──
+import { parseTextExpense } from '../src/expense/text';
+import { EXPENSE_CATEGORIES } from '../src/expense/receipt';
+
+test('parseTextExpense：品項＋金額要中，分類猜得出來', () => {
+  assert.deepEqual(parseTextExpense('午餐 120', EXPENSE_CATEGORIES), { item: '午餐', amount: 120, category: '餐飲' });
+  assert.deepEqual(parseTextExpense('停車費150元', EXPENSE_CATEGORIES), { item: '停車費', amount: 150, category: '停車過路' });
+  assert.deepEqual(parseTextExpense('計程車 $350', EXPENSE_CATEGORIES), { item: '計程車', amount: 350, category: '交通' });
+  assert.deepEqual(parseTextExpense('膠帶 1,200', EXPENSE_CATEGORIES), { item: '膠帶', amount: 1200, category: '材料耗材' });
+  assert.equal(parseTextExpense('郵資 8元', EXPENSE_CATEGORIES)?.category, '雜支');
+});
+
+test('parseTextExpense：不是花費的句子不能中', () => {
+  for (const t of ['明天 3 點開會', '明天 3', '會議室 3', '開會 2 點', '第 3', '上次報價多少？', '分機 123', '3 個人', '好', '120', '週五 10', '電話 0912345678 請回電'])
+    assert.equal(parseTextExpense(t, EXPENSE_CATEGORIES), null, t);
+});
+
+test('parseTextExpense：公司自訂分類——品項等於分類名就直接用', () => {
+  assert.equal(parseTextExpense('機票 5000', ['機票', '雜支'])?.category, '機票');
+  assert.equal(parseTextExpense('午餐 120', ['機票', '雜支'])?.category, '雜支'); // 公司沒有「餐飲」這類
+});
