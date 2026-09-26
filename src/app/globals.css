@@ -11,6 +11,35 @@
   --radius-lg: 0.625rem;
   --radius-xl: 0.875rem;
   --radius-2xl: 1.125rem;
+
+  /* ── 2026-09 重新設計（設計畫布「GroupScribe 介面重新設計」）──
+     不逐頁改 class：直接換掉 emerald 與 gray 兩條色階，全站的主色鈕、選中態、邊框、底色一次跟上。
+     emerald → 深松綠（主色 600 = #0f5c46）；gray → 帶綠的暖中性（50 = 象牙底 #f6f4ee）。
+     深色模式的 remap 在檔案最下方，仍是寫死的 hex，不受這裡影響。 */
+  --color-emerald-50: #eef5f1;
+  --color-emerald-100: #e3efe9;
+  --color-emerald-200: #c6ddd2;
+  --color-emerald-300: #93c0ad;
+  --color-emerald-400: #4f9c80;
+  --color-emerald-500: #1f7a5c;
+  --color-emerald-600: #0f5c46;
+  --color-emerald-700: #0b4a38;
+  --color-emerald-800: #0a3f30;
+  --color-emerald-900: #083326;
+
+  --color-gray-50: #f6f4ee;
+  --color-gray-100: #efece4;
+  --color-gray-200: #e6e0d2;
+  --color-gray-300: #d9d5c9;
+  --color-gray-400: #9aa39d;
+  --color-gray-500: #6b746f;
+  --color-gray-600: #5b665f;
+  --color-gray-700: #3d4741;
+  --color-gray-800: #2a322d;
+  --color-gray-900: #1c2420;
+
+  /* 頁面大標：襯線粗體。只用系統字（macOS/iOS 宋體、Android/Windows 的 Noto Serif CJK），不下載字型檔 */
+  --font-title: "Songti TC", "Noto Serif TC", "Noto Serif CJK TC", "Source Han Serif TC", serif;
 }
 
 /* ── 視覺 token（UI 提案階段 A）──
@@ -24,6 +53,12 @@ html {
 @layer base {
   body {
     font-family: system-ui, "PingFang TC", "Noto Sans TC", sans-serif;
+  }
+  /* 各殼（群組助理／考勤／報帳／員工端）裡的頁面大標；官方網站與登入頁不受影響 */
+  .nav-gap h1 {
+    font-family: var(--font-title);
+    font-weight: 900;
+    letter-spacing: 0.02em;
   }
 }
 
@@ -252,9 +287,11 @@ html {
     max-width: 26rem;
     transform: translateX(-50%);
     padding: 4px;
-    border: 1px solid rgb(229 231 235);
+    border: 1px solid transparent;
     border-radius: 999px;
-    background: rgb(255 255 255 / 0.85);
+    /* 深色膠囊（設計稿）：亮暗主題都是深底，淺色字 */
+    background: rgb(28 36 32 / 0.94);
+    color: #b8c2bc;
     -webkit-backdrop-filter: blur(16px) saturate(1.6);
     backdrop-filter: blur(16px) saturate(1.6);
     box-shadow: 0 6px 24px rgb(0 0 0 / 0.12), 0 2px 6px rgb(0 0 0 / 0.06);
@@ -285,7 +322,7 @@ html {
     left: 0;
     z-index: 0;
     border-radius: 999px;
-    background: rgb(209 250 229);
+    background: #2e3a34;
     pointer-events: none;
     transition:
       transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
@@ -310,7 +347,10 @@ html {
   /* 選中態實心藥丸：膠囊裡只靠文字變色太弱（原本滿版列有整格寬度可讀）。
      SSR 時由 aria-current 畫，指示器一就位就交棒，免得兩顆疊著。 */
   .floating-nav a[aria-current="page"] {
-    background: rgb(209 250 229);
+    background: #2e3a34;
+  }
+  .floating-nav a.on {
+    color: #ffffff;
   }
   .floating-nav.has-ind a[aria-current="page"] {
     background: transparent;
@@ -321,6 +361,20 @@ html {
   /* 頁面讓開膠囊：膠囊高約 3.5rem，加上離底 0.75rem 與 inset */
   .nav-gap {
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* 桌機頂欄：深色橫條（亮暗主題都深），未分層以勝過 bg-gray-50 utility */
+@media (min-width: 768px) {
+  header.shell-bar {
+    background: #1c2420;
+    color: #ffffff;
+  }
+}
+@media (min-width: 768px) and (prefers-color-scheme: dark) {
+  header.shell-bar {
+    background: #1a211e;
+    border-bottom: 1px solid #2a332f;
   }
 }
 
@@ -387,18 +441,18 @@ body:has(.batch-box:checked) #batch {
 
 /* ── 深色模式：跟隨系統。綠偏中性色盤（提案定案），utility 整表 remap ── */
 @media (prefers-color-scheme: dark) {
-  body { background: #101513; color: #e8edea; }
+  body { background: #111613; color: #e8edea; }
 
   .card { background: #1a211e; border-color: #2a332f; }
   .btn { background: #1a211e; border-color: #39443e; color: #e8edea; }
   .floating-nav {
-    background: rgb(26 33 30 / 0.88);
-    border-color: #2a332f;
+    background: rgb(34 43 38 / 0.94);
+    border-color: #2f3a34;
     box-shadow: 0 6px 24px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.3);
   }
-  .floating-nav a[aria-current="page"] { background: #1d3b30; }
+  .floating-nav a[aria-current="page"] { background: #34423a; }
   .floating-nav.has-ind a[aria-current="page"] { background: transparent; }
-  .nav-ind { background: #1d3b30; }
+  .nav-ind { background: #34423a; }
   .btn:hover { background: #232b27; }
   .segmented { background: #232b27; }
   .segmented > [aria-current='page'] { background: #1a211e; color: #e8edea; }

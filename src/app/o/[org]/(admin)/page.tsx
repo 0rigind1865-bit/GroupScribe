@@ -155,8 +155,13 @@ export default async function Today({
       : oh(slug, '/tasks', { group: r.group_id, task: r.id });
 
   return (
-    <main className="mx-auto max-w-3xl p-4 md:p-5">
-      <h1 className="mb-3 text-2xl font-semibold tracking-tight">今天</h1>
+    <main className="mx-auto max-w-3xl p-4 md:max-w-5xl md:p-8">
+      <div className="mb-4 flex items-baseline gap-3">
+        <h1 className="text-3xl md:text-4xl">今天</h1>
+        <span className="text-sm text-gray-500">
+          {monthOf(today)} 月 {dayNum(today)} 日 · {dayWeek(today)}
+        </span>
+      </div>
       {aiExhausted && (
         <Banner tone="err">
           本月 AI 額度已用完（{ai.used} / {ai.cap} 次）：訊息照常保存，但暫停自動整理。{' '}
@@ -171,35 +176,52 @@ export default async function Today({
           <OnboardingCard slug={slug} botBasicId={process.env.LINE_BOT_BASIC_ID} hasGroups messageCount={messageCount} />
           {/* 「需要你處理」：管理者的主畫面該回答「有什麼要我介入」，而不是再列一次清單。
               四項全部是例外——正常運作時都是 0，整區消失，版面讓給日期軌。 */}
+          {/* 手機：「需要你處理」在上、兩欄小卡；桌機：右欄固定，左欄是日期軌 */}
+          <div className="md:grid md:grid-cols-[minmax(0,1fr)_300px] md:gap-10">
           {attention.length > 0 && (
-            <section className="mb-4 space-y-1.5">
-              <h2 className="text-xs font-bold tracking-widest text-amber-700">需要你處理</h2>
-              {attention.map((a) => (
-                <a
-                  key={a.label}
-                  href={a.href}
-                  className="flex items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 hover:bg-amber-100"
-                >
-                  <span className="w-8 flex-none text-center text-xl leading-none font-extrabold tabular-nums text-amber-900">
-                    {a.n}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-bold text-amber-900">{a.label}</span>
-                    <span className="block text-xs text-amber-700">{a.hint}</span>
-                  </span>
-                  <span className="flex-none text-amber-700">›</span>
-                </a>
-              ))}
+            <section className="mb-5 md:order-2 md:mb-0">
+              <h2 className="mb-2 text-xs font-bold tracking-widest text-amber-700">需要你處理</h2>
+              <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
+                {attention.map((a) => {
+                  // 逾期是唯一的「已經出事」，用紅；其餘是「等你動手」，白卡就好
+                  const late = a.label === '已逾期';
+                  return (
+                    <a
+                      key={a.label}
+                      href={a.href}
+                      className={`flex flex-col gap-0.5 rounded-xl border p-3.5 hover:opacity-80 md:flex-row md:items-center md:gap-4 ${
+                        late ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      <span
+                        className={`text-3xl leading-none font-black tabular-nums md:w-10 md:text-center ${late ? 'text-red-700' : 'text-gray-900'}`}
+                        style={{ fontFamily: 'var(--font-title)' }}
+                      >
+                        {a.n}
+                      </span>
+                      <span className="min-w-0 md:flex-1">
+                        <span className={`block text-sm font-bold ${late ? 'text-red-700' : 'text-gray-900'}`}>{a.label}</span>
+                        <span className="block text-xs text-gray-500">{a.hint}</span>
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
             </section>
           )}
 
           {/* 日期大字軌：事件與待辦混排 */}
+          <section className="md:order-1">
+          <h2 className="mb-3 text-xs font-bold tracking-widest text-gray-500">未來 7 天</h2>
           {days.length ? (
             <div className="space-y-3">
               {days.map((iso) => (
                 <div key={iso} className="flex gap-3">
                   <div className="w-11 flex-none pt-0.5 text-center">
-                    <div className={`text-2xl leading-none font-extrabold tabular-nums ${iso === today ? 'text-emerald-700' : ''}`}>
+                    <div
+                      className={`text-2xl leading-none font-black tabular-nums ${iso === today ? 'text-emerald-700' : ''}`}
+                      style={{ fontFamily: 'var(--font-title)' }}
+                    >
                       {dayNum(iso)}
                     </div>
                     <div className="text-[11px] text-gray-500">
@@ -211,7 +233,7 @@ export default async function Today({
                     {byDay.get(iso)!.map((r) => (
                       <div
                         key={`${r.kind}-${r.id}`}
-                        className="flex items-start gap-2.5 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm"
+                        className="flex items-start gap-2.5 rounded-xl border border-gray-200 bg-white px-3 py-2.5"
                       >
                         {r.kind === 'task' ? (
                           <TaskCircle formAction="/api/tasks/update" id={r.id} back={backHere} title={r.title} overdue={r.overdue} />
@@ -246,6 +268,8 @@ export default async function Today({
               </p>
             </div>
           )}
+          </section>
+          </div>
         </>
       )}
 

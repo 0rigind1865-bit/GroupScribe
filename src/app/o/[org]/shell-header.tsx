@@ -23,8 +23,9 @@ export async function ShellHeader({
   if (!access) notFound();
   const mod = moduleById(moduleId);
 
+  // 手機：跟頁面同色的淺頂欄；桌機：深色橫條（.shell-bar，設計稿），nav 在條上
   return (
-    <header className="sticky top-0 z-30 border-b border-gray-200 bg-white px-4 py-2 md:py-3">
+    <header className="shell-bar sticky top-0 z-30 border-b border-gray-200 bg-gray-50 px-4 py-2 md:border-0 md:py-3">
       <div className="mx-auto flex max-w-5xl items-center gap-3 md:gap-5">
         {/* 手機頂欄讓給群組／員工 context；面向切換在「更多」頁（U6） */}
         <div className="hidden md:block">

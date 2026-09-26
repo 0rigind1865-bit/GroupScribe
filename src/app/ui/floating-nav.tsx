@@ -207,7 +207,7 @@ export function FloatingNav({ tabs, className = '' }: { tabs: NavTab[]; classNam
           href={t.href}
           draggable={false}
           aria-current={t.active ? 'page' : undefined}
-          className={i === shown ? 'on font-bold text-emerald-800' : 'text-gray-500'}
+          className={i === shown ? 'on font-bold' : ''}
         >
           <span className="relative">
             <svg viewBox="0 0 24 24" className="h-5.5 w-5.5" fill="none" stroke="currentColor" strokeWidth="1.8">

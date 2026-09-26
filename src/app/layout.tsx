@@ -19,11 +19,11 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// 手機瀏覽器網址列／PWA 標題列顏色，跟頁面底色一致（亮：gray-50，暗：globals.css 的 body 底色）
+// 手機瀏覽器網址列／PWA 標題列顏色，跟頁面底色一致（亮：象牙底 gray-50，暗：globals.css 的 body 底色）
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f9fafb' },
-    { media: '(prefers-color-scheme: dark)', color: '#101513' },
+    { media: '(prefers-color-scheme: light)', color: '#f6f4ee' },
+    { media: '(prefers-color-scheme: dark)', color: '#111613' },
   ],
 };
 
