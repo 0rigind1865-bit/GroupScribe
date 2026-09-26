@@ -37,7 +37,7 @@ export function TaskCircle({
         aria-label={`標記完成：${title}`}
         title="標記完成"
         className={`group grid h-7 w-7 place-items-center rounded-full border-2 transition-colors ${
-          overdue ? 'border-red-400 text-red-500 hover:bg-red-50' : 'border-sky-500 text-sky-600 hover:bg-sky-50'
+          overdue ? 'border-red-400 text-red-500 hover:bg-red-50' : 'border-gray-400 text-emerald-700 hover:bg-emerald-50'
         }`}
       >
         {/* 平常只有空圈（免得看起來像「已完成」）；桌面 hover、手機按住時浮出勾——

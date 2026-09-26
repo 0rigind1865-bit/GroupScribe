@@ -479,6 +479,7 @@ body:has(.batch-box:checked) #batch {
   .border-gray-100 { border-color: #232b27; }
   .border-gray-200 { border-color: #2a332f; }
   .border-gray-300 { border-color: #39443e; }
+  .border-gray-400 { border-color: #5f6863; }
 
   .bg-emerald-50 { background-color: #12312a; }
   .bg-emerald-100 { background-color: #164237; }

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
-import { TaskCircle } from '@/app/ui/item-marker';
+import { TaskCircle, realAssignee } from '@/app/ui/item-marker';
 import { fmtDate, isOverdue } from '@/core/date';
 import { orgBySlug } from '@/org/orgs';
 import { scopedGroup } from '../group-scope';
@@ -20,25 +20,38 @@ function fmt(d: string) {
 
 function TaskRow({ t, back }: { t: any; back: string }) {
   return (
-    <li className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm shadow-xs">
+    <li className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
       <BatchBox id={t.id} />
       {t.status === 'open' && (
         <TaskCircle formAction="/api/tasks/update" id={t.id} back={back} title={t.title} overdue={!!t.due_at && isOverdue(t.due_at)} />
       )}
-      <span className={t.status === 'done' ? 'text-gray-400 line-through' : ''}>{t.title}</span>
-      {/* 待確認的兩種來源要分開講：新抽的 vs AI 依新對話改過的 */}
-      <PendingBadge item={t} />
-      {t.assignee && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{t.assignee}</span>}
-      {t.due_at &&
-        (t.status === 'open' && isOverdue(t.due_at) ? (
-          // 與「今天」頁同一套判斷與紅字（principles.md：一致性）
-          <span className="text-xs font-bold text-red-600">逾期 {fmtDate(t.due_at)}</span>
-        ) : (
-          <span className="text-xs text-gray-500">期限 {fmtDate(t.due_at)}</span>
-        ))}
+      {/* 兩行：上＝標題（＋待確認徽章），下＝負責人與期限（設計稿 2026-09） */}
+      <div className="min-w-0 flex-1">
+        <p className={`font-bold ${t.status === 'done' ? 'text-gray-400 line-through' : ''}`}>
+          {t.title}
+          {/* 待確認的兩種來源要分開講：新抽的 vs AI 依新對話改過的 */}
+          <span className="ml-1.5 align-middle">
+            <PendingBadge item={t} />
+          </span>
+        </p>
+        {(realAssignee(t.assignee) || t.due_at) && (
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+            {realAssignee(t.assignee) && (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{t.assignee}</span>
+            )}
+            {t.due_at &&
+              (t.status === 'open' && isOverdue(t.due_at) ? (
+                // 與「今天」頁同一套判斷與紅字（principles.md：一致性）
+                <span className="text-xs font-bold text-red-600">逾期 {fmtDate(t.due_at)}</span>
+              ) : (
+                <span className="text-xs text-gray-500">期限 {fmtDate(t.due_at)}</span>
+              ))}
+          </div>
+        )}
+      </div>
       {/* 一列只留兩個動作（U3）：左邊的圈＝完成、右邊「編輯」；待確認多一顆「確認」、封存區多一顆「重新開啟」。
           「忽略」降到編輯卡裡——它是低頻且不可逆度較高的動作，不該跟高頻動作並排。 */}
-      <span className="ml-auto flex flex-wrap gap-1.5">
+      <span className="flex flex-none flex-wrap justify-end gap-1.5">
         {t.needs_confirmation && t.status === 'open' && (
           <form action="/api/tasks/update" method="post">
             <input type="hidden" name="id" value={t.id} />
@@ -135,9 +148,9 @@ export default async function TasksPage({
   const back = `/o/${slug}/tasks?group=${g}${archived ? `&view=${archived}` : ''}`;
 
   return (
-    <main className="mx-auto max-w-4xl p-5">
-      <div className="mb-4 flex flex-wrap items-center gap-4">
-        <h1 className="text-2xl font-semibold tracking-tight">待辦</h1>
+    <main className="mx-auto max-w-3xl p-4 md:p-8">
+      <div className="mb-5 flex flex-wrap items-center gap-4">
+        <h1 className="text-3xl md:text-4xl">待辦</h1>
         {archived && (
           <span className="rounded bg-gray-100 px-2 py-0.5 text-sm text-gray-600">
             {archived === 'done' ? '已完成' : '已忽略'}
@@ -190,18 +203,20 @@ export default async function TasksPage({
         <div className="space-y-5">
           {pending.length > 0 && (
             <section>
-              <h2 className="mb-2 text-sm font-bold text-amber-700">⚠ 待確認（AI 抽取）</h2>
-              <ul className="space-y-1.5 rounded-lg border border-amber-200 bg-amber-50 p-2">
-                {pending.map((t) => (
-                  <TaskRow key={t.id} t={t} back={back} />
-                ))}
-              </ul>
+              <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
+                <h2 className="text-xs font-bold tracking-widest text-amber-700">待確認 · AI 抽取</h2>
+                <ul className="space-y-2">
+                  {pending.map((t) => (
+                    <TaskRow key={t.id} t={t} back={back} />
+                  ))}
+                </ul>
+              </div>
             </section>
           )}
           <section>
-            <h2 className="mb-2 text-sm font-bold text-gray-600">進行中</h2>
+            <h2 className="mb-2 text-xs font-bold tracking-widest text-gray-500">進行中</h2>
             {open.length ? (
-              <ul className="space-y-1.5">
+              <ul className="space-y-2">
                 {open.map((t) => (
                   <TaskRow key={t.id} t={t} back={back} />
                 ))}

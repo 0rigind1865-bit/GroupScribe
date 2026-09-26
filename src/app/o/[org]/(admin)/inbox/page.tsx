@@ -25,9 +25,9 @@ const md = fmtDate; // 期限/日期的格式統一在 core/date.ts
 type Row = { kind: 'event' | 'task' | 'note'; item: any };
 
 const KIND_STYLE = {
-  event: { label: '事件', chip: 'bg-emerald-600', route: '/api/events/update', edit: (o: string, g: string, id: string) => oh(o, '/calendar', { group: g, event: id }) },
-  task: { label: '待辦', chip: 'bg-sky-600', route: '/api/tasks/update', edit: (o: string, g: string, id: string) => oh(o, '/tasks', { group: g, task: id }) },
-  note: { label: '公告', chip: 'bg-purple-600', route: '/api/notes/update', edit: (o: string, g: string, id: string) => oh(o, '/notes', { group: g, note: id }) },
+  event: { label: '事件', chip: 'bg-emerald-100 text-emerald-800', route: '/api/events/update', edit: (o: string, g: string, id: string) => oh(o, '/calendar', { group: g, event: id }) },
+  task: { label: '待辦', chip: 'bg-sky-100 text-sky-800', route: '/api/tasks/update', edit: (o: string, g: string, id: string) => oh(o, '/tasks', { group: g, task: id }) },
+  note: { label: '公告', chip: 'bg-purple-100 text-purple-900', route: '/api/notes/update', edit: (o: string, g: string, id: string) => oh(o, '/notes', { group: g, note: id }) },
 } as const;
 
 export default async function InboxPage({
@@ -86,14 +86,14 @@ export default async function InboxPage({
   const back = `/o/${slug}/inbox${group ? `?group=${encodeURIComponent(group)}` : ''}`;
 
   return (
-    <main className="mx-auto max-w-2xl p-5">
-      <div className="mb-1 flex items-baseline gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">收件匣</h1>
+    <main className="mx-auto max-w-2xl p-4 md:p-8">
+      <div className="mb-2 flex items-center gap-3">
+        <h1 className="text-3xl md:text-4xl">收件匣</h1>
         {group && <span className="text-gray-500">{nameOf.get(group) ?? group}</span>}
-        {total > 0 && <span className="ml-auto text-sm text-gray-500">還剩 {total} 筆</span>}
+        {total > 0 && <span className="ml-auto text-sm font-bold text-amber-700">還剩 {total} 筆</span>}
         {rows.length > 0 && <SelectMode />}
       </div>
-      <p className="mb-4 text-sm text-gray-500">
+      <p className="mb-5 text-sm leading-relaxed text-gray-500">
         AI 從對話整理出來的項目先到這裡，經你把關才算數。確認過的內容 AI 之後不會亂改。
       </p>
 
@@ -129,9 +129,9 @@ export default async function InboxPage({
                 ? [item.due_at && `期限 ${md(item.due_at)}`, item.assignee]
                 : [item.kind === 'decision' ? '決議' : '公告'];
           return (
-            <div key={item.id} className="card space-y-2.5 p-3.5">
+            <div key={item.id} className="card space-y-3 p-4">
               {quotes.length > 0 ? (
-                <div className="space-y-1 rounded bg-gray-50 px-3 py-2 text-xs text-gray-500">
+                <div className="space-y-1 rounded-lg bg-gray-100 px-3 py-2 text-xs leading-relaxed text-gray-500">
                   {quotes.map((m: any) => (
                     <p key={m.id} className="line-clamp-2">
                       [{fmt(m.created_at)} {m.sender_name ?? m.sender_id ?? '—'}]{' '}
@@ -142,23 +142,23 @@ export default async function InboxPage({
               ) : (
                 <p className="text-xs text-gray-400">（來源訊息已被收回或刪除）</p>
               )}
-              <div className="flex items-start gap-2.5">
+              <div className="flex items-start gap-2">
                 <BatchBox id={`${kind}:${item.id}`} />
-                <span className={`mt-0.5 flex-none rounded-full px-2 py-0.5 text-xs font-medium text-white ${s.chip}`}>
+                <span className={`mt-0.5 flex-none rounded-md px-2 py-0.5 text-xs font-bold ${s.chip}`}>
                   {s.label}
                 </span>
                 <div className="min-w-0">
-                  <p className="font-bold">
+                  <p className="text-[15px] font-bold">
                     {item.title}
                     {/* 分辨「AI 新抽的」與「AI 依新對話改過的」——後者你可能已經確認過一次 */}
                     <span className="ml-1.5 align-middle">
                       <PendingBadge item={item} compact />
                     </span>
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="mt-0.5 text-xs text-gray-500">
                     {meta.filter(Boolean).join(' · ')}
                     {!group && (
-                      <span className="ml-1.5 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-900">
+                      <span className="ml-1.5 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800">
                         {nameOf.get(item.group_id) ?? item.group_id}
                       </span>
                     )}
@@ -170,7 +170,7 @@ export default async function InboxPage({
                 <form action={s.route} method="post" className="flex-1">
                   <input type="hidden" name="id" value={item.id} />
                   <input type="hidden" name="back" value={back} />
-                  <button className="btn w-full" name="action" value="ignore">
+                  <button className="btn-danger w-full" name="action" value="ignore">
                     忽略
                   </button>
                 </form>
