@@ -1,9 +1,18 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { dbConfigured } from '@/db';
 import { visibleModules } from '@/org/modules';
+import { orgBySlug } from '@/org/orgs';
 
 export const dynamic = 'force-dynamic';
+
+// 瀏覽器分頁標題帶公司名：頂欄右邊的公司名拿掉後，同時開兩家的分頁要靠這個分（審查 F41）
+export async function generateMetadata({ params }: { params: Promise<{ org: string }> }): Promise<Metadata> {
+  if (!dbConfigured()) return {};
+  const org = await orgBySlug((await params).org);
+  return org ? { title: { default: org.name, template: `%s · ${org.name}` } } : {};
+}
 
 // org 層外殼：唯一的權限閘門。
 //

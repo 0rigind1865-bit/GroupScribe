@@ -3,8 +3,10 @@ import { getDb } from '@/db';
 import { isPlatformOwner } from '@/org/orgs';
 import { monthKey } from '@/core/quota';
 import { PLAN_LIMITS } from '@/org/plans';
-import { BrandBar } from '@/app/ui/intro';
-import { SurfaceSwitcher } from '@/app/ui/surface-switcher';
+import { IdentityBar } from '@/app/ui/identity-bar';
+import { surfaces } from '@/org/surfaces';
+import { groupSurfaces } from '@/org/surface-groups';
+import { t } from '@/attend/i18n';
 import { Banner } from '@/app/ui/banner';
 
 export const dynamic = 'force-dynamic';
@@ -47,13 +49,17 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const totalCalls = [...callsOf.values()].reduce((a, b) => a + b, 0);
 
   return (
-    <div className="mx-auto max-w-3xl pb-10">
-      <BrandBar />
-      <main className="space-y-8 px-4">
-        {/* 切換膠囊放標題上方一整列：塞進品牌列右側會把「群記」擠掉 */}
-        <SurfaceSwitcher current="platform" />
+    <div className="pb-10">
+      {/* 平台頁也是「管理」那一邊：深色身分列，工具按鈕「平台管理 ▾」可切到未認領的群與各家公司（畫布 IdPlatform） */}
+      <header className="shell-bar md:sticky md:top-0 md:z-30">
+        <IdentityBar groups={groupSurfaces((await surfaces()).list)} currentKey="platform" side="admin" tt={(k, p) => t('zh-TW', k, p)} brand />
+      </header>
+      <main className="page space-y-8">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">平台管理</h1>
+          {/* 襯線大標同管理端各頁（.nav-gap h1）；平台頁不在殼裡，直接寫 */}
+          <h1 className="text-[30px] leading-tight font-black tracking-[1px] md:text-[42px]" style={{ fontFamily: 'var(--font-title)' }}>
+            平台管理
+          </h1>
           <p className="text-sm text-gray-500">只有平台擁有者看得到這一頁。</p>
         </div>
         {ok && <Banner tone="ok">方案已更新。</Banner>}
@@ -118,17 +124,17 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                   <div className="flex flex-wrap items-center gap-2">
                     {mods.includes('gs') && (
                       <a className="btn btn-sm" href={`/o/${o.slug}`}>
-                        群組助理後台
+                        群組助理 →
                       </a>
                     )}
                     {mods.includes('attend') && (
                       <a className="btn btn-sm" href={`/o/${o.slug}/attend`}>
-                        考勤後台
+                        考勤 →
                       </a>
                     )}
                     {mods.includes('expense') && (
                       <a className="btn btn-sm" href={`/o/${o.slug}/expense`}>
-                        報帳後台
+                        報帳 →
                       </a>
                     )}
                     <form action="/api/platform/plan" method="post" className="ml-auto flex flex-wrap items-center gap-1.5">

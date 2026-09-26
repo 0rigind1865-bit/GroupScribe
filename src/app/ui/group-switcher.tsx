@@ -42,18 +42,15 @@ export function GroupSwitcher({ groups }: { groups: GroupOption[] }) {
     }
     return params.toString() ? `${pathname}?${params.toString()}` : pathname;
   }
-  const rowCls = (on: boolean) =>
-    `block truncate rounded-md px-2.5 py-2 text-sm ${on ? 'bg-emerald-50 font-medium text-emerald-900' : 'hover:bg-gray-50'}`;
-
-  // 設計稿（2026-09）：一顆「群組名 ▾」膠囊，手機在頂端右側、桌機在深色頂欄上。
+  // 設計稿（2026-09）：一顆「群組名 ▾」膠囊，在身分列最右（手機、電腦都在深色帶上）。
   // 點開是真正的清單（<details>，純 HTML）：LINE 內建瀏覽器不一定叫得出原生 <select>。
   return (
     <details className="group relative">
       <summary className={PILL}>
-        <span className="max-w-40 truncate">{label}</span>
+        <span>{label}</span>
         <Chevron />
       </summary>
-      <div className="absolute right-0 z-40 mt-2 max-h-[70vh] w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1 text-gray-900 shadow-lg">
+      <div className={PANEL} data-no-swipe="">
         {supportsAll && (
           <a href={hrefFor('')} aria-current={!current ? 'page' : undefined} className={rowCls(!current)}>
             全部群組
@@ -79,9 +76,14 @@ export function GroupSwitcher({ groups }: { groups: GroupOption[] }) {
   );
 }
 
-/** 頂端 context 膠囊（群組／員工共用）：淺底細框；桌機在深色頂欄上改透明底白字 */
-export const PILL =
-  'flex min-h-9 cursor-pointer list-none items-center gap-1.5 rounded-full border border-gray-300 bg-white px-3 text-[13px] [&::-webkit-details-marker]:hidden md:border-[#3d4a43] md:bg-transparent md:text-white';
+/** 頂端情境膠囊（群組／員工共用）：外觀在 globals.css 的 .ctx-pill——淺色列白底細框、深色列透明底白字（審查 F17） */
+export const PILL = 'ctx-pill';
+
+/** 膠囊點開的清單面板與每一列（群組／員工共用，兩顆長一樣就要行為一樣——審查 F40） */
+export const PANEL =
+  'absolute right-0 z-40 mt-2 max-h-[70vh] w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1 text-gray-900 shadow-lg';
+export const rowCls = (on: boolean) =>
+  `block truncate rounded-md px-2.5 py-2 text-sm ${on ? 'bg-emerald-50 font-medium text-emerald-900' : 'hover:bg-gray-50'}`;
 
 export function Chevron() {
   return (

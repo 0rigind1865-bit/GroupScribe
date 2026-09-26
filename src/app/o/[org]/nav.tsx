@@ -75,18 +75,24 @@ export function BottomNav({ moduleId, counts = {} }: { moduleId: ModuleId; count
 
 export function TopNav({ moduleId, counts = {} }: { moduleId: ModuleId; counts?: Counts }) {
   const module = modOf(moduleId);
-  const { href, isActive } = useNav(module);
+  const { href, isActive, rel } = useNav(module);
+  // 電腦版分頁＝手機底部膠囊同一份（primary 四項＋「更多」）：身分列多了角色開關與工具按鈕，
+  // 九個分頁在 1024 寬會擠出畫面（審查 F25）；「更多」亮起的範圍同手機
+  const items = bottomItems(module);
+  const moreItem = items.find((i) => i.key === 'more');
+  const morePaths = [...module.items.filter((i) => !i.primary).map((i) => i.path), ...(moreItem ? [moreItem.path] : [])];
+  const on = (i: NavItem) => (i.key === 'more' ? morePaths.some((p) => rel.startsWith(p)) : isActive(i.path));
   return (
-    <nav className="hidden gap-0.5 text-sm md:flex">
-      {module.items.map((i: NavItem) => {
+    <nav className="hidden gap-0.5 text-sm md:flex" aria-label={`${module.label}分頁`}>
+      {items.map((i: NavItem) => {
         const n = i.badge ? (counts[i.badge] ?? 0) : 0;
         return (
           <a
             key={i.key}
             href={href(i.path)}
-            aria-current={isActive(i.path) ? 'page' : undefined}
+            aria-current={on(i) ? 'page' : undefined}
             className={`flex items-center gap-1.5 rounded-[10px] px-3 py-2 whitespace-nowrap ${
-              isActive(i.path) ? 'bg-[#2e3a34] font-bold text-white' : 'text-[#b8c2bc] hover:bg-white/10 hover:text-white'
+              on(i) ? 'bg-[#2e3a34] font-bold text-white' : 'text-[#b8c2bc] hover:bg-white/10 hover:text-white'
             }`}
           >
             {i.label}

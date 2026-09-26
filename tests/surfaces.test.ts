@@ -149,3 +149,29 @@ test('/go/@admin：沒有 from 時用該角色上次用的 cookie', () => {
   const list = [groups, adm('gs', 'a'), adm('attend', 'a')];
   assert.equal(goTarget(list, '@admin', null, (side) => (side === 'admin' ? 'attend:a' : undefined))?.key, 'attend:a');
 });
+
+// ── T1／T2 審查補測 ──
+test('平台擁有者站在清單內、但該公司沒開這個工具的頁：補進那一家，不另開一段', () => {
+  const g = groupSurfaces([adm('expense', 'acme', '頂好')], { slug: 'acme', name: '頂好', id: 'attend' });
+  assert.equal(g.admin.length, 1);
+  assert.deepEqual(g.admin[0].items.map((s) => s.id), ['expense', 'attend']);
+  assert.equal(g.admin[0].injected, true);
+  assert.equal(multiOrg(g), true); // 補過的公司就帶公司名，免得看不出在哪家
+});
+
+test('有公司但查不到公司（slugs 空陣列）不算同一家：退到上次用的', () => {
+  const g = groupSurfaces([punch(), adm('attend', 'a'), adm('gs', 'a')]);
+  assert.equal(resolveRoleJump(g, 'admin', 'punch', 'gs:a')?.key, 'gs:a');
+});
+
+test('平台擁有者有個人側、管理側只有平台：有開關；從平台切到個人退到第一個', () => {
+  const g = groupSurfaces([groups, platform]);
+  assert.equal(hasRoleToggle(g), true);
+  assert.equal(barState(g, 'admin'), 'a');
+  assert.equal(resolveRoleJump(g, 'me', 'platform')?.key, 'groups');
+});
+
+test('三家公司：分段照清單順序（surfaces 已改成公司優先排序）', () => {
+  const list = [adm('gs', 'a'), adm('attend', 'a'), adm('attend', 'b'), adm('gs', 'c')];
+  assert.deepEqual(groupSurfaces(list).admin.map((o) => o.slug), ['a', 'b', 'c']);
+});

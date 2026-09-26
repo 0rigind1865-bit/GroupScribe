@@ -15,6 +15,7 @@ export type Current = { slug: string; name: string; id: SurfaceId } | null;
 
 export const sideOf = (role: SurfaceRole): Side => (role === 'me' ? 'me' : 'admin');
 
+// 與 surfaces.ts、routes.tsx 的 module.base 同步（這裡要保持純邏輯，不 import 路由表）
 const ADMIN_HREF: Partial<Record<SurfaceId, (slug: string) => string>> = {
   gs: (s) => `/o/${s}`,
   attend: (s) => `/o/${s}/attend`,
@@ -31,17 +32,17 @@ export function groupSurfaces(list: Surface[], current: Current = null): Grouped
     if (!org) admin.push((org = { slug: s.slug, name: s.orgName ?? s.slug, items: [] }));
     org.items.push(s);
   }
-  // 安全網：站在清單外的公司（平台擁有者從平台頁點進去、或清單還沒更新）——補一段，
-  // 否則身分列會把你正在管的公司說成清單裡的另一家（審查 F4）。
-  if (current && current.slug !== 'unclaimed' && !admin.some((o) => o.slug === current.slug)) {
+  // 安全網：站在清單外的公司、或清單裡這家沒有目前這個工具（平台擁有者從平台頁點進去時，
+  // visibleModules 給全部模組、surfaces 卻依公司設定列）——補上，
+  // 否則身分列會把你正在管的公司說成清單裡的另一家、或找不到目前項目（審查 F4）。
+  if (current && current.slug !== 'unclaimed') {
     const href = ADMIN_HREF[current.id]?.(current.slug);
-    if (href)
-      admin.push({
-        slug: current.slug,
-        name: current.name,
-        injected: true,
-        items: [{ key: `${current.id}:${current.slug}`, id: current.id, role: 'admin', slug: current.slug, orgName: current.name, label: current.name, desc: '', href, rank: 9 }],
-      });
+    let org = admin.find((o) => o.slug === current.slug);
+    if (href && !org?.items.some((i) => i.id === current.id)) {
+      if (!org) admin.push((org = { slug: current.slug, name: current.name, items: [] }));
+      org.injected = true;
+      org.items.push({ key: `${current.id}:${current.slug}`, id: current.id, role: 'admin', slug: current.slug, orgName: org.name, label: current.id, desc: '', href, rank: 9 });
+    }
   }
   return { me, admin, platform };
 }
@@ -77,6 +78,8 @@ const PAIR: Partial<Record<SurfaceId, SurfaceId>> = {
   gs: 'groups',
 };
 const slugsOf = (s: Surface) => s.slugs ?? (s.slug ? [s.slug] : []);
+/** 沒有公司概念的工具（個人側的群組）：對應時只比工具。有公司但查不到（slugs 空陣列）不算 */
+const companyless = (s: Surface) => s.slugs === undefined && !s.slug;
 
 /**
  * 點角色開關要去哪（/go/@me、/go/@admin，審查 F16、F31）：
@@ -96,8 +99,7 @@ export function resolveRoleJump(g: Grouped, target: Side, fromKey?: string | nul
     const cands = all.filter((s) => s.id === want);
     const fs = slugsOf(from);
     for (const c of cands) {
-      const cs = slugsOf(c);
-      if (!fs.length || !cs.length || cs.some((x) => fs.includes(x))) return c;
+      if (companyless(from) || companyless(c) || slugsOf(c).some((x) => fs.includes(x))) return c;
     }
   }
   return all.find((s) => s.key === lastKey) ?? all[0];
