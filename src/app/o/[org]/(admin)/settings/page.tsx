@@ -1,9 +1,13 @@
+import { headers } from 'next/headers';
 import { dbConfigured, getDb } from '@/db';
 import { DEFAULT_NOTICE } from '@/core/ingest';
 import { SetupNotice } from '../setup-notice';
 import { messageQuota } from '@/connectors/line';
 import { refreshSettings, DEFAULT_EMBEDDING_MODEL } from '@/core/settings';
-import { orgGroups, requireModule } from '@/org/orgs';
+import { orgGroups, orgRole, requireModule } from '@/org/orgs';
+import { INVITE_HOURS, inviteToken, liffUser } from '@/core/liff';
+import { publicBase } from '@/http';
+import { OutlineBadge } from '@/app/ui/badge';
 import { notFound } from 'next/navigation';
 import { Banner } from '@/app/ui/banner';
 
@@ -60,6 +64,20 @@ export default async function SettingsPage({
   const silentHours = lastWebhook ? (Date.now() - lastWebhook.getTime()) / 3_600_000 : null;
   const enabled = cfg?.join_notice_enabled ?? true;
   const text = cfg?.join_notice_text ?? DEFAULT_NOTICE;
+
+  // 管理員（群組助理）：擁有者＋被授權 gs 的管理員。只管考勤的會計不列（這頁管不到他）。
+  // 擁有者可以邀請與移除——只有一個管理員時，他離職或換 LINE 帳號，公司就沒人進得去後台。
+  const { data: memberRows } = await db
+    .from('org_members')
+    .select('line_user_id, role, modules, display_name')
+    .eq('org_id', access.org.id)
+    .order('role', { ascending: false }); // owner 排前面
+  const admins = ((memberRows ?? []) as { line_user_id: string; role: string; modules: string[] | null; display_name: string | null }[])
+    .filter((m) => m.role === 'owner' || !Array.isArray(m.modules) || m.modules.includes('gs'));
+  const me = await liffUser();
+  const canManageAdmins = platform || (await orgRole(access.org.id)) === 'owner';
+  const inviteExp = Math.floor(Date.now() / 1000) + INVITE_HOURS * 3600;
+  const inviteUrl = `${publicBase({ headers: await headers() })}/invite/${encodeURIComponent(slug)}?e=${inviteExp}&t=${inviteToken(access.org.id, inviteExp)}`;
 
   // AI 用量（api_usage，migration 006）；預算欄位另查，006 未跑時不影響上面的告知設定
   const today = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
@@ -160,7 +178,10 @@ export default async function SettingsPage({
           <code>supabase/migrations/006_api_usage.sql</code>。
         </p>
       )}
-      {error && error !== 'budget' && error !== 'ai' && (
+      {error === 'admin' && (
+        <p className="card mb-4 border-red-200 bg-red-50 text-sm text-red-700">移除管理員失敗，請再試一次。</p>
+      )}
+      {error && error !== 'budget' && error !== 'ai' && error !== 'admin' && (
         <p className="card mb-4 border-red-200 bg-red-50 text-sm text-red-700">
           儲存失敗——<code>org_settings</code> 表可能尚未建立，請在 Supabase SQL Editor 執行{' '}
           <code>supabase/migrations/012_orgs.sql</code>。
@@ -373,6 +394,46 @@ export default async function SettingsPage({
         </p>
       </section>
       </>)}
+
+      <section className="card mb-6 space-y-3">
+        <h2 className="card-title">管理員</h2>
+        <ul className="divide-y divide-gray-100 text-sm">
+          {admins.map((m) => (
+            <li key={m.line_user_id} className="flex min-h-11 items-center justify-between gap-2">
+              <span>
+                {m.display_name ?? (m.role === 'owner' ? '擁有者' : '（未命名）')}
+                {m.line_user_id === me && <span className="text-gray-500">（你）</span>}
+              </span>
+              <span className="flex items-center gap-2">
+                <OutlineBadge>{m.role === 'owner' ? '擁有者' : '管理員'}</OutlineBadge>
+                {canManageAdmins && m.role !== 'owner' && (
+                  <form action="/api/settings" method="post">
+                    <input type="hidden" name="org" value={access.org.slug} />
+                    <input type="hidden" name="remove_admin" value={m.line_user_id} />
+                    <button className="btn text-xs">移除</button>
+                  </form>
+                )}
+              </span>
+            </li>
+          ))}
+        </ul>
+        {canManageAdmins && (
+          <div className="space-y-2 border-t border-gray-100 pt-3">
+            <p className="text-sm text-gray-700">
+              邀請同事一起管理：把連結傳給他，他用 LINE 登入後按一下就加入。
+              多一位管理員，你換手機或離職時，公司還進得去後台。
+            </p>
+            <a className="btn-primary" href={`https://line.me/R/share?text=${encodeURIComponent(`邀請你成為「${access.org.name}」群記的管理員：\n${inviteUrl}`)}`}>
+              用 LINE 傳送邀請
+            </a>
+            <input className="input block w-full text-xs" readOnly value={inviteUrl} aria-label="邀請連結" />
+            <p className="text-xs text-gray-500">
+              連結 {INVITE_HOURS / 24} 天內有效，拿到連結的人都能加入。傳錯人的話，在上面按「移除」就好。
+              被邀的人只會拿到群組助理的權限，看不到考勤和薪資。
+            </p>
+          </div>
+        )}
+      </section>
 
       {/* 抽取品質：這是產品價值的健康指標，比用量更重要——
           用量告訴你花了多少錢，這裡告訴你那些錢有沒有換到有用的東西。 */}

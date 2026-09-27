@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { redirectTo } from '@/http';
-import { moduleAccess, orgSettings } from '@/org/orgs';
-import { attendAdminToggle, enabledModuleIds, isMissingModulesColumn } from '@/org/module-ids';
+import { moduleAccess } from '@/org/orgs';
+import { isMissingModulesColumn, moduleAdminToggle } from '@/org/module-ids';
 
 // 員工管理（對等舊 switchEnable / setSalary / switchPermissions——那三支在舊後端
 // 根本不存在（前端呼叫了未部署的 action），這裡正式落地並收緊授權）。
@@ -64,8 +64,7 @@ export async function POST(req: NextRequest) {
       return redirectTo(`${back}?emp=${id}&err=ERR_WRITE`);
     }
     const cur = row as { role: string; modules: string[] | null } | null;
-    const orgMods = enabledModuleIds((await orgSettings(access.org.id)).modules);
-    const next = attendAdminToggle(cur, orgMods, action === 'admin_on');
+    const next = moduleAdminToggle(cur, 'attend', action === 'admin_on');
     const where = (q: any) => q.eq('org_id', access.org.id).eq('line_user_id', emp.line_user_id);
     const { error: writeErr } =
       next === 'keep'

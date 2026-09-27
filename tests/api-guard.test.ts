@@ -16,6 +16,7 @@ const API = join(ROOT, 'src/app/api');
 //   webhook＝LINE 簽章、login＝密碼、liff＝LINE ID token、auth＝LINE Login 流程、
 //   digest＝cron ?key、attend＝考勤模組自己的 orgAdminAccess 三重把關
 //   org/create＝自助註冊（還沒有 org 可綁，自己驗 liffUser）
+//   org/invite＝接受管理員邀請（還不是成員，憑連結簽章＋到期時間，自己驗 liffUser）
 //   platform/＝平台管理（跨所有 org，不屬於任何一個 org，自己驗 isPlatformOwner）
 //   health/＝健康檢查（公開、唯讀、只回 ok 布林，不碰任何 org 資料）
 //   expense/＝報帳模組（非群組助理，不以 group_id 為鍵）：orgAdminAccess(表單 org) 把關＋查詢一律 .eq('org_id')，同考勤
@@ -95,7 +96,7 @@ test('enabledModuleIds：依欄位開模組，順序固定為 gs → attend，�
 
 // ── 管理權依模組授權（migration 028）──
 // 在考勤「員工管理」把會計設成管理員，原本會連群組助理一起給（能讀全公司 LINE 群組整理）。
-import { attendAdminToggle, isMissingModulesColumn, scopedModuleIds } from '../src/org/module-ids';
+import { moduleAdminToggle, isMissingModulesColumn, scopedModuleIds } from '../src/org/module-ids';
 
 test('考勤／報帳後台 API 一律走 moduleAccess，不准用裸的 orgAdminAccess', () => {
   const bad: string[] = [];
@@ -121,27 +122,37 @@ test('scopedModuleIds：授權了但公司沒開的模組不算；未知值忽�
   assert.deepEqual(scopedModuleIds(['gs'], 'admin', []), []);
 });
 
-test('attendAdminToggle：新人設為管理員＝只給考勤', () => {
-  assert.deepEqual(attendAdminToggle(null, ['gs', 'attend'], true), ['attend']);
-  assert.equal(attendAdminToggle(null, ['gs', 'attend'], false), 'keep');
+test('moduleAdminToggle：新人設為管理員＝只給考勤', () => {
+  assert.deepEqual(moduleAdminToggle(null, 'attend', true), ['attend']);
+  assert.equal(moduleAdminToggle(null, 'attend', false), 'keep');
 });
 
-test('attendAdminToggle：owner 永遠不動', () => {
-  assert.equal(attendAdminToggle({ role: 'owner', modules: null }, ['gs', 'attend'], false), 'keep');
-  assert.equal(attendAdminToggle({ role: 'owner', modules: ['gs'] }, ['gs', 'attend'], true), 'keep');
+test('moduleAdminToggle：owner 永遠不動', () => {
+  assert.equal(moduleAdminToggle({ role: 'owner', modules: null }, 'attend', false), 'keep');
+  assert.equal(moduleAdminToggle({ role: 'owner', modules: ['gs'] }, 'attend', true), 'keep');
 });
 
-test('attendAdminToggle：只動考勤那一格，不碰其他模組的權限', () => {
+test('moduleAdminToggle：只動考勤那一格，不碰其他模組的權限', () => {
   // 舊管理員（null＝整家公司）按移除 → 完整撤權（改版前語意；否則群組助理權限留著、徽章卻消失）
-  assert.equal(attendAdminToggle({ role: 'admin', modules: null }, ['gs', 'attend'], false), 'delete');
-  assert.equal(attendAdminToggle({ role: 'admin', modules: null }, ['gs', 'attend'], true), 'keep');
+  assert.equal(moduleAdminToggle({ role: 'admin', modules: null }, 'attend', false), 'delete');
+  assert.equal(moduleAdminToggle({ role: 'admin', modules: null }, 'attend', true), 'keep');
   // 只管群組助理的人加上考勤
-  assert.deepEqual(attendAdminToggle({ role: 'admin', modules: ['gs'] }, ['gs', 'attend'], true), ['gs', 'attend']);
+  assert.deepEqual(moduleAdminToggle({ role: 'admin', modules: ['gs'] }, 'attend', true), ['gs', 'attend']);
   // 拿掉最後一格 → 整列刪掉
-  assert.equal(attendAdminToggle({ role: 'admin', modules: ['attend'] }, ['gs', 'attend'], false), 'delete');
-  assert.equal(attendAdminToggle({ role: 'admin', modules: null }, ['attend'], false), 'delete');
+  assert.equal(moduleAdminToggle({ role: 'admin', modules: ['attend'] }, 'attend', false), 'delete');
+  assert.equal(moduleAdminToggle({ role: 'admin', modules: null }, 'attend', false), 'delete');
   // 同時管群組助理＋考勤（新制）的人拿掉考勤 → 只剩群組助理
-  assert.deepEqual(attendAdminToggle({ role: 'admin', modules: ['gs', 'attend'] }, ['gs', 'attend'], false), ['gs']);
+  assert.deepEqual(moduleAdminToggle({ role: 'admin', modules: ['gs', 'attend'] }, 'attend', false), ['gs']);
+});
+
+test('moduleAdminToggle：群組助理邀請／移除只動 gs 那一格', () => {
+  // 被邀的新人只拿群組助理，看不到考勤薪資
+  assert.deepEqual(moduleAdminToggle(null, 'gs', true), ['gs']);
+  // 已經只管考勤的會計被邀進群組助理 → 兩個都有
+  assert.deepEqual(moduleAdminToggle({ role: 'admin', modules: ['attend'] }, 'gs', true), ['attend', 'gs']);
+  // 移除群組助理管理員：考勤權限留著
+  assert.deepEqual(moduleAdminToggle({ role: 'admin', modules: ['attend', 'gs'] }, 'gs', false), ['attend']);
+  assert.equal(moduleAdminToggle({ role: 'admin', modules: ['gs'] }, 'gs', false), 'delete');
 });
 
 test('isMissingModulesColumn：只有「欄位不存在」才退回舊查詢，網路錯誤不行', () => {
@@ -282,4 +293,21 @@ test('頁面裡不放 <script dangerouslySetInnerHTML>：站內換頁進來時 R
   };
   walk(join('src', 'app'));
   assert.deepEqual(bad, []);
+});
+
+// ── 管理員邀請連結：拿到連結＝能進公司讀全部群組，簽章與到期是唯一的門 ──
+import { inviteToken, verifyInviteToken } from '../src/core/liff';
+
+test('verifyInviteToken：有效期內通過；過期、換公司、改到期時間、亂填都擋', () => {
+  process.env.SESSION_SECRET ??= 'test-secret';
+  const exp = Math.floor(Date.now() / 1000) + 3600;
+  const t = inviteToken('org-a', exp);
+  assert.equal(verifyInviteToken('org-a', String(exp), t), true);
+  assert.equal(verifyInviteToken('org-b', String(exp), t), false); // 別家公司
+  assert.equal(verifyInviteToken('org-a', String(exp + 86_400), t), false); // 自己把期限往後改
+  const old = Math.floor(Date.now() / 1000) - 1;
+  assert.equal(verifyInviteToken('org-a', String(old), inviteToken('org-a', old)), false); // 過期
+  assert.equal(verifyInviteToken('org-a', String(exp), 'x'.repeat(32)), false);
+  assert.equal(verifyInviteToken('org-a', 'abc', t), false);
+  assert.equal(verifyInviteToken('org-a', String(exp), null), false);
 });

@@ -9,7 +9,8 @@ export function redirectTo(path: string, status = 303): NextResponse {
 
 // 對外公開網址（OAuth redirect_uri 等必須是絕對網址的場合）。
 // 從轉發標頭推導；代理不轉發 host 時以 APP_BASE_URL 覆寫。
-export function publicBase(req: NextRequest): string {
+// server component 沒有 req：傳 { headers: await headers() }。
+export function publicBase(req: { headers: { get(name: string): string | null } }): string {
   const env = process.env.APP_BASE_URL?.replace(/\/$/, '');
   if (env) return env;
   const proto = req.headers.get('x-forwarded-proto') ?? 'https';

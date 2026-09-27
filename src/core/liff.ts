@@ -69,6 +69,16 @@ export function verifyClaimToken(groupId: string, t: string | undefined): boolea
   return timingSafeEqual(Buffer.from(t), Buffer.from(expect));
 }
 
+// 管理員邀請連結：簽「公司＋到期時間」，過期自動失效，不用建表。
+// ponytail: 期限內可重複使用、不能單獨撤銷——傳錯人就在設定頁「移除」；要單次使用再加 invites 表
+export const INVITE_HOURS = 72;
+export const inviteToken = (orgId: string, exp: number) => sign(`invite:${orgId}:${exp}`).slice(0, 32);
+export function verifyInviteToken(orgId: string, exp: unknown, t: unknown): boolean {
+  const e = Number(exp);
+  if (typeof t !== 'string' || t.length !== 32 || !Number.isInteger(e) || e < Date.now() / 1000) return false;
+  return timingSafeEqual(Buffer.from(t), Buffer.from(inviteToken(orgId, e)));
+}
+
 export function sessionCookieValue(userId: string): { name: string; value: string; maxAge: number } {
   const exp = Math.floor(Date.now() / 1000) + TTL;
   const payload = `${userId}.${exp}`;

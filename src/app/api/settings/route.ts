@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { redirectTo } from '@/http';
 import { invalidateSettings } from '@/core/settings';
-import { gsAccess } from '@/org/orgs';
+import { gsAccess, orgRole } from '@/org/orgs';
+import { moduleAdminToggle } from '@/org/module-ids';
 
 // 設定分兩種（商業計劃 G1）：
 //   進群告知 → 每家公司各一份（org_settings），該 org 管理員自己改
@@ -14,6 +15,25 @@ export async function POST(req: NextRequest) {
   const back = `${access.base}/settings`;
   const platformOnly = form.has('ai') || form.has('monthly_budget');
   if (platformOnly && access.via !== 'platform') return NextResponse.json({ error: '沒有權限' }, { status: 403 });
+
+  // 移除群組助理管理員：只有擁有者（或平台擁有者）能按；只拿掉 gs 那一格，考勤權限不動，擁有者永遠移不掉
+  if (form.has('remove_admin')) {
+    if (access.via !== 'platform' && (await orgRole(access.org.id)) !== 'owner')
+      return NextResponse.json({ error: '只有擁有者可以移除管理員' }, { status: 403 });
+    const db = getDb();
+    const where = (q: any) => q.eq('org_id', access.org.id).eq('line_user_id', String(form.get('remove_admin')));
+    const { data: cur, error: readErr } = await where(db.from('org_members').select('role, modules')).maybeSingle();
+    if (readErr) return redirectTo(`${back}?error=admin`);
+    const next = moduleAdminToggle(cur, 'gs', false);
+    const { error } =
+      next === 'keep'
+        ? { error: null }
+        : next === 'delete'
+          ? await where(db.from('org_members').delete()).eq('role', 'admin')
+          : await where(db.from('org_members').update({ modules: next }));
+    if (error) console.error('移除管理員失敗', error);
+    return redirectTo(error ? `${back}?error=admin` : `${back}?saved=1`);
+  }
 
   // AI 設定（migration 011）：模型與免費層上限。金鑰不走這條，永遠只讀環境變數。
   if (form.has('ai')) {
