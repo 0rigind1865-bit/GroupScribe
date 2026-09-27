@@ -127,9 +127,9 @@ export function SoftNav() {
 
       busy.add(f);
       setSending((x) => x + 1);
-      // 成功時表單會隨內容區重建而換新；這條保險絲只防「換頁卡住」讓按鈕永遠鎖著。
+      // 等伺服器回話的整段期間表單都鎖著（同原生送出）：匯入聊天記錄可能跑好幾分鐘，
+      // 中途解鎖會讓人再按一次、整批訊息重複入庫（2026-09-27 最終審查）。
       // ponytail: 換頁重建也會解鎖另一張還在送出中的表單——跟以前整頁送出一樣，沒再多做
-      setTimeout(unlock, 15_000);
       const fromPath = location.pathname;
       // Accept 跟原生表單一樣要 HTML：有些端點（/api/profile、/api/files/classify）看它決定回轉址還是 JSON
       fetch(action, { method: 'POST', body: fd, credentials: 'same-origin', headers: { Accept: 'text/html' } })
@@ -145,6 +145,8 @@ export function SoftNav() {
               unlock();
               return start(() => router.refresh());
             }
+            // 成功時表單會隨內容區重建而換新；這條保險絲只防「伺服器回了、換頁卻卡住」讓按鈕永遠鎖著
+            setTimeout(unlock, 15_000);
             return go(to.pathname + to.search, true);
           }
           // 沒轉址又是 HTML＝登入過期被改寫成登入頁：整頁重載，讓登入頁接手（登入完會回到這一頁）
@@ -161,7 +163,8 @@ export function SoftNav() {
         })
         .catch(() => {
           unlock();
-          alert('網路不穩，沒有送出。請再按一次。');
+          // 斷線不代表伺服器沒收到（長時間的匯入會照樣跑完）：不叫人直接重送，先看結果
+          alert('連線中斷，不確定有沒有送出。請先重新整理看結果，再決定要不要重送。');
         })
         .finally(() => setSending((x) => x - 1));
     };
