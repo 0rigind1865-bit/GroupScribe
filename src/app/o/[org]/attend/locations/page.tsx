@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireModule } from '@/org/orgs';
 import { Banner } from '@/app/ui/banner';
 import { Empty } from '@/app/ui/empty';
+import { UseHere } from './use-here';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,14 +63,8 @@ export default async function LocationsPage({
             <input className="input w-24" type="number" name="radius" defaultValue={100} min={10} max={5000} />
           </label>
           <button className="btn-primary px-3 py-1.5">新增</button>
-          <button className="btn px-3 py-1.5" type="button" id="use-here">用目前位置</button>
+          <UseHere />
         </form>
-        {/* 一小段 inline script 填座標：不值得為此開一個 client component（先例：theme toggle 類微互動） */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `document.getElementById('use-here').addEventListener('click',function(){var b=this;b.textContent='定位中…';navigator.geolocation.getCurrentPosition(function(p){document.getElementById('loc-lat').value=p.coords.latitude.toFixed(6);document.getElementById('loc-lng').value=p.coords.longitude.toFixed(6);b.textContent='用目前位置';},function(e){b.textContent='定位失敗，手動輸入';},{enableHighAccuracy:true,timeout:15000});});`,
-          }}
-        />
         <p className="mt-2 text-xs text-gray-400">
           座標可從 Google Maps 長按取得（右鍵 → 複製座標），或在現場按「用目前位置」。
         </p>

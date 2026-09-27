@@ -12,11 +12,20 @@ export function BatchBar({
   back,
   actions,
   projects,
+  total,
+  group,
+  before,
 }: {
   kind: 'task' | 'event' | 'note' | 'file' | 'inbox'; // inbox：三表混排，ids 帶 `kind:id` 前綴
   back: string;
   actions: BatchAction[];
   projects?: string[]; // 檔案頁：指定專案的 datalist 候選
+  /** 符合條件的全部筆數（頁面只顯示一部分時給）：全選後可「選取全部 N 筆」，帶 all=1 由伺服器照條件處理 */
+  total?: number;
+  /** 「全部」的範圍：單群時帶群組 id（伺服器會再驗是不是本公司的群） */
+  group?: string;
+  /** 「全部」的時間截點（頁面渲染當下）：之後才進來的不算 */
+  before?: string;
 }) {
   return (
     <form
@@ -27,7 +36,8 @@ export function BatchBar({
     >
       <input type="hidden" name="kind" value={kind} />
       <input type="hidden" name="back" value={back} />
-      <SelectAll />
+      {group && <input type="hidden" name="group" value={group} />}
+      <SelectAll total={total} before={before} />
       <span className="text-gray-300">|</span>
       {/* 「勾選後批次：」拿掉了——這列現在只在勾選後才浮出，語境自明（principles.md：別讓我想） */}
       {actions.map((a) => (

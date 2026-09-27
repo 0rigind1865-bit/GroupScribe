@@ -15,12 +15,36 @@ export async function POST(req: NextRequest) {
   const ids = form.getAll('ids').map(String).filter(Boolean);
   const backRaw = String(form.get('back') ?? '');
   const back = backRaw.startsWith('/') && !backRaw.startsWith('//') ? backRaw : access.base;
-  if (!ids.length) return redirectTo(back);
 
   const db = getDb();
   const now = new Date().toISOString();
   const TABLE: Record<string, string> = { task: 'tasks', event: 'events', note: 'notes' };
   const table = TABLE[kind];
+
+  // 收件匣「選取全部 N 筆」（all=1）：不靠 ids，照收件匣頁同一組條件處理全部——連沒顯示的也算。
+  // 範圍一律綁本公司的群；帶了 group 卻不是本公司的群＝什麼都不做（不擴大成整家公司）。
+  // before：頁面算出 N 筆的時間點。用 updated_at 比：之後才進來的、被 AI 改過又重標待確認的都不算（你還沒看過）
+  if (kind === 'inbox' && form.get('all') === '1' && (action === 'confirm' || action === 'ignore')) {
+    const g = String(form.get('group') ?? '');
+    if (g && !access.groupIds.includes(g)) return redirectTo(back);
+    const scope = g ? [g] : access.groupIds;
+    const before = String(form.get('before') ?? '');
+    const cutoff = before && !Number.isNaN(Date.parse(before)) ? before : now;
+    const patch = action === 'confirm' ? { needs_confirmation: false } : { status: 'ignored' };
+    const pending = {
+      events: (q: any) => q.neq('status', 'ignored'),
+      tasks: (q: any) => q.eq('status', 'open'),
+      notes: (q: any) => q.eq('status', 'active'),
+    };
+    for (const [t, only] of Object.entries(pending)) {
+      const { error } = await only(
+        db.from(t).update({ ...patch, updated_at: now }).in('group_id', scope).eq('needs_confirmation', true).lte('updated_at', cutoff),
+      );
+      if (error) console.error('收件匣全部處理失敗', t, action, error);
+    }
+    return redirectTo(back);
+  }
+  if (!ids.length) return redirectTo(back);
 
   if (kind === 'inbox' && (action === 'confirm' || action === 'ignore')) {
     // 收件匣全選：依前綴拆回三表，各下一次 update（同樣綁 group_id ∈ 本 org）

@@ -244,3 +244,42 @@ test('停用的員工不給打卡面向（除非是唯一身分）；/a/expense 
   assert.match(src, /if \(!list\.length && employees\.length\)/, '只剩停用一種身分的人要落回 /a 看「已停用」');
   assert.match(read('src/app/a/expense/page.tsx'), /if \(!me\) notFound\(\);/);
 });
+
+// ── 不整頁重載＋收件匣選取全部 ──
+test('收件匣「選取全部」只在本公司的群裡動手（all=1 不靠 ids，範圍綁 access.groupIds）', () => {
+  const src = read('src/app/api/batch/route.ts');
+  const i = src.indexOf("form.get('all') === '1'");
+  assert.ok(i > 0, '找不到 all=1 分支');
+  const body = src.slice(i, src.indexOf('if (!ids.length)', i));
+  assert.match(body, /if \(g && !access\.groupIds\.includes\(g\)\) return redirectTo\(back\);/, 'group 不是本公司的群要什麼都不做，不能擴大成整家公司');
+  assert.match(body, /\.in\('group_id', scope\)/);
+  assert.match(body, /\.eq\('needs_confirmation', true\)/, '全部＝待確認的全部，不能動到已確認的');
+  assert.match(body, /\.lte\('updated_at', cutoff\)/, '畫面算出 N 筆之後才進來、或被 AI 改過的不能算進「全部」');
+});
+
+test('全站換頁元件掛在 root layout；伺服器端點（/api、/go）一律整頁、不接手', () => {
+  assert.match(read('src/app/layout.tsx'), /<SoftNav \/>/);
+  // 換頁完成要重建內容區：不重建的話只換 ?note= 或送出回同一頁時，下拉選單與全選狀態會沿用上一筆（會寫錯資料）
+  assert.match(read('src/app/layout.tsx'), /<Remount>\{children\}<\/Remount>/);
+  assert.doesNotMatch(read('src/app/ui/soft-nav.tsx'), /\.reset\(\)/, '不要用 form.reset()：<select> 會被打回第一次渲染的值');
+  const src = read('src/app/ui/soft-nav.tsx');
+  assert.match(src, /const SERVER = \/\^\\\/\(api\|go\|_next\)/);
+  assert.match(src, /e\.defaultPrevented/, '要讓身分列「關閉」的收合腳本與 React 元件先處理');
+  // f.action／f.target 會被 name="action" 的按鈕蓋掉（批次列、報帳、員工管理），一律讀 HTML 屬性
+  assert.doesNotMatch(src, /\bf\.(action|target|method)\b/, '不要讀 form 的 IDL 屬性');
+  // 內容區跟著網址重建（含上一頁／下一頁），不只靠換頁完成事件
+  assert.match(src, /key=\{`\$\{path\}\?\$\{q\}\|\$\{n\}`\}/);
+});
+
+test('頁面裡不放 <script dangerouslySetInnerHTML>：站內換頁進來時 React 插入的 script 不會執行（只有 root layout 可以）', () => {
+  const bad: string[] = [];
+  const walk = (dir: string) => {
+    for (const f of readdirSync(join(ROOT, dir))) {
+      const p = join(dir, f);
+      if (statSync(join(ROOT, p)).isDirectory()) walk(p);
+      else if (p.endsWith('.tsx') && p !== join('src', 'app', 'layout.tsx') && read(p).includes('dangerouslySetInnerHTML')) bad.push(p);
+    }
+  };
+  walk(join('src', 'app'));
+  assert.deepEqual(bad, []);
+});

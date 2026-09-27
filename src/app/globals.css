@@ -172,6 +172,22 @@ html {
     border-radius: 9999px;
     animation: spin 0.7s linear infinite;
   }
+  /* 站內換頁中（soft-nav.tsx）：頂端一條細進度線，點了有反應 */
+  .softnav-bar {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 60;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #34d399, transparent);
+    background-size: 50% 100%;
+    background-repeat: no-repeat;
+    animation: softnav 0.9s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes softnav {
+    from { background-position: -50% 0; }
+    to { background-position: 150% 0; }
+  }
   /* 表單送出後按鈕變「轉圈」：layout.tsx 的 3 行 script 在 submit 時加 .is-submitting */
   form.is-submitting button[type='submit'],
   form.is-submitting button:not([type]) {

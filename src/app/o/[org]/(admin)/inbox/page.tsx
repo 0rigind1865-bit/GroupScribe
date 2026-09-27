@@ -50,6 +50,8 @@ export default async function InboxPage({
   const ids = (groupRows ?? []).map((g: any) => g.group_id as string);
   const group = groupParam && ids.includes(groupParam) ? groupParam : undefined;
   const filt = (q: any) => (group ? q.eq('group_id', group) : q.in('group_id', ids));
+  // 「選取全部 N 筆」的時間截點：在算 N 的查詢之前記下，之後才進來或被改的不算（src/app/api/batch/route.ts）
+  const asof = new Date().toISOString();
   const [ev, tk, nt] = await Promise.all([
     filt(db.from('events').select('*', { count: 'exact' }).eq('needs_confirmation', true).neq('status', 'ignored'))
       .order('created_at', { ascending: false }).limit(LIMIT),
@@ -109,6 +111,9 @@ export default async function InboxPage({
         <BatchBar
           kind="inbox"
           back={back}
+          total={total}
+          group={group}
+          before={asof}
           actions={[
             { action: 'confirm', label: '確認' },
             { action: 'ignore', label: '忽略', danger: true },
@@ -195,7 +200,9 @@ export default async function InboxPage({
       </div>
 
       {total > rows.length && (
-        <p className="mt-4 text-center text-sm text-gray-400">先處理這 {rows.length} 筆，確認後重新整理載入下一批。</p>
+        <p className="mt-4 text-center text-sm text-gray-400">
+          先顯示最新 {rows.length} 筆，處理完會自動補上下一批。要一次處理全部 {total} 筆：按右上「選取」→ 勾任一筆 → 底下「全選」→「選取全部 {total} 筆」。
+        </p>
       )}
     </main>
   );
