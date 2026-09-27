@@ -211,6 +211,22 @@ html {
     border-radius: 9999px;
     animation: spin 0.7s linear infinite;
   }
+  /* 載入畫面的貓頭鷹（ui/spinner.tsx）：臉往右轉到後腦勺→停一下→轉回來→換左邊。
+     轉的角度 θ 換成「平移 100·sinθ、橫向縮 cosθ」，0°/45°/90° 三格就夠像球面在轉。
+     顏色＝標誌的綠，兩種主題都看得清楚，不走 remap。 */
+  .owl-loader {
+    color: #0e9462;
+  }
+  @keyframes owl-look {
+    0%, 41%, 50%, 91%, 100% { transform: translateX(0) scaleX(1); }
+    7%, 34% { transform: translateX(70.7px) scaleX(0.707); }
+    14%, 27% { transform: translateX(100px) scaleX(0); }
+    57%, 84% { transform: translateX(-70.7px) scaleX(0.707); }
+    64%, 77% { transform: translateX(-100px) scaleX(0); }
+  }
+  .owl-face {
+    animation: owl-look 2.8s linear infinite;
+  }
   /* 站內換頁中（soft-nav.tsx）：頂端一條細進度線，點了有反應 */
   .softnav-bar {
     position: fixed;
@@ -422,6 +438,9 @@ html {
     .spinner,
     .is-clicked::before {
       animation-duration: 1.6s;
+    }
+    .owl-face {
+      animation-duration: 6s;
     }
     /* 官網底部 CTA 讓位給示範：不往下滑走，原地淡出 */
     [data-cta] {
