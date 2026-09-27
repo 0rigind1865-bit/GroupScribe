@@ -181,7 +181,10 @@ export default async function SettingsPage({
       {error === 'admin' && (
         <p className="card mb-4 border-red-200 bg-red-50 text-sm text-red-700">移除管理員失敗，請再試一次。</p>
       )}
-      {error && error !== 'budget' && error !== 'ai' && error !== 'admin' && (
+      {error === 'name' && (
+        <p className="card mb-4 border-red-200 bg-red-50 text-sm text-red-700">組織名稱要 2～40 個字，請再試一次。</p>
+      )}
+      {error && error !== 'budget' && error !== 'ai' && error !== 'admin' && error !== 'name' && (
         <p className="card mb-4 border-red-200 bg-red-50 text-sm text-red-700">
           儲存失敗——<code>org_settings</code> 表可能尚未建立，請在 Supabase SQL Editor 執行{' '}
           <code>supabase/migrations/012_orgs.sql</code>。
@@ -394,6 +397,16 @@ export default async function SettingsPage({
         </p>
       </section>
       </>)}
+
+      {canManageAdmins && (
+        <form action="/api/settings" method="post" className="card mb-6 space-y-3">
+          <h2 className="card-title">組織名稱</h2>
+          <input type="hidden" name="org" value={access.org.slug} />
+          <input className="input block w-full" name="org_name" defaultValue={access.org.name} required minLength={2} maxLength={40} aria-label="組織名稱" />
+          <p className="text-xs text-gray-500">會顯示在後台頂端與邀請訊息裡。只有擁有者能改。</p>
+          <button className="btn-primary">儲存名稱</button>
+        </form>
+      )}
 
       <section className="card mb-6 space-y-3">
         <h2 className="card-title">管理員</h2>

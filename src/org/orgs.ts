@@ -32,6 +32,11 @@ export async function orgBySlug(slug: string): Promise<Org | null> {
   return org;
 }
 
+/** 改名後呼叫：不等 30 秒 TTL，存完回到頁面就看到新名字 */
+export function forgetOrg(slug: string) {
+  cache.delete(slug);
+}
+
 /** gs_auth 密碼 session 是否有效（平台擁有者） */
 export async function isPlatformOwner(): Promise<boolean> {
   return verifyAdminSession((await cookies()).get('gs_auth')?.value);

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/db';
 import { redirectTo } from '@/http';
 import { invalidateSettings } from '@/core/settings';
-import { gsAccess, orgRole } from '@/org/orgs';
+import { forgetOrg, gsAccess, orgRole } from '@/org/orgs';
 import { moduleAdminToggle } from '@/org/module-ids';
 
 // 設定分兩種（商業計劃 G1）：
@@ -33,6 +33,18 @@ export async function POST(req: NextRequest) {
           : await where(db.from('org_members').update({ modules: next }));
     if (error) console.error('移除管理員失敗', error);
     return redirectTo(error ? `${back}?error=admin` : `${back}?saved=1`);
+  }
+
+  // 組織改名：跟移除管理員同一條門檻（擁有者或平台擁有者）；長度規則比照 /api/org/create
+  if (form.has('org_name')) {
+    if (access.via !== 'platform' && (await orgRole(access.org.id)) !== 'owner')
+      return NextResponse.json({ error: '只有擁有者可以改組織名稱' }, { status: 403 });
+    const name = String(form.get('org_name')).trim();
+    if (name.length < 2 || name.length > 40) return redirectTo(`${back}?error=name`);
+    const { error } = await getDb().from('orgs').update({ name }).eq('id', access.org.id);
+    if (error) console.error('組織改名失敗', error);
+    forgetOrg(access.org.slug);
+    return redirectTo(error ? `${back}?error=name` : `${back}?saved=1`);
   }
 
   // AI 設定（migration 011）：模型與免費層上限。金鑰不走這條，永遠只讀環境變數。
