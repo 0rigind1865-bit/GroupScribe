@@ -454,7 +454,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
 
 ### 一句話
 
-身分切換「個人／管理兩層」全站做完，設計圖對齊到 **v21**。Fable 審查跑了 3 輪，最後再做一次回歸審查，所有 critical／high 都修掉了。180 個測試、型別檢查、正式編譯全綠。24 個 commit 都在本機，**沒有 push、沒有部署**。
+身分切換「個人／管理兩層」全站做完，設計圖對齊到 **v21**。Fable 審查跑了 3 輪，最後再做一次回歸審查，所有 critical／high 都修掉了。180 個測試、型別檢查、正式編譯全綠。今晚 26 個 commit 都在本機，**沒有 push、沒有部署**。
 
 ### 你醒來要做的事（照順序）
 
@@ -512,7 +512,7 @@ npm test：130 pass / 0 fail；typecheck 綠；build（.next-verify）綠
    - **我選 A**：先問會計有沒有靠這個欄位名，沒有再改。
 3. **預設公司的名字現在叫「預設組織」**（身分列、選單、分頁標題都會看到）
    - 要改成真名，在 Supabase 的 SQL Editor 執行這一行（把引號裡換成公司名）：
-     `update orgs set name = '文輝舞台技術' where slug = 'main';`
+     `update orgs set name = '你的公司名' where slug = 'main';`
    - 今晚規定不能寫正式資料庫，所以沒幫你改。
 
 ### 測試結果
