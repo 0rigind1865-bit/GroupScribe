@@ -14,6 +14,7 @@ export type Receipt = {
   vendor: string;
   category: string;
   invoice_no: string;
+  duplicate?: boolean; // 這張之前記過了、這次沒再記（只給 1:1 回覆用）
 };
 
 const INVOICE_RE = /^[A-Z]{2}\d{8}$/;

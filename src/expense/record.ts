@@ -24,7 +24,7 @@ export async function receiptCategoriesOf(groupId: string): Promise<string[] | u
   return orgCategories(orgId);
 }
 
-/** 記成功回 Receipt（給 1:1 回覆用）；不是收據、不該記、重複、或寫入失敗 → null */
+/** 記成功回 Receipt（給 1:1 回覆用）；之前記過的同一張 → duplicate: true；不是收據、不該記、重試、或寫入失敗 → null */
 export async function recordReceipt(a: {
   assetId: string;
   groupId: string;
@@ -37,6 +37,15 @@ export async function recordReceipt(a: {
   if (!orgId || !(await orgHasExpense(orgId))) return null;
   const r = parseReceipt(a.raw, taipeiDate(a.at), await orgCategories(orgId));
   if (!r) return null;
+  // 同一張收據重傳（同一張照片再丟一次、換個角度再拍）→ 不再記一筆，回一句讓本人知道。
+  // 有發票號碼就只比號碼（全國唯一）；沒有就比「同一人、同一天、同一家店、同金額」。
+  // ponytail: 真的有兩張一模一樣的無號碼收據時第二張會被擋——回覆裡教他到「我的報帳」自己新增
+  const same = getDb().from('expenses').select('id').eq('org_id', orgId);
+  const { data: dup } = await (r.invoice_no
+    ? same.eq('invoice_no', r.invoice_no)
+    : same.eq('line_user_id', a.groupId.slice(3)).eq('spent_on', r.spent_on).eq('amount', r.amount).eq('vendor', r.vendor)
+  ).limit(1);
+  if (dup?.length) return { ...r, duplicate: true };
   const { data, error } = await getDb()
     .from('expenses')
     .upsert(
@@ -97,6 +106,10 @@ export async function recordTextExpense(a: {
 // url：「我的報帳」連結；有的話金額不對可以自己去改，不用找管理者
 export function receiptReply(r: Receipt, url?: string | null): string {
   const md = `${Number(r.spent_on.slice(5, 7))}/${Number(r.spent_on.slice(8, 10))}`;
-  const head = `🧾 記好了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}`;
+  if (r.duplicate) {
+    const head = `🧾 這張收據記過了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}，這次不再重複記`;
+    return url ? `${head}\n真的是另一筆的話，請在這裡自己新增 👉 ${url}` : `${head}\n真的是另一筆的話，請跟管理者說`;
+  }
+  const head =`🧾 記好了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}`;
   return url ? `${head}\n查看或修改 👉 ${url}` : `${head}\n金額不對請跟管理者說`;
 }

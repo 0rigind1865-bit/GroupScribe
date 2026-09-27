@@ -74,6 +74,12 @@ test('receiptReply：有連結就附「查看或修改」，沒有就維持原�
   assert.doesNotMatch(receiptReply({ amount: 5, spent_on: '2026-09-05', vendor: '', category: '雜支', invoice_no: '' }), /（/);
 });
 
+test('receiptReply：重複的收據說「記過了」，並教他真的另一筆要自己新增', () => {
+  const r = { amount: 119, spent_on: '2026-09-27', vendor: '池上', category: '餐飲', invoice_no: '', duplicate: true };
+  assert.match(receiptReply(r, 'https://x/a/expense'), /^🧾 這張收據記過了：9\/27 餐飲 \$119（池上），這次不再重複記\n真的是另一筆的話，請在這裡自己新增 👉 https:\/\/x\/a\/expense$/);
+  assert.match(receiptReply(r), /請跟管理者說$/);
+});
+
 // ── v2 欄位（migration 023）的向後相容寫入 ──
 import { isMissingColumn, stripV2, withV2Fallback } from '../src/expense/store';
 
