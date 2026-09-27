@@ -8,6 +8,7 @@ import { Banner } from '@/app/ui/banner';
 import { PunchBadge } from '@/app/ui/badge';
 import { Empty } from '@/app/ui/empty';
 import { AttendLiffBoot, AttendShell } from './shell';
+import { itemsOf } from '@/org/surface-groups';
 import { shellData, todayLabel } from './shell-data';
 import { PunchPanel, type PunchLocation } from './punch-client';
 
@@ -44,6 +45,12 @@ export default async function AttendHome({
   const employees = await myEmployees();
   const emp = employees.find((e) => e.status === 'active') ?? employees[0];
   const { inGroups, ...sd } = await shellData(uid, emp, employees);
+  // 還能管公司的人（停用員工兼考勤管理員＝只管考勤的會計）：個人側空了、身分列不畫，要給一條回管理的路（最後審查）
+  const toAdmin = itemsOf(sd.groups, 'admin').length > 0 && (
+    <a href="/go/@admin" className="btn inline-block">
+      {tt('ROLE_ADMIN')} →
+    </a>
+  );
 
   // 尚未加入：唯一入口是管理員發的深連結（見 src/app/g/page.tsx 檔頭的權限說明），
   // 但已經走到這頁的人顯然拿到了連結，給他一個補填加入碼的路
@@ -65,6 +72,7 @@ export default async function AttendHome({
                   {tt('BACK_TO_GROUPS')}
                 </a>
               )}
+              {toAdmin}
             </div>
           }
         />
@@ -92,6 +100,7 @@ export default async function AttendHome({
                 {tt('BACK_TO_GROUPS')}
               </a>
             )}
+            {toAdmin}
           </div>
           {emp.status === 'pending' && (
             <a href="/a/join" className="inline-block text-xs text-gray-400 underline">

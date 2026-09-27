@@ -45,7 +45,8 @@ export function EmployeeSwitcher({ employees }: { employees: EmpOption[] }) {
 
   return (
     <details className="group relative">
-      <summary className={PILL} aria-label="切換員工">
+      {/* aria-label 會蓋掉膠囊上的字，要把目前選的人一起念出來（最後審查） */}
+      <summary className={PILL} aria-label={`切換員工：${label}`}>
         <span>{label}</span>
         <Chevron />
       </summary>

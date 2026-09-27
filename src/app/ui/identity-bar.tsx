@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { barState, hasRoleToggle, itemsOf, multiOrg, type Grouped, type Side } from '@/org/surface-groups';
 import { ROLE_ICON, TOOL_ICON, toolDesc, toolName, type Tt } from '@/org/surface-meta';
-import type { Surface } from '@/org/surfaces';
+import type { Surface, SurfaceId } from '@/org/surfaces';
 
 // 身分列（docs/identity-switcher-plan.md 第 2 節；畫布「身分切換提案 A」）：
 //   由左到右 角色開關 → 工具按鈕 → （電腦版的分頁）→ 情境膠囊（群組／員工）→ 右側（語言地球）
@@ -61,9 +61,13 @@ export const identityBarShown = (g: Grouped, side: Side) => !(side === 'me' && b
 export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot, contextSlot, rightSlot, dot, brand, closeHref }: IdentityBarProps) {
   if (!identityBarShown(groups, side)) return null;
   const items = itemsOf(groups, side);
-  const cur = items.find((s) => s.key === currentKey) ?? items[0];
+  // 目前這頁不在清單裡（非員工的老闆開 /a、不在群裡的人開 /g）：按鈕照實寫這一頁的工具，
+  // 選單裡沒有「目前那列」——否則第一個工具被當成目前、那列點了只會收合（最後審查）
+  const found = items.find((s) => s.key === currentKey);
+  const cur = found ?? items[0];
+  const curId: SurfaceId = found?.id ?? (currentKey in TOOL_ICON ? (currentKey as SurfaceId) : cur?.id);
   const dark = side === 'admin';
-  const hasMenu = items.length > 1;
+  const hasMenu = items.length > 1 || !found;
   // 公司名：管多家時一定帶；工具畫成純標題（沒有選單）時也帶——那是畫面上唯一說「你在管哪家」的地方（F9、T10 第 1 輪）
   const withOrg = side === 'admin' && !!cur?.orgName && (multiOrg(groups) || !hasMenu);
   // 第二行：公司名；平台段的工具（未認領的群）寫「平台」
@@ -75,10 +79,10 @@ export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot
   const tool = cur && (
     <>
       <span className="id-tile">
-        <Svg>{TOOL_ICON[cur.id]}</Svg>
+        <Svg>{TOOL_ICON[curId]}</Svg>
       </span>
       <span className="id-tool-text">
-        <span className="id-tool-name">{toolName(cur.id, tt)}</span>
+        <span className="id-tool-name">{toolName(curId, tt)}</span>
         {orgLine && <span className="id-tool-org">{orgLine}</span>}
       </span>
     </>
@@ -102,7 +106,7 @@ export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot
                   key={r}
                   className="id-role"
                   // 小點直達也帶 from：回程按「個人」才回得到剛離開的那一格（T10 第 2 輪）
-                  href={`/go/${r === 'admin' && typeof dot === 'string' ? encodeURIComponent(dot) : `@${r}`}?from=${encodeURIComponent(cur?.key ?? '')}`}
+                  href={`/go/${r === 'admin' && typeof dot === 'string' ? encodeURIComponent(dot) : `@${r}`}?from=${encodeURIComponent(found?.key ?? currentKey)}`}
                 >
                   <Svg size={15}>{ROLE_ICON[r]}</Svg>
                   {roleTt(r === 'me' ? 'ROLE_ME' : 'ROLE_ADMIN')}
@@ -119,7 +123,7 @@ export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot
         (hasMenu ? (
           // data-no-swipe 掛在 details：遮罩是 summary::before，在遮罩上滑動不該換分頁（T10 第 2 輪）
           <details className="id-menu" data-no-swipe="">
-            <summary className="id-tool" aria-label={`${toolName(cur.id, tt)}${orgLine ? ` · ${orgLine}` : ''}, ${tt('SWITCH_TOOL')}`}>
+            <summary className="id-tool" aria-label={`${toolName(curId, tt)}${orgLine ? ` · ${orgLine}` : ''}, ${tt('SWITCH_TOOL')}`}>
               {tool}
               <Chevron />
             </summary>
@@ -128,7 +132,7 @@ export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot
               <a className="id-close" href={here}>
                 {tt('CLOSE')}
               </a>
-              <Sections groups={groups} side={side} cur={cur} tt={tt} here={here} />
+              <Sections groups={groups} side={side} curKey={found?.key} tt={tt} here={here} />
               {total >= 2 && (
                 <a className="id-all" href="/?menu=1">
                   {tt(hasRoleToggle(groups) ? 'SEE_ALL_ROLES' : 'SEE_ALL_TOOLS')}
@@ -147,10 +151,10 @@ export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot
   );
 }
 
-function Sections({ groups, side, cur, tt, here }: { groups: Grouped; side: Side; cur: Surface; tt: Tt; here: string }) {
+function Sections({ groups, side, curKey, tt, here }: { groups: Grouped; side: Side; curKey?: string; tt: Tt; here: string }) {
   // 目前那列＝關閉（留在原頁）；不經 /go/——補進來的 key 不在清單裡，走 /go/ 會被送到別家（T10 第 1 輪）
   const row = (s: Surface) => (
-    <a key={s.key} className="id-row" href={s.key === cur.key ? here : `/go/${encodeURIComponent(s.key)}`} aria-current={s.key === cur.key ? 'page' : undefined}>
+    <a key={s.key} className="id-row" href={s.key === curKey ? here : `/go/${encodeURIComponent(s.key)}`} aria-current={s.key === curKey ? 'page' : undefined}>
       <span className="id-row-tile">
         <Svg size={20}>{TOOL_ICON[s.id]}</Svg>
       </span>
@@ -158,7 +162,7 @@ function Sections({ groups, side, cur, tt, here }: { groups: Grouped; side: Side
         <span className="id-row-name">{toolName(s.id, tt)}</span>
         <span className="id-row-desc">{s.injected ? '這家公司沒開這個工具，只有平台擁有者看得到' : toolDesc(s.id, tt)}</span>
       </span>
-      {s.key === cur.key && <Check />}
+      {s.key === curKey && <Check />}
     </a>
   );
   if (side === 'me')

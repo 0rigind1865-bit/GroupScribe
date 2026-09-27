@@ -188,3 +188,15 @@ test('管理側的角色開關跟員工端同語系（roleTt），工具名仍�
   assert.ok(html.includes('考勤'));
   assert.ok(html.includes('<a class="id-close" href="">'));
 });
+
+// ── 最後審查 ──
+test('目前頁不在清單（非員工的老闆開 /a、不在群裡的人開 /g）：按鈕照實寫這頁的工具，選單沒有冒用的「目前那列」', () => {
+  const list = [myexp('a'), groups, adm('gs', 'a', 'A'), adm('attend', 'a', 'A')];
+  const html = render(list, 'punch', 'me', 'zh-TW', { closeHref: '/a' });
+  assert.ok(html.includes('aria-label="打卡, 切換工具"'));
+  assert.ok(!html.includes('aria-current="page"><span class="id-row-tile">'), '選單裡不該有目前那列');
+  assert.ok(html.includes('href="/go/myexpense"'), '報帳那列要真的連過去，不是只收合');
+  assert.ok(html.includes('/go/@admin?from=punch'));
+  // 只有一個個人工具＋管理（有開關）：仍要有選單才去得了那個工具
+  assert.ok(render([groups, adm('attend', 'a', 'A')], 'punch', 'me').includes('href="/go/groups"'));
+});

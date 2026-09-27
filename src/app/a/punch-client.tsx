@@ -213,10 +213,11 @@ export function PunchPanel({ locations, labels, next = 'in' }: { locations: Punc
       </form>
 
       {/* 地圖容器：一開始就佔位（Leaflet 需要真實尺寸才算得出格線）；
-          只有「確定載不起來」才收掉，不留空白。 */}
+          只有「確定載不起來」才收掉，不留空白。
+          isolate：Leaflet 的圖層 z-index 400～1000 會壓過身分列抽屜（40）、語言選單與底部膠囊，自成一層就不會（最後審查） */}
       <div
         ref={mapEl}
-        className={mapFailed ? 'hidden' : 'mb-3 h-56 w-full overflow-hidden rounded-lg bg-gray-100'}
+        className={mapFailed ? 'hidden' : 'isolate mb-3 h-56 w-full overflow-hidden rounded-lg bg-gray-100'}
       />
 
       <div className="mb-3 rounded-lg bg-gray-50 p-2 text-xs">

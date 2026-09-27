@@ -16,15 +16,20 @@ export async function adminPendingKey(g: Grouped, uid: string): Promise<string |
   if (!hasRoleToggle(g)) return null;
   const hit = cache.get(uid);
   if (hit && Date.now() - hit.at < TTL) return hit.v;
-  const v = await check(g);
+  const v = await check(g, uid);
   cache.set(uid, { v, at: Date.now() });
   return v;
 }
 
-async function check(g: Grouped): Promise<string | null> {
+async function check(g: Grouped, uid: string): Promise<string | null> {
   const db = getDb();
   const exists = async (q: PromiseLike<{ data: unknown[] | null }>) => ((await q).data?.length ?? 0) > 0;
-  for (const o of g.admin.slice(0, 3)) {
+  // 只看「自己的」公司：真的是 org_members 的那幾家＋預設公司。平台擁有者的清單列著所有客戶，
+  // 不篩的話小點會把他帶去客戶的收件匣（最後審查）
+  const { data: rows } = await db.from('org_members').select('orgs(slug)').eq('line_user_id', uid);
+  const mine = new Set<string>([process.env.DEFAULT_ORG_SLUG ?? 'main']);
+  for (const r of (rows ?? []) as { orgs?: { slug?: string } | null }[]) if (r.orgs?.slug) mine.add(r.orgs.slug);
+  for (const o of g.admin.filter((x) => mine.has(x.slug)).slice(0, 3)) {
     const org = await orgBySlug(o.slug);
     if (!org) continue;
     const ids = new Set(o.items.map((i) => i.id));

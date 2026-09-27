@@ -24,6 +24,8 @@ function go(s: Surface, from: Surface | undefined, home: boolean) {
   // 跨角色時記「從哪一格離開、到了哪」：馬上按回去就回原處（resolveRoleJump 1.5）。
   // ponytail: 12 小時，同一個工作天內有效；過了就回到同工具對應
   if (from && sideOf(from.role) !== sideOf(s.role)) res.cookies.set(BACK[sideOf(from.role)], `${from.key}~${s.key}`, { ...opt, maxAge: 43_200 });
+  // 其他跳轉（工具選單、首頁選單、平台頁）＝「換過工具了」：清掉來回紀錄，之後照同工具對應（最後審查）
+  else for (const k of Object.values(BACK)) res.cookies.delete(k);
   return res;
 }
 

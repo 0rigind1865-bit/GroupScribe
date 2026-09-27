@@ -139,7 +139,8 @@ html {
   }
   /* 表單版（單選鈕包在 label 裡，零 JS）：選中的那格用 :has(:checked) 浮起 */
   .segmented > label {
-    @apply flex min-h-9 cursor-pointer items-center justify-center rounded-[10px] px-3 text-center font-bold whitespace-nowrap text-gray-600;
+    /* 44px：取代的是 44px 的下拉選單，觸控目標不能變小（最後審查） */
+    @apply flex min-h-11 cursor-pointer items-center justify-center rounded-[10px] px-3 text-center font-bold whitespace-nowrap text-gray-600;
   }
   .segmented > label:has(:checked) {
     @apply bg-white text-gray-900 shadow-xs;
@@ -487,6 +488,12 @@ html {
 @media (max-width: 400px) {
   .id-role svg { display: none; } /* 兩側一致：同一支手機切來切去，開關寬度不變（T10 第 2 輪） */
 }
+/* 手機深色列：公司名那一行可以縮成省略號（原本固定 120px、按鈕不縮，公司名稍長整頁就左右捲——最後審查）。
+   工具名照舊有 88px 上限；按鈕與情境膠囊一起按比例讓位，工具名只在極窄時才會出省略號 */
+@media (max-width: 767px) {
+  .id-bar--dark .id-menu, .id-bar--dark .id-tool--title { flex-shrink: 1; min-width: 0; }
+  .id-tool-org { max-width: 100%; }
+}
 .id-right { margin-left: auto; flex-shrink: 0; }
 .id-context + .id-right { margin-left: 0; }
 /* 手機抽屜 */
@@ -647,6 +654,8 @@ body:has(.batch-box:checked) #batch {
   .nav-ind { background: #34423a; }
   .btn:hover { background: #232b27; }
   .segmented { background: #232b27; }
+  /* 未選那格：@apply text-gray-600 編成變數色，暗色不會跟著換（對比 2.4:1，最後審查） */
+  .segmented > a, .segmented > button, .segmented > label { color: #a7b3ac; }
   .segmented > [aria-current='page'], .segmented > label:has(:checked) { background: #1a211e; color: #e8edea; }
   .btn-danger { background: #1a211e; border-color: #542626; }
   .btn-danger:hover { background: #2b1d1d; }
@@ -733,7 +742,7 @@ body:has(.batch-box:checked) #batch {
   .id-bar--dark .id-toggle { background: rgb(0 0 0 / 0.25); }
   .id-bar--dark .id-role[aria-current] { background: rgb(255 255 255 / 0.14); }
   .id-bar--dark .id-tile { background: rgb(0 0 0 / 0.25); }
-  .id-panel { background: #1a211e; color: #e8edea; }
+  .id-panel { background: #1a211e; color: #e8edea; border-color: #2a332f; }
   .id-row { color: #e8edea; }
   .id-row:hover { background: #232b27; }
   .id-row[aria-current] { background: #12312a; }
