@@ -3,7 +3,7 @@ import { visibleModules } from '@/org/modules';
 import { orgBySlug } from '@/org/orgs';
 import { surfaces } from '@/org/surfaces';
 import { groupSurfaces } from '@/org/surface-groups';
-import { t } from '@/attend/i18n';
+import { locale, t } from '@/attend/i18n';
 import { IdentityBar } from '@/app/ui/identity-bar';
 import { moduleById, type ModuleId } from './routes';
 import { TopNav, type Counts } from './nav';
@@ -26,7 +26,7 @@ export async function ShellHeader({
   const access = await visibleModules(slug);
   if (!access) notFound();
   const mod = moduleById(moduleId);
-  const [org, { list }] = await Promise.all([orgBySlug(slug), surfaces()]);
+  const [org, { list }, loc] = await Promise.all([orgBySlug(slug), surfaces(), locale()]);
   // 未認領的群不是一家公司：歸在平台那一段（F42）
   const currentKey = slug === 'unclaimed' ? 'unclaimed' : `${mod.id}:${slug}`;
   const groups = groupSurfaces(list, { slug, name: org?.name ?? slug, id: mod.id });
@@ -38,6 +38,8 @@ export async function ShellHeader({
         currentKey={currentKey}
         side="admin"
         tt={(k, p) => t('zh-TW', k, p)}
+        // 角色開關跟員工端同一種語言：越南籍的員工兼管理者兩側看到同樣的「Tôi｜Quản lý」（T10 第 3 輪）
+        roleTt={(k, p) => t(loc, k, p)}
         brand
         // 未認領的群只有群組清單一頁：不畫群組助理的分頁（身分列說「未認領的群」，分頁卻是今天／收件匣，T10 第 2 輪）
         navSlot={slug === 'unclaimed' ? undefined : <TopNav moduleId={mod.id} counts={counts} />}

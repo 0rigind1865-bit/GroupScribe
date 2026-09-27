@@ -45,7 +45,7 @@ export default async function AdminLayout({
           slug={slug}
           moduleId="gs"
           counts={counts}
-          context={<GroupSwitcher groups={groups as GroupOption[]} />}
+          context={slug === 'unclaimed' ? undefined : <GroupSwitcher groups={groups as GroupOption[]} />}
         />
       </Suspense>
       <div className="nav-gap md:!pb-0">

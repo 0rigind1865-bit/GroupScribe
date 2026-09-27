@@ -236,3 +236,11 @@ test('未認領的群不畫群組助理的分頁；更多頁與成員頁的字�
   assert.match(read('src/app/g/liff-init.tsx'), /brand: '群記'/);
   assert.match(read('src/app/a/expense/page.tsx'), /<AttendLiffBoot[^>]*brand=\{tt\('TOOL_EXPENSE'\)\}/);
 });
+
+// ── T10 第 3 輪 ──
+test('停用的員工不給打卡面向（除非是唯一身分）；/a/expense 沒身分走全站 404', () => {
+  const src = read('src/org/surfaces.ts');
+  assert.match(src, /e\.status !== 'disabled'/, '停用的員工又拿到打卡了——只管考勤的會計會多一個通往「帳號已被停用」的個人開關');
+  assert.match(src, /if \(!list\.length && employees\.length\)/, '只剩停用一種身分的人要落回 /a 看「已停用」');
+  assert.match(read('src/app/a/expense/page.tsx'), /if \(!me\) notFound\(\);/);
+});

@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation';
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
 import { liffId, liffUser } from '@/core/liff';
 import { IdentityBar } from '@/app/ui/identity-bar';
@@ -22,10 +23,11 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
   const uid = await liffUser();
   // 開機畫面走員工端語系：越南籍員工第一眼不該是中文（審查 F44）
   if (!uid) return <AttendLiffBoot liffId={liffId()} tt={tt} brand={tt('TOOL_EXPENSE')} />;
-  if (!dbConfigured()) return <main className="p-6 text-gray-500">系統尚未設定資料庫。</main>;
+  if (!dbConfigured()) return <main className="p-6 text-gray-500">{tt('DB_NOT_CONFIGURED')}</main>;
   const me = await myExpenseIdentity();
-  if (!me)
-    return <main className="mx-auto max-w-md p-6 text-sm text-gray-600">{tt('EXP_NOT_ENABLED')}</main>;
+  // 沒有報帳身分＝走錯路（群組成員點到貼進群的連結、停用的員工拿舊連結）：與 2.3「非成員 → not-found」一致，
+  // 原本一行裸字對群組成員講出「報帳／員工／管理者」、沒有地球也沒有路（T10 第 3 輪）
+  if (!me) notFound();
 
   const [sp, sd] = await Promise.all([searchParams, shellData(uid)]);
   const tab = TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : 'add';

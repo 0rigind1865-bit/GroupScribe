@@ -36,6 +36,8 @@ export type IdentityBarProps = {
   /** 這一頁屬於哪個角色：個人頁（/a、/g）＝me；管理頁（/o、/platform）＝admin */
   side: Side;
   tt: Tt;
+  /** 角色開關的字（個人／管理）用的語系；預設＝tt。管理端的工具名仍是中文，但開關要與員工在打卡頁看到的同一種語言（T10 第 3 輪） */
+  roleTt?: Tt;
   /** 電腦版頂欄的分頁（管理側）；手機不顯示 */
   navSlot?: ReactNode;
   /** 情境膠囊（群組／員工） */
@@ -46,7 +48,8 @@ export type IdentityBarProps = {
    *  給字串＝有待辦的那個工具的 key：點「管理」直達那裡，不走「同工具對應」——
    *  否則小點亮著、點下去卻落到沒事的工具（T10 第 1 輪 high） */
   dot?: boolean | string;
-  /** 目前這一頁的完整網址（含 ?month、?emp、?tab）：選單的「關閉」與目前那列在沒有 JS 時連回這裡 */
+  /** 目前這一頁的完整網址（含 ?month、?emp、?tab）：選單的「關閉」與目前那列在沒有 JS 時連回這裡；
+   *  沒給＝空 href（瀏覽器解析成目前網址、含 query，T10 第 3 輪） */
   closeHref?: string;
   /** 電腦版最左邊的「群記」字樣（管理側頂欄） */
   brand?: boolean;
@@ -55,7 +58,7 @@ export type IdentityBarProps = {
 /** 身分列會不會出現（個人側單一工具時整列不渲染，語言地球要改放姓名列——審查 F3） */
 export const identityBarShown = (g: Grouped, side: Side) => !(side === 'me' && barState(g, side) === 'c');
 
-export function IdentityBar({ groups, currentKey, side, tt, navSlot, contextSlot, rightSlot, dot, brand, closeHref }: IdentityBarProps) {
+export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot, contextSlot, rightSlot, dot, brand, closeHref }: IdentityBarProps) {
   if (!identityBarShown(groups, side)) return null;
   const items = itemsOf(groups, side);
   const cur = items.find((s) => s.key === currentKey) ?? items[0];
@@ -64,8 +67,9 @@ export function IdentityBar({ groups, currentKey, side, tt, navSlot, contextSlot
   // 公司名：管多家時一定帶；工具畫成純標題（沒有選單）時也帶——那是畫面上唯一說「你在管哪家」的地方（F9、T10 第 1 輪）
   const withOrg = side === 'admin' && !!cur?.orgName && (multiOrg(groups) || !hasMenu);
   // 第二行：公司名；平台段的工具（未認領的群）寫「平台」
-  const orgLine = cur?.role === 'platform' && cur.slug ? '平台' : withOrg ? cur?.orgName : undefined;
-  const here = closeHref ?? cur?.href ?? '/';
+  // 補進來的工具（平台擁有者站在這家沒開的工具）：標「未開通」——這家的管理者看不到這裡（T10 第 3 輪）
+  const orgLine = cur?.role === 'platform' && cur.slug ? '平台' : withOrg ? `${cur?.orgName}${cur?.injected ? ' · 未開通' : ''}` : undefined;
+  const here = closeHref ?? '';
   const total = itemsOf(groups, 'me').length + itemsOf(groups, 'admin').length;
 
   const tool = cur && (
@@ -86,12 +90,12 @@ export function IdentityBar({ groups, currentKey, side, tt, navSlot, contextSlot
 
       {hasRoleToggle(groups) && (
         <>
-          <nav className="id-toggle" aria-label={tt('SWITCH_ROLE')}>
+          <nav className="id-toggle" aria-label={roleTt('SWITCH_ROLE')}>
             {(['me', 'admin'] as const).map((r) =>
               r === side ? (
                 <span key={r} className="id-role" aria-current="page">
                   <Svg size={15}>{ROLE_ICON[r]}</Svg>
-                  {tt(r === 'me' ? 'ROLE_ME' : 'ROLE_ADMIN')}
+                  {roleTt(r === 'me' ? 'ROLE_ME' : 'ROLE_ADMIN')}
                 </span>
               ) : (
                 <a
@@ -101,8 +105,8 @@ export function IdentityBar({ groups, currentKey, side, tt, navSlot, contextSlot
                   href={`/go/${r === 'admin' && typeof dot === 'string' ? encodeURIComponent(dot) : `@${r}`}?from=${encodeURIComponent(cur?.key ?? '')}`}
                 >
                   <Svg size={15}>{ROLE_ICON[r]}</Svg>
-                  {tt(r === 'me' ? 'ROLE_ME' : 'ROLE_ADMIN')}
-                  {r === 'admin' && dot && <span className="id-dot" role="img" aria-label={tt('HAS_PENDING')} />}
+                  {roleTt(r === 'me' ? 'ROLE_ME' : 'ROLE_ADMIN')}
+                  {r === 'admin' && dot && <span className="id-dot" role="img" aria-label={roleTt('HAS_PENDING')} />}
                 </a>
               ),
             )}
@@ -152,7 +156,7 @@ function Sections({ groups, side, cur, tt, here }: { groups: Grouped; side: Side
       </span>
       <span className="id-row-text">
         <span className="id-row-name">{toolName(s.id, tt)}</span>
-        <span className="id-row-desc">{toolDesc(s.id, tt)}</span>
+        <span className="id-row-desc">{s.injected ? '這家公司沒開這個工具，只有平台擁有者看得到' : toolDesc(s.id, tt)}</span>
       </span>
       {s.key === cur.key && <Check />}
     </a>

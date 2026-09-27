@@ -106,9 +106,9 @@
   "HAS_PENDING": "有待處理",
   "HOME_TITLE": "你想做什麼？",
   "HOME_HINT": "選一個，下次打開會直接帶你去。",
-  "HOME_HINT_TOGGLE": "之後想換，點每頁最上面的「{me}｜{admin}」。",
-  "HOME_HINT_TOOL": "之後想換，點每頁最上面的工具名稱 ▾。",
-  "LAST_USED": "上次使用",
+  "HOME_HINT_TOGGLE": "臨時切換點每頁最上面的「{me}｜{admin}」；要改預設，回到這裡選。",
+  "HOME_HINT_TOOL": "臨時切換點每頁最上面的工具名稱 ▾；要改預設，回到這裡選。",
+  "LAST_USED": "目前預設",
   "YOUR_TOOLS": "你的工具",
   "HOME_NONE": "這個 LINE 帳號目前沒有可用的頁面。請從有群記的 LINE 群組裡點連結進來。",
   "HOME_CREATE_ORG": "我是公司管理者，建立組織",
@@ -127,11 +127,11 @@
   "EXP_PROJECT": "專案",
   "EXP_PAY": "付款方式",
   "EXP_SAVE": "＋ 存一筆",
-  "EXP_NOT_ENABLED": "你所屬的公司還沒開報帳功能，或你還不是在職員工。請聯絡管理者。",
   "ORG_PLACEHOLDER": "管理員給你的代號",
   "OUT_OF_RANGE_NEAR": "離「{name}」還有 {m} 公尺",
   "MISS_ANY": "缺卡",
   "SEE_ALL_TOOLS": "看全部工具 →",
   "NOT_FOUND": "找不到這一頁，或你沒有它的權限。",
-  "GO_HOME": "回首頁"
+  "GO_HOME": "回首頁",
+  "BACK_PREV": "‹ 回上一頁"
 }

@@ -26,7 +26,8 @@ export default async function MorePage({
       module={GS_MODULE}
       ctx={{ group }}
       extra={
-        /* 成員版入口：管理者應該隨時能看到員工看到什麼；這個連結也可以直接丟進群組 */
+        /* 分享給群組成員的連結。不再寫「員工看到的畫面」：自己點下去會依你的身分落回自己的頁（首頁預設），
+           看成員版要用身分列的「個人 → 群組」（T10 第 3 輪） */
         liff ? (
           <a href={liff} target="_blank" rel="noreferrer" className="card flex items-center gap-4 hover:bg-gray-50">
             <svg viewBox="0 0 24 24" className="h-7 w-7 flex-none text-emerald-700" fill="none" stroke="currentColor" strokeWidth="1.6">
@@ -34,8 +35,8 @@ export default async function MorePage({
               <path d="M11 18h2" />
             </svg>
             <span>
-              <span className="block font-bold">成員版入口</span>
-              <span className="block text-sm text-gray-500">員工在 LINE 裡看到的畫面，也可直接分享給群組成員</span>
+              <span className="block font-bold">分享給群組成員的連結</span>
+              <span className="block text-sm text-gray-500">貼到 LINE 群，成員點了會看到群組的行程、待辦與公告</span>
             </span>
             <span className="ml-auto text-gray-300">↗</span>
           </a>

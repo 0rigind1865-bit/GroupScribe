@@ -136,7 +136,7 @@ export default async function ExpenseList({
         ) : (
           <Empty
             title="還沒有報帳"
-            hint="請員工加群記好友，把收據或發票拍照私訊給群記（AI 會讀出金額），或從 LINE 打開「我的報帳」自己記一筆。"
+            hint="請員工加群記好友，把收據或發票拍照私訊給群記（AI 會讀出金額），或從 LINE 打開「個人 → 報帳」自己記一筆。"
           />
         )
       ) : (

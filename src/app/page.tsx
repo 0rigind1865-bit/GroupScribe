@@ -1,6 +1,7 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { dbConfigured } from '@/db';
+import { safeNext } from '@/http';
 import { isGroupMember, liffId, liffUser } from '@/core/liff';
 import { liffStatePath, parseLiffEntry } from '@/core/funnel';
 import { surfaces, type Surface } from '@/org/surfaces';
@@ -70,6 +71,18 @@ export default async function Root({ searchParams }: { searchParams: Promise<Rec
   // 選單（畫布 IdHome）：個人一段（淺色）、每家公司一段（深色段頭）、平台一段
   const g = groupSurfaces(list);
   const toggle = hasRoleToggle(g);
+  // 個人段標題：有角色開關且個人工具都屬同一家時帶公司名（當員工的那家不一定是管理的那家，T10 第 3 輪）
+  const meOrgs = [...new Set(g.me.map((s) => s.orgName).filter(Boolean))];
+  const meTitle = toggle ? (meOrgs.length === 1 ? `${tt('ROLE_ME')} · ${meOrgs[0]}` : tt('ROLE_ME')) : tt('YOUR_TOOLS');
+  // 回上一頁：選單現在會改首頁預設（有副作用），好奇點進來的人要有不選就回去的路。
+  // 用同站 Referer，不必每個「看全部…」連結都帶參數（T10 第 3 輪）
+  const h = await headers();
+  let back = '';
+  try {
+    const ref = new URL(h.get('referer') ?? '');
+    if (ref.host === (h.get('x-forwarded-host') ?? h.get('host'))) back = safeNext(ref.pathname + ref.search);
+  } catch {}
+  if (back === '/' || back.startsWith('/?') || back.startsWith('/go/')) back = '';
   const row = (s: Surface) => (
     // home=1：只有在首頁選單選的才改「下次打開直接進來」；身分列的抽屜是臨時切換（T10 第 2 輪）
     <a key={s.key} href={`/go/${encodeURIComponent(s.key)}?home=1`} className="id-row">
@@ -96,17 +109,22 @@ export default async function Root({ searchParams }: { searchParams: Promise<Rec
     <div className="mx-auto max-w-md pb-8">
       <BrandBar link={false} right={<LangMenu loc={loc} back="/?menu=1" />} />
       <main className="px-4">
+        {back && (
+          <a href={back} className="-ml-1 inline-flex min-h-11 items-center px-1 text-sm text-gray-600">
+            {tt('BACK_PREV')}
+          </a>
+        )}
         <h1 className="mt-2 text-[30px] leading-tight font-black tracking-[1px]" style={{ fontFamily: 'var(--font-title)' }}>
           {tt('HOME_TITLE')}
         </h1>
         <p className="mt-1 mb-5 text-sm text-gray-600">
           {tt('HOME_HINT')}
           {/* 只有一個工具的人沒有換法可說（他的頁面沒有 ▾，T10 第 1 輪）；兩句之間留空白給拉丁語系 */}
-          {list.length > 1 && ' '}
+          {list.length > 1 && (loc === 'zh-TW' || loc === 'ja' ? '' : ' ')}
           {list.length > 1 && (toggle ? tt('HOME_HINT_TOGGLE', { me: tt('ROLE_ME'), admin: tt('ROLE_ADMIN') }) : tt('HOME_HINT_TOOL'))}
         </p>
         <div className="space-y-5">
-          {g.me.length > 0 && section('me', toggle ? tt('ROLE_ME') : tt('YOUR_TOOLS'), g.me, false)}
+          {g.me.length > 0 && section('me', meTitle, g.me, false)}
           {g.admin.map((o) => section(`org:${o.slug}`, `${tt('ROLE_ADMIN')} · ${o.name}`, o.items, true))}
           {g.platform.length > 0 && section('platform', '平台', g.platform, true)}
         </div>

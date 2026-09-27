@@ -21,8 +21,8 @@ export type Tab = 'add' | 'list' | 'report' | 'analytics';
 const TABS: [Tab, keyof ExpenseLabels, string][] = [
   ['add', 'tabAdd', 'edit'],
   ['list', 'tabList', 'list'],
-  // 不叫「報帳」：工具本身就叫報帳，分頁再叫一次分不出來（審查 F10）
-  ['report', 'tabExport', 'receipt'],
+  // 不叫「報帳」、也不用收據圖示：那是工具本身的名字與圖示，分頁再用一次分不出來（審查 F10、T10 第 3 輪）
+  ['report', 'tabExport', 'download'],
   ['analytics', 'tabAnalytics', 'chart'],
 ];
 

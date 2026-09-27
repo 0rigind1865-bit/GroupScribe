@@ -7,7 +7,7 @@ import { IdentityBar } from '@/app/ui/identity-bar';
 import { surfaces } from '@/org/surfaces';
 import { groupSurfaces } from '@/org/surface-groups';
 import { enabledModuleIds } from '@/org/module-ids';
-import { t } from '@/attend/i18n';
+import { locale, t } from '@/attend/i18n';
 import { Banner } from '@/app/ui/banner';
 
 export const dynamic = 'force-dynamic';
@@ -34,6 +34,7 @@ type OrgRow = {
 export default async function PlatformPage({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string }> }) {
   if (!(await isPlatformOwner())) notFound();
   const { ok, err } = await searchParams;
+  const loc = await locale();
   const db = getDb();
 
   const [{ data: orgsRaw }, { data: groups }, { data: usage }] = await Promise.all([
@@ -57,7 +58,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
     <div className="pb-10">
       {/* 平台頁也是「管理」那一邊：深色身分列，工具按鈕「平台管理 ▾」可切到未認領的群與各家公司（畫布 IdPlatform） */}
       <header className="shell-bar md:sticky md:top-0 md:z-30">
-        <IdentityBar groups={groupSurfaces((await surfaces()).list)} currentKey="platform" side="admin" tt={(k, p) => t('zh-TW', k, p)} brand />
+        <IdentityBar groups={groupSurfaces((await surfaces()).list)} currentKey="platform" side="admin" tt={(k, p) => t('zh-TW', k, p)} roleTt={(k, p) => t(loc, k, p)} brand />
       </header>
       <main className="page space-y-8">
         <div>

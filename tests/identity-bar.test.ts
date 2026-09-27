@@ -172,3 +172,19 @@ test('有角色開關時姓名下方寫公司名（P6：個人側的公司可能
   );
   assert.ok(html.includes('光明診所 · 外場'));
 });
+
+// ── T10 第 3 輪 ──
+test('平台擁有者站在這家沒開的工具：第二行標「未開通」、抽屜說明講清楚只有平台看得到', () => {
+  const list = [adm('gs', 'a', '頂好'), adm('expense', 'b', '光明'), platform];
+  const g = groupSurfaces(list, { slug: 'b', name: '光明', id: 'attend' });
+  const html = renderToStaticMarkup(createElement(IdentityBar, { groups: g, currentKey: 'attend:b', side: 'admin', tt: tt('zh-TW') }));
+  assert.ok(html.includes('光明 · 未開通'));
+  assert.ok(html.includes('只有平台擁有者看得到'));
+});
+
+test('管理側的角色開關跟員工端同語系（roleTt），工具名仍是中文；沒給 closeHref 時「關閉」是空 href（留在原網址）', () => {
+  const html = render([punch('a'), adm('attend', 'a', 'A'), adm('gs', 'a', 'A')], 'attend:a', 'admin', 'zh-TW', { roleTt: tt('vi') });
+  assert.ok(html.includes('Tôi') && html.includes('Quản lý'));
+  assert.ok(html.includes('考勤'));
+  assert.ok(html.includes('<a class="id-close" href="">'));
+});

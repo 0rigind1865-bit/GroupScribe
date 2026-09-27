@@ -41,7 +41,7 @@ export function groupSurfaces(list: Surface[], current: Current = null): Grouped
     if (href && !org?.items.some((i) => i.id === current.id)) {
       if (!org) admin.push((org = { slug: current.slug, name: current.name, items: [] }));
       org.injected = true;
-      org.items.push({ key: `${current.id}:${current.slug}`, id: current.id, role: 'admin', slug: current.slug, orgName: org.name, label: current.id, desc: '', href, rank: 9 });
+      org.items.push({ key: `${current.id}:${current.slug}`, id: current.id, role: 'admin', slug: current.slug, orgName: org.name, label: current.id, desc: '', href, rank: 9, injected: true });
     }
   }
   return { me, admin, platform };

@@ -32,12 +32,14 @@ export type Surface = {
   href: string;
   slug?: string; // 管理面向所屬的 org
   role: SurfaceRole;
-  /** 管理面向所屬公司的名稱（選單分段標題、多家公司時的「考勤 · 公司A」） */
+  /** 所屬公司的名稱：管理面向用在選單分段與「考勤 · 公司A」；個人面向只屬於一家時才有（首頁選單的個人段標題） */
   orgName?: string;
   /** 個人面向（打卡、報帳）屬於哪幾家公司——角色開關「同一家公司」的對應要用；群組沒有公司 */
   slugs?: string[];
   /** 排序：數字小的先（員工的日常動作優先於管理動作） */
   rank: number;
+  /** 安全網補進來的：平台擁有者站在這家「沒開」的工具裡（surface-groups.ts；身分列標「未開通」，T10 第 3 輪） */
+  injected?: boolean;
 };
 
 export type Surfaces = {
@@ -60,16 +62,25 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
   const exp = uid ? await myExpenseIdentity() : null;
   const orgIds = [...new Set([...employees.map((e) => e.org_id), ...(exp ? [exp.org_id] : [])])];
   const slugOf = new Map<string, string>();
+  const nameOf = new Map<string, string>();
   if (orgIds.length) {
-    const { data } = await db.from('orgs').select('id, slug').in('id', orgIds);
-    for (const o of (data ?? []) as { id: string; slug: string }[]) slugOf.set(o.id, o.slug);
+    const { data } = await db.from('orgs').select('id, slug, name').in('id', orgIds);
+    for (const o of (data ?? []) as { id: string; slug: string; name: string | null }[]) {
+      slugOf.set(o.id, o.slug);
+      if (o.name) nameOf.set(o.id, o.name);
+    }
   }
   const slugsFor = (ids: string[]) => ids.map((id) => slugOf.get(id)).filter((x): x is string => !!x);
-  if (employees.length) {
-    list.push({ key: 'punch', id: 'punch', role: 'me', slugs: slugsFor(employees.map((e) => e.org_id)), label: '打卡', desc: '上下班打卡、補卡申請', href: '/a', rank: 1 });
-  }
+  // 個人面向只屬於一家時帶公司名：首頁選單「個人 · B 公司」——當員工的那家不一定是管理的那家（T10 第 3 輪）
+  const nameFor = (ids: string[]) => (new Set(ids).size === 1 ? nameOf.get(ids[0]) : undefined);
+  // 停用的員工不給打卡面向：老闆把會計「加入 → 設為考勤管理員 → 停用帳號」就是只管考勤、不打卡的人，
+  // 身分列不該多一個通往「帳號已被停用」的「個人」（T10 第 3 輪）。只剩停用一種身分時，最底下再補回來。
+  const working = employees.filter((e) => e.status !== 'disabled');
+  const workIds = working.map((e) => e.org_id);
+  const punch: Surface = { key: 'punch', id: 'punch', role: 'me', slugs: slugsFor(workIds), orgName: nameFor(workIds), label: '打卡', desc: '上下班打卡、補卡申請', href: '/a', rank: 1 };
+  if (working.length) list.push(punch);
   if (exp) {
-    list.push({ key: 'myexpense', id: 'myexpense', role: 'me', slugs: slugsFor([exp.org_id]), label: '報帳', desc: '記一筆代墊的錢、看自己的報帳單', href: '/a/expense', rank: 1.5 });
+    list.push({ key: 'myexpense', id: 'myexpense', role: 'me', slugs: slugsFor([exp.org_id]), orgName: nameFor([exp.org_id]), label: '報帳', desc: '記一筆代墊的錢、看自己的報帳單', href: '/a/expense', rank: 1.5 });
   }
 
   // 2. 群組成員 → 成員版（以「現在在不在群裡」為準，不是「有沒有講過話」）
@@ -130,6 +141,7 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
   if (owner && hasUnclaimed)
     list.push({ key: 'unclaimed', id: 'unclaimed', role: 'platform', slug: 'unclaimed', label: '未認領的群', desc: '等管理員認領，7 天沒人要就退群', href: '/o/unclaimed/groups', rank: 5.1 });
 
+  if (!list.length && employees.length) list.push({ ...punch, slugs: slugsFor(employees.map((e) => e.org_id)), orgName: nameFor(employees.map((e) => e.org_id)) });
   list.sort((a, b) => a.rank - b.rank);
   return { list, landing: list[0]?.href ?? null };
 });
