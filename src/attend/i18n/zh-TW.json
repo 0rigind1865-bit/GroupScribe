@@ -133,5 +133,9 @@
   "SEE_ALL_TOOLS": "看全部工具 →",
   "NOT_FOUND": "找不到這一頁，或你沒有它的權限。",
   "GO_HOME": "回首頁",
-  "BACK_PREV": "‹ 回上一頁"
+  "BACK_PREV": "‹ 回上一頁",
+  "SOFTNAV_DISMISS": "知道了",
+  "SOFTNAV_DONE": "完成",
+  "SOFTNAV_FAILED": "沒有完成：{msg}",
+  "SOFTNAV_OFFLINE": "連線中斷，不確定有沒有送出。請先重新整理看結果，再決定要不要重送。"
 }

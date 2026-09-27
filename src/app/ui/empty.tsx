@@ -19,7 +19,8 @@ export function Empty({
   return (
     <div className="rounded-xl border border-dashed border-gray-300 px-4 py-8 text-center text-sm text-gray-500">
       <p className="mb-1 font-medium text-gray-700">{title}</p>
-      {variant === 'none' && hint && <p className="mx-auto max-w-sm">{hint}</p>}
+      {/* text-pretty：置中的說明文字最後一行不剩一個字 */}
+      {variant === 'none' && hint && <p className="mx-auto max-w-sm text-pretty">{hint}</p>}
       {action && <div className="mt-3 flex justify-center">{action}</div>}
     </div>
   );

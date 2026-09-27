@@ -75,19 +75,17 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex rounded-lg border border-gray-200 p-0.5 text-sm">
+        {/* 期間切換用全站 .segmented：頁內狀態（不換網址）所以標 aria-pressed，不是月曆那種 aria-current 連結。
+            按鈕一律 44px（同 .input，手機、平板、電腦一樣）：寬螢幕不等於滑鼠，iPad 也是手指點。
+            外框多 3px 內距，整組比旁邊 44px 的下拉高 6px，靠 items-center 對齊 */}
+        <div className="segmented" role="group" aria-label="期間">
           {PERIODS.map(([k, label]) => (
-            <button
-              type="button"
-              key={k}
-              onClick={() => setPeriod(k)}
-              className={`rounded-md px-3 py-1 ${period === k ? 'bg-emerald-600 text-white' : 'text-gray-600'}`}
-            >
+            <button type="button" key={k} onClick={() => setPeriod(k)} aria-pressed={period === k} className="min-h-11">
               {label}
             </button>
           ))}
         </div>
-        <select className="input h-9 text-sm" value={project} onChange={(e) => setProject(e.target.value)}>
+        <select className="input text-sm" value={project} onChange={(e) => setProject(e.target.value)}>
           <option value="">全部{projectLabel}</option>
           {projects.map((p) => (
             <option key={p}>{p}</option>
@@ -116,7 +114,7 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
             <h3 className="mb-3 text-base font-bold">分類占比</h3>
             <div className="flex flex-col items-center gap-4 sm:flex-row">
               <div className="relative h-32 w-32 flex-none">
-                <svg viewBox="0 0 42 42" className="h-full w-full" fill="none">
+                <svg viewBox="0 0 42 42" className="chart-fade h-full w-full" fill="none">
                   <circle cx="21" cy="21" r="15.915" stroke="#8883" strokeWidth="5" />
                   {segs.map((s, i) => (
                     <circle
@@ -163,7 +161,7 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
                       <span className="tabular-nums">{fmtMoney(amt)}</span>
                     </div>
                     <div className="mt-1 h-2 rounded-full bg-gray-100">
-                      <div className="h-2 rounded-full" style={{ width: `${(amt / evMax) * 100}%`, background: color(i) }} />
+                      <div className="bar-grow-x h-2 rounded-full" style={{ width: `${(amt / evMax) * 100}%`, background: color(i) }} />
                     </div>
                   </li>
                 ))}
@@ -174,8 +172,11 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
 
           <section className="card">
             <h3 className="mb-3 text-base font-bold">付款方式</h3>
-            <div className="flex h-3 overflow-hidden rounded-full bg-gray-100">
-              {PAY.map((k) => (stat.pay[k] > 0 ? <span key={k} style={{ width: `${(stat.pay[k] / payTotal) * 100}%`, background: PAY_COLOR[k] }} /> : null))}
+            {/* 整條色段包一層一起從左長出；各段各自長會在段與段之間露出底色縫 */}
+            <div className="h-3 overflow-hidden rounded-full bg-gray-100">
+              <div className="bar-grow-x flex h-full">
+                {PAY.map((k) => (stat.pay[k] > 0 ? <span key={k} style={{ width: `${(stat.pay[k] / payTotal) * 100}%`, background: PAY_COLOR[k] }} /> : null))}
+              </div>
             </div>
             <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm">
               {PAY.map((k) => (
@@ -196,7 +197,7 @@ export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items
           {trend.map((m) => (
             <div key={m.key} className="flex h-full flex-1 flex-col items-center justify-end gap-1">
               <span className="text-[10px] text-gray-500 tabular-nums">{m.amt ? fmtMoney(m.amt) : ''}</span>
-              <span className="w-full rounded-t bg-emerald-600" style={{ height: `${(m.amt / monthMax) * 80}%` }} />
+              <span className="bar-grow-y w-full rounded-t bg-emerald-600" style={{ height: `${(m.amt / monthMax) * 80}%` }} />
               <span className="text-xs text-gray-500">{m.label}</span>
             </div>
           ))}

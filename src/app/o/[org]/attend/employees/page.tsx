@@ -69,7 +69,17 @@ export default async function EmployeesPage({
               把下面這條連結傳給要加入的員工（只發給該加入的人——收到的人才看得到考勤系統）。
               他開啟後組織與加入碼會自動帶入，送出即可，之後在下方清單啟用。
             </p>
-            {/* readOnly input 而非純文字：長按/雙擊即可全選複製，零 client JS */}
+            {/* 主要路徑：一鍵叫出 LINE 的分享畫面選人傳送（line.me 分享網址，零 JS）——
+                員工本來就在 LINE 上，不必先長按複製再切 App 貼上。只有產生得出連結時才給。 */}
+            {joinLink && (
+              <a
+                className="btn-primary mb-2 w-full"
+                href={`https://line.me/R/share?text=${encodeURIComponent(`${org.name} 邀請你加入打卡，點連結送出即可：\n${joinLink}`)}`}
+              >
+                用 LINE 傳給員工
+              </a>
+            )}
+            {/* 後備：readOnly input 而非純文字，長按/雙擊即可全選複製（LINE 以外的管道），零 client JS */}
             <input
               readOnly
               className="input mb-2 w-full font-mono text-xs"

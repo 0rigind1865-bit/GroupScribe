@@ -99,8 +99,10 @@ export function QRScanner({ onResult, onClose }: { onResult: (d: InvoiceData) =>
         : '對準發票右邊的 QR（以 ** 開頭的那個）';
   const chip = (on: boolean) => `rounded-full px-3 py-1 text-xs font-medium ${on ? 'bg-emerald-600 text-white' : 'bg-black/60 text-white'}`;
 
+  // data-no-swipe：FloatingNav 在 document 上聽整頁橫滑換頁；相機畫面上手指一滑就會換 tab，
+  // 掃描器被藏進沒顯示的分頁、沒有卸載，相機跟解碼迴圈卻還開著（同 sheet.tsx 的抽屜）
   return (
-    <div className="fixed inset-0 z-[60] bg-black">
+    <div className="fixed inset-0 z-[60] bg-black" data-no-swipe="">
       <video ref={videoRef} className="h-full w-full object-cover" playsInline muted />
       <div className="pointer-events-none absolute top-1/2 left-1/2 h-60 w-60 -translate-x-1/2 -translate-y-1/2 rounded-2xl border-4 border-white/80" />
       <div className="absolute top-6 inset-x-0 flex justify-center gap-2">

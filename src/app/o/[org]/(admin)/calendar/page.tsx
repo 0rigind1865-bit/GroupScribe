@@ -9,6 +9,7 @@ import { addDays, agendaRange, hourRange, monthGrid, parseHour, splitTimed, week
 import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
+import { oh } from '@/org/href';
 
 export const dynamic = 'force-dynamic';
 
@@ -216,6 +217,10 @@ export default async function CalendarPage({
   // 預設「議程」而不是「月」：預設值就是產品的主張（principles.md），而月格線在事件密度低的
   // 群組打開是一片空白——講了一個資料不支持的故事。要看月份分佈的人自己點「月」。
   const view: View = (VIEWS.find(([v]) => v === params.view)?.[0] ?? 'agenda') as View;
+  // 已忽略的事件降到深一層視圖（principles.md 規則三，同待辦／公告的 ?view=ignored）：
+  // 月／週／日／議程照舊排除 ignored，主畫面不查、不顯示、連筆數都不提，只留底部一個低調入口
+  const archived = params.view === 'ignored';
+  const live = !!group && !archived;
   const range: AgendaPreset = (RANGES.find(([r]) => r === params.range)?.[0] ?? '90d') as AgendaPreset;
   const todayIso = new Date().toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
   // 日期錨點：date 優先、相容舊 month、預設今天
@@ -238,7 +243,19 @@ export default async function CalendarPage({
   else [rangeStart, rangeEnd] = [`${ym}-01`, `${ym}-${pad(lastDay)}`];
 
   let events: Ev[] = [];
-  if (group) {
+  if (group && archived) {
+    // 不限日期：最近忽略的在最上面（按錯了回來找，通常找的是剛剛那筆）
+    events =
+      ((
+        await db
+          .from('events')
+          .select('id, title, starts_at, start_time, needs_confirmation')
+          .eq('group_id', group)
+          .eq('status', 'ignored')
+          .order('updated_at', { ascending: false })
+          .limit(AGENDA_LIMIT)
+      ).data as Ev[]) ?? [];
+  } else if (group) {
     let q = db
       .from('events')
       .select('id, title, starts_at, start_time, needs_confirmation')
@@ -280,7 +297,8 @@ export default async function CalendarPage({
   }
 
   const base = `/o/${slug}/calendar?group=${encodeURIComponent(group ?? '')}`;
-  const back = `${base}&view=${view}&date=${dateIso}`; // 詳情編輯後回跳到當前視圖與日期
+  // 詳情編輯後回跳到當前視圖與日期；已忽略視圖回到已忽略清單
+  const back = archived ? oh(slug, '/calendar', { group, view: 'ignored' }) : `${base}&view=${view}&date=${dateIso}`;
   const chipHref = (id: string) => `${back}&event=${id}`;
   const navBase = `${base}&view=${view}`;
 
@@ -317,49 +335,59 @@ export default async function CalendarPage({
     <main className="page">
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
         <h1>月曆</h1>
+        {archived && <span className="rounded bg-gray-100 px-2 py-0.5 text-sm text-gray-600">已忽略</span>}
         {group && <span className="text-gray-500">{groupName}</span>}
-        {/* 視圖切換器：手機四等分、桌機 inline */}
-        <div className="segmented grid w-full grid-cols-4 md:ml-auto md:inline-flex md:w-auto">
-          {VIEWS.map(([v, zh]) => (
-            <a key={v} href={`${base}&view=${v}&date=${dateIso}`} aria-current={v === view ? 'page' : undefined}>
-              {zh}
-            </a>
-          ))}
-        </div>
-      </div>
-
-      <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-        {view === 'agenda' ? (
-          <>
-            <div className="segmented">
-              {RANGES.map(([r, zh]) => (
-                <a key={r} href={`${base}&view=agenda&range=${r}`} aria-current={r === range ? 'page' : undefined}>
-                  {zh}
-                </a>
-              ))}
-            </div>
-            <span className="text-gray-500">{agendaLabel}</span>
-          </>
-        ) : (
-          <>
-            <a className="btn" href={`${navBase}&date=${prevDate}`}>
-              ←
-            </a>
-            <strong className="min-w-32 text-center text-base">{label}</strong>
-            <a className="btn" href={`${navBase}&date=${nextDate}`}>
-              →
-            </a>
-            <a className="btn ml-2" href={`${navBase}&date=${todayIso}`}>
-              今天
-            </a>
-          </>
+        {/* 視圖切換器：手機四等分、桌機 inline（已忽略清單沒有日期軸，不畫） */}
+        {!archived && (
+          <div className="segmented grid w-full grid-cols-4 md:ml-auto md:inline-flex md:w-auto">
+            {VIEWS.map(([v, zh]) => (
+              <a key={v} href={`${base}&view=${v}&date=${dateIso}`} aria-current={v === view ? 'page' : undefined}>
+                {zh}
+              </a>
+            ))}
+          </div>
+        )}
+        {archived && events.length > 0 && (
+          <span className="ml-auto">
+            <SelectMode />
+          </span>
         )}
       </div>
+
+      {!archived && (
+        <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
+          {view === 'agenda' ? (
+            <>
+              <div className="segmented">
+                {RANGES.map(([r, zh]) => (
+                  <a key={r} href={`${base}&view=agenda&range=${r}`} aria-current={r === range ? 'page' : undefined}>
+                    {zh}
+                  </a>
+                ))}
+              </div>
+              <span className="text-gray-500">{agendaLabel}</span>
+            </>
+          ) : (
+            <>
+              <a className="btn" href={`${navBase}&date=${prevDate}`}>
+                ←
+              </a>
+              <strong className="min-w-32 text-center text-base">{label}</strong>
+              <a className="btn" href={`${navBase}&date=${nextDate}`}>
+                →
+              </a>
+              <a className="btn ml-2" href={`${navBase}&date=${todayIso}`}>
+                今天
+              </a>
+            </>
+          )}
+        </div>
+      )}
 
       {!group && <p className="text-gray-600">還沒有任何群組資料。</p>}
 
       {/* ── 月視圖 ── */}
-      {group && view === 'month' && (
+      {live && view === 'month' && (
         <>
           {/* 桌機：7 欄文字格線 */}
           <div className="card hidden overflow-x-auto p-0 md:block">
@@ -436,7 +464,7 @@ export default async function CalendarPage({
       )}
 
       {/* ── 週視圖：桌機時間軸（7 欄）、手機維持直向 7 塊列表 ── */}
-      {group && view === 'week' && (
+      {live && view === 'week' && (
         <>
           <div className="hidden md:block">
             <TimeGrid days={wd} byDay={byDay} chipHref={chipHref} todayIso={todayIso} />
@@ -452,10 +480,10 @@ export default async function CalendarPage({
       )}
 
       {/* ── 日視圖：時間軸（單欄） ── */}
-      {group && view === 'day' && <TimeGrid days={[dateIso]} byDay={byDay} chipHref={chipHref} todayIso={todayIso} />}
+      {live && view === 'day' && <TimeGrid days={[dateIso]} byDay={byDay} chipHref={chipHref} todayIso={todayIso} />}
 
       {/* ── 議程視圖：時間範圍內所有事件，按月分組；多選批次操作在此視圖 ── */}
-      {group && view === 'agenda' && (
+      {live && view === 'agenda' && (
         <div className="space-y-3">
           {agendaGroups.length > 0 && (
             <>
@@ -493,6 +521,67 @@ export default async function CalendarPage({
           {agendaTruncated && (
             <p className="text-sm text-gray-400">已達顯示上限，僅顯示前 {AGENDA_LIMIT} 筆（可縮小範圍）。</p>
           )}
+        </div>
+      )}
+
+      {/* 入口不帶筆數：計數本身就是噪音（principles.md 規則三）。四種視圖共用一個 */}
+      {live && (
+        <a
+          className="mt-4 inline-flex min-h-11 items-center text-sm text-gray-500 underline"
+          href={oh(slug, '/calendar', { group, view: 'ignored' })}
+        >
+          已忽略的事件 →
+        </a>
+      )}
+
+      {/* ── 已忽略的事件：在收件匣或這裡忽略掉的，逐筆或勾選後批次復原 ── */}
+      {group && archived && (
+        <div className="space-y-5">
+          <section>
+            {events.length > 0 && (
+              <BatchBar kind="event" back={back} actions={[{ action: 'restore', label: '復原' }]} />
+            )}
+            {events.length ? (
+              <ul className="space-y-1.5">
+                {events.map((e) => (
+                  <li
+                    key={e.id}
+                    className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm"
+                  >
+                    <BatchBox id={e.id} />
+                    <span className="flex-none text-xs text-gray-500 tabular-nums">
+                      {zhDate(e.starts_at, { year: 'numeric', month: 'numeric', day: 'numeric' })}
+                      {e.start_time ? ` ${String(e.start_time).slice(0, 5)}` : ''}
+                    </span>
+                    <a className="min-w-0 flex-1 font-bold hover:opacity-70" href={chipHref(e.id)}>
+                      {e.title}
+                    </a>
+                    <form action="/api/events/update" method="post" className="flex-none">
+                      <input type="hidden" name="id" value={e.id} />
+                      <input type="hidden" name="back" value={back} />
+                      <button className="btn" name="action" value="restore">
+                        復原
+                      </button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="card text-sm text-gray-500">
+                <p className="mb-1 font-bold text-gray-700">沒有已忽略的事件</p>
+                <p>在收件匣或月曆忽略掉的事件會留在這裡，隨時可以復原。</p>
+              </div>
+            )}
+            {events.length === AGENDA_LIMIT && (
+              <p className="mt-2 text-sm text-gray-400">只顯示最近忽略的 {AGENDA_LIMIT} 筆。</p>
+            )}
+          </section>
+          <a
+            className="inline-flex min-h-11 items-center text-sm text-emerald-700 underline"
+            href={oh(slug, '/calendar', { group })}
+          >
+            ← 回到月曆
+          </a>
         </div>
       )}
 
@@ -543,14 +632,21 @@ export default async function CalendarPage({
               <button className="btn-primary" name="action" value="save">
                 儲存修正
               </button>
-              {detail.needs_confirmation && (
+              {detail.needs_confirmation && detail.status !== 'ignored' && (
                 <button className="btn" name="action" value="confirm">
                   確認無誤
                 </button>
               )}
-              <button className="btn-danger" name="action" value="ignore">
-                忽略
-              </button>
+              {/* 已忽略的事件：這裡換成「復原」（從收件匣的「編輯」或已忽略清單點進來都會看到） */}
+              {detail.status === 'ignored' ? (
+                <button className="btn" name="action" value="restore">
+                  復原
+                </button>
+              ) : (
+                <button className="btn-danger" name="action" value="ignore">
+                  忽略
+                </button>
+              )}
             </div>
           </form>
           <h3 className="mt-4 mb-2 text-sm font-bold text-gray-600">來源訊息</h3>

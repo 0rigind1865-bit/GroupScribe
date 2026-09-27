@@ -44,13 +44,15 @@ export function GroupSwitcher({ groups }: { groups: GroupOption[] }) {
   }
   // 設計稿（2026-09）：一顆「群組名 ▾」膠囊，在身分列最右（手機、電腦都在深色帶上）。
   // 點開是真正的清單（<details>，純 HTML）：LINE 內建瀏覽器不一定叫得出原生 <select>。
+  // data-no-swipe 掛在 details：點外面收合的遮罩是 summary::before、跟面板是兄弟，掛在面板上 closest() 找不到，
+  // 在遮罩上橫滑會被底部膠囊當成換分頁（同身分列，T10 第 2 輪）
   return (
-    <details className="group relative">
+    <details className="group relative" data-no-swipe="">
       <summary className={PILL}>
         <span>{label}</span>
         <Chevron />
       </summary>
-      <div className={PANEL} data-no-swipe="">
+      <div className={PANEL}>
         {supportsAll && (
           <a href={hrefFor('')} aria-current={!current ? 'page' : undefined} className={rowCls(!current)}>
             全部群組
@@ -79,11 +81,13 @@ export function GroupSwitcher({ groups }: { groups: GroupOption[] }) {
 /** 頂端情境膠囊（群組／員工共用）：外觀在 globals.css 的 .ctx-pill——淺色列白底細框、深色列透明底白字（審查 F17） */
 export const PILL = 'ctx-pill';
 
-/** 膠囊點開的清單面板與每一列（群組／員工共用，兩顆長一樣就要行為一樣——審查 F40） */
+/** 膠囊點開的清單面板與每一列（群組／員工共用，兩顆長一樣就要行為一樣——審查 F40）。
+ *  ctx-panel（globals.css）：最大高度 vh 後備＋dvh、從膠囊長出來的進場動畫 */
 export const PANEL =
-  'absolute right-0 z-40 mt-2 max-h-[70vh] w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1 text-gray-900 shadow-lg';
+  'ctx-panel absolute right-0 z-40 mt-2 w-64 overflow-y-auto rounded-xl border border-gray-200 bg-white p-1 text-gray-900 shadow-lg';
+/** 每一列 44px 高（py-3＋text-sm 行高 20）：觸控目標；仍是 block＋truncate，名字太長照樣出省略號 */
 export const rowCls = (on: boolean) =>
-  `block truncate rounded-md px-2.5 py-2 text-sm ${on ? 'bg-emerald-50 font-medium text-emerald-900' : 'hover:bg-gray-50'}`;
+  `block truncate rounded-md px-2.5 py-3 text-sm ${on ? 'bg-emerald-50 font-medium text-emerald-900' : 'hover:bg-gray-50'}`;
 
 export function Chevron() {
   return (

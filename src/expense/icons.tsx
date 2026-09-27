@@ -1,5 +1,38 @@
 // 從 Snaptab lib/icons.tsx 搬來（報帳全功能移植）：線性 icon，分類圖示存 key（如 'gas'）。
 // 群記另加 defaultIconFor()：公司沒設圖示的分類，依名稱猜一個。
+//
+// ── 第三方授權：Feather Icons（https://github.com/feathericons/feather，MIT）──
+// 下列圖示取自 Feather（2026-09 逐一對過 feather-icons 的 dist/icons.json），其餘是自己畫的：
+//   逐字（或只差座標四捨五入、path 寫法）：
+//     misc ← paperclip、box ← box、trash ← trash-2、pin ← map-pin、download ← download、
+//     image ← image、edit ← edit-3、moon ← moon、plane ← send
+//   改自（同一套筆畫結構，調過座標或細節）：
+//     coffee ← coffee（杯身與把手逐字、蒸氣線縮短）、tag ← tag、camera ← camera、sliders ← sliders、
+//     list ← list（點改成圓）、cart ← shopping-cart、sun ← sun、mic ← mic、tool ← tool（簡化）
+// 依 MIT 條款，下面附上原版權聲明與授權全文：
+/*
+The MIT License (MIT)
+
+Copyright (c) 2013-2023 Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+*/
 
 import type { ReactNode } from 'react';
 import { normalizeIcon } from './icon-names';

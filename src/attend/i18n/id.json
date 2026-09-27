@@ -133,5 +133,9 @@
   "SEE_ALL_TOOLS": "Semua alat →",
   "NOT_FOUND": "Halaman ini tidak ditemukan, atau Anda tidak punya akses.",
   "GO_HOME": "Ke beranda",
-  "BACK_PREV": "‹ Kembali"
+  "BACK_PREV": "‹ Kembali",
+  "SOFTNAV_DISMISS": "Mengerti",
+  "SOFTNAV_DONE": "Selesai",
+  "SOFTNAV_FAILED": "Belum selesai: {msg}",
+  "SOFTNAV_OFFLINE": "Koneksi terputus, belum pasti sudah terkirim. Muat ulang halaman untuk melihat hasilnya sebelum mengirim ulang."
 }

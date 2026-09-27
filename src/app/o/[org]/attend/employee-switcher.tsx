@@ -44,13 +44,14 @@ export function EmployeeSwitcher({ employees }: { employees: EmpOption[] }) {
   }
 
   return (
-    <details className="group relative">
+    // data-no-swipe 掛在 details 而非面板：在點外面收合的遮罩（summary::before）上橫滑不換分頁（同群組膠囊）
+    <details className="group relative" data-no-swipe="">
       {/* aria-label 會蓋掉膠囊上的字，要把目前選的人一起念出來（最後審查） */}
       <summary className={PILL} aria-label={`切換員工：${label}`}>
         <span>{label}</span>
         <Chevron />
       </summary>
-      <div className={PANEL} data-no-swipe="">
+      <div className={PANEL}>
         {supportsAll && (
           <a href={hrefFor('')} aria-current={!current ? 'page' : undefined} className={rowCls(!current)}>
             全部員工

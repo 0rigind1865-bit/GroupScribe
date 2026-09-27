@@ -432,7 +432,7 @@ export function AddView({
       </label>
 
       {showPad && (
-        <Sheet onClose={() => setShowPad(false)}>
+        <Sheet label={L.amount} onClose={() => setShowPad(false)}>
           <p className="text-xs text-gray-500">{L.amount}</p>
           <p className={`text-4xl font-semibold tabular-nums ${expr ? '' : 'text-gray-400'}`}>
             <span className="mr-1 text-lg text-gray-500">$</span>

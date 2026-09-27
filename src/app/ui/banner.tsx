@@ -3,14 +3,15 @@ import { TONE_BANNER, TONE_BORDER, type Tone } from './tone';
 // Alert（Component Gallery 名；別名 Banner / Notification / Callout）：操作結果橫幅。
 // 行為：ok/neutral 是 role=status（禮貌播報），warn/err 是 role=alert（螢幕閱讀器立即唸出）。
 // 形態採 Origin UI alert：淡底＋同色系細框、圓角 10。取代散在 16 個頁面的手刻橫幅。
+// 外層用 div 不用 p：收件匣的「復原」橫幅裡要放 <form>，而 <p> 裡不能有 <form>（瀏覽器會提早關掉 p，React 水合報錯）。
 export function Banner({ tone = 'ok', children }: { tone?: Tone; children: React.ReactNode }) {
   return (
-    <p
+    <div
       role={tone === 'err' || tone === 'warn' ? 'alert' : 'status'}
       className={`mb-3 rounded-lg border px-3 py-2 text-sm ${TONE_BANNER[tone]} ${TONE_BORDER[tone]}`}
     >
       {children}
-    </p>
+    </div>
   );
 }
 

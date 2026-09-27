@@ -5,6 +5,7 @@ import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
 import { dbConfigured, getDb } from '@/db';
 import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
+import { Banner } from '@/app/ui/banner';
 import { SetupNotice } from '../setup-notice';
 import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
 import { fmtDate } from '@/core/date';
@@ -25,21 +26,22 @@ const md = fmtDate; // 期限/日期的格式統一在 core/date.ts
 type Row = { kind: 'event' | 'task' | 'note'; item: any };
 
 const KIND_STYLE = {
-  event: { label: '事件', chip: 'bg-emerald-100 text-emerald-800', route: '/api/events/update', edit: (o: string, g: string, id: string) => oh(o, '/calendar', { group: g, event: id }) },
-  task: { label: '待辦', chip: 'bg-sky-100 text-sky-800', route: '/api/tasks/update', edit: (o: string, g: string, id: string) => oh(o, '/tasks', { group: g, task: id }) },
-  note: { label: '公告', chip: 'bg-purple-100 text-purple-900', route: '/api/notes/update', edit: (o: string, g: string, id: string) => oh(o, '/notes', { group: g, note: id }) },
+  event: { label: '事件', table: 'events', chip: 'bg-emerald-100 text-emerald-800', route: '/api/events/update', edit: (o: string, g: string, id: string) => oh(o, '/calendar', { group: g, event: id }) },
+  task: { label: '待辦', table: 'tasks', chip: 'bg-sky-100 text-sky-800', route: '/api/tasks/update', edit: (o: string, g: string, id: string) => oh(o, '/tasks', { group: g, task: id }) },
+  note: { label: '公告', table: 'notes', chip: 'bg-purple-100 text-purple-900', route: '/api/notes/update', edit: (o: string, g: string, id: string) => oh(o, '/notes', { group: g, note: id }) },
 } as const;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function InboxPage({
   params,
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ group?: string }>;
+  searchParams: Promise<{ group?: string; undo?: string | string[] }>;
 }) {
   const { org: slug } = await params;
   if (!dbConfigured()) return <SetupNotice />;
-  const { group: groupParam } = await searchParams;
+  const { group: groupParam, undo: undoParam } = await searchParams;
   const db = getDb();
 
   const { org } = await requireModule(slug, 'gs');
@@ -85,7 +87,65 @@ export default async function InboxPage({
     for (const [k, v] of m) photos.set(k, v);
   }
 
-  const back = `/o/${slug}/inbox${group ? `?group=${encodeURIComponent(group)}` : ''}`;
+  // 剛忽略的項目（?undo=kind:id，多筆逗號串）→ 上方「已忽略『標題』」＋「復原」。
+  // 單筆由卡片的忽略表單帶進 back、批次由 /api/batch 補。標題從 DB 查、不放網址；
+  // 只認本公司的群、而且現在還是 ignored 的（已經復原過或被改過就不再顯示）。
+  // 網址被手打成 ?undo=a&undo=b 時 Next 給的是陣列：先接成一串，不然 split 會讓整頁 500
+  const undoRaw = Array.isArray(undoParam) ? undoParam.join(',') : (undoParam ?? '');
+  const undoIds = new Map<Row['kind'], string[]>();
+  // 「選取全部 N 筆」忽略的復原憑證 all@<毫秒>：那次 update 把每一筆的 updated_at 都寫成同一刻（/api/batch），
+  // 幾百筆也不用把 id 塞進網址。筆數現查：同一刻、現在還是 ignored、仍待確認、在本公司的群
+  const undoAll = new Set<string>(); // Set：網址重複帶同一個憑證也不會算兩次
+  for (const raw of undoRaw.split(',')) {
+    if (/^all@\d{10,15}$/.test(raw)) {
+      undoAll.add(raw);
+      continue;
+    }
+    const [k, id] = raw.split(':');
+    // hasOwn 不用 in：網址帶 toString:… 之類時 in 會沿原型鏈判成真
+    if (Object.hasOwn(KIND_STYLE, k) && UUID.test(id ?? '')) {
+      const kind = k as Row['kind'];
+      undoIds.set(kind, [...(undoIds.get(kind) ?? []), id]);
+    }
+  }
+  const undone = (
+    await Promise.all(
+      [...undoIds].map(([kind, list]) =>
+        db
+          .from(KIND_STYLE[kind].table)
+          .select('id, title, status')
+          .in('id', list)
+          .in('group_id', ids)
+          .then(({ data, error }) =>
+            error
+              ? list.map((id) => ({ kind, id, title: '' })) // 查不到標題：照網址的筆數，只寫「已忽略 N 筆」
+              : (data ?? []).filter((r: any) => r.status === 'ignored').map((r: any) => ({ kind, id: r.id as string, title: r.title as string })),
+          ),
+      ),
+    )
+  ).flat();
+  const undoneAll = (
+    await Promise.all(
+      [...undoAll].flatMap((token) => {
+        const at = new Date(Number(token.slice(4))).toISOString();
+        return Object.values(KIND_STYLE).map((s) =>
+          db
+            .from(s.table)
+            .select('id', { count: 'exact', head: true })
+            .in('group_id', ids)
+            .eq('updated_at', at)
+            .eq('status', 'ignored')
+            .eq('needs_confirmation', true)
+            .then(({ count }) => count ?? 0),
+        );
+      }),
+    )
+  ).reduce((a, n) => a + n, 0);
+  const undoneCount = undone.length + undoneAll;
+
+  // back 不帶 undo：處理下一張卡（或按復原）之後橫幅自然消失
+  const back = oh(slug, '/inbox', { group });
+  const undoBack = (kind: Row['kind'], id: string) => oh(slug, '/inbox', { group, undo: `${kind}:${id}` });
 
   return (
     <main className="page">
@@ -98,6 +158,31 @@ export default async function InboxPage({
       <p className="mb-5 text-sm leading-relaxed text-gray-500">
         AI 從對話整理出來的項目先到這裡，經你把關才算數。確認過的內容 AI 之後不會亂改。
       </p>
+
+      {/* 忽略可復原（principles.md：可逆性優先——按錯了五秒內救得回來）。原生表單零 JS；
+          送出後全站換頁不捲動，手機上黏在頂端，往下處理到一半忽略也看得到 */}
+      {undoneCount > 0 && (
+        <div className="sticky top-2 z-20 md:static">
+          <Banner tone="neutral">
+            <div className="flex items-center gap-3">
+              <span className="min-w-0 flex-1 break-words">
+                {undoneCount === 1 && undone[0]?.title ? `已忽略「${undone[0].title}」` : `已忽略 ${undoneCount} 筆`}
+              </span>
+              <form action="/api/batch" method="post" className="flex-none">
+                <input type="hidden" name="kind" value="inbox" />
+                {undone.map((u) => (
+                  <input key={`${u.kind}:${u.id}`} type="hidden" name="ids" value={`${u.kind}:${u.id}`} />
+                ))}
+                {undoneAll > 0 && [...undoAll].map((token) => <input key={token} type="hidden" name="ids" value={token} />)}
+                <input type="hidden" name="back" value={back} />
+                <button className="btn" name="action" value="restore">
+                  復原
+                </button>
+              </form>
+            </div>
+          </Banner>
+        </div>
+      )}
 
       {!rows.length && (
         <div className="card text-sm text-gray-500">
@@ -174,7 +259,8 @@ export default async function InboxPage({
               <div className="flex gap-2">
                 <form action={s.route} method="post" className="flex-1">
                   <input type="hidden" name="id" value={item.id} />
-                  <input type="hidden" name="back" value={back} />
+                  {/* 忽略後回來帶 ?undo=：上方出現「已忽略…」＋「復原」 */}
+                  <input type="hidden" name="back" value={undoBack(kind, item.id)} />
                   <button className="btn-danger w-full" name="action" value="ignore">
                     忽略
                   </button>

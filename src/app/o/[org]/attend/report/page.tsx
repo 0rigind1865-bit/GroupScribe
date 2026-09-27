@@ -98,9 +98,10 @@ export default async function AttendCalendar({
         title={`${emp.display_name}｜${y} 年 ${m} 月`}
         desc={emp.dept ?? undefined}
         right={
+          // min-w-11：.btn 已有 44 高，但只放一個箭頭時寬度只剩約 36（觸控目標要 44×44）
           <>
-            <a className="btn px-2.5 py-1 text-sm" href={oh(slug, '/attend/report', { emp: emp.id, month: shiftMonth(month, -1) })}>←</a>
-            <a className="btn px-2.5 py-1 text-sm" href={oh(slug, '/attend/report', { emp: emp.id, month: shiftMonth(month, 1) })}>→</a>
+            <a className="btn min-w-11 px-2.5 py-1 text-sm" aria-label="上個月" href={oh(slug, '/attend/report', { emp: emp.id, month: shiftMonth(month, -1) })}>←</a>
+            <a className="btn min-w-11 px-2.5 py-1 text-sm" aria-label="下個月" href={oh(slug, '/attend/report', { emp: emp.id, month: shiftMonth(month, 1) })}>→</a>
           </>
         }
       />

@@ -67,11 +67,14 @@ export function BatchBar({
       {kind === 'file' && (
         <>
           <span className="text-gray-300">|</span>
-          <label className="flex items-center gap-1 text-xs text-gray-600">
-            <input type="checkbox" name="confirm_delete" /> 確認
+          {/* 刪檔沒有復原路徑（principles.md：可逆性優先）：先勾才按得下去——data-ack／data-requires-ack 由 globals.css 讓按鈕變灰。
+              不用 required：同一張表單還有「指定專案」，required 會連它一起擋掉。沒勾硬送出時伺服器回 400 講清楚。
+              label 撐到 44px 高＝整塊都是勾選的觸控目標 */}
+          <label className="flex min-h-11 cursor-pointer items-center gap-1.5 text-xs text-gray-600">
+            <input type="checkbox" name="confirm_delete" data-ack /> 刪了無法復原
           </label>
-          <button name="action" value="delete" className="btn-danger btn-sm">
-            刪除
+          <button name="action" value="delete" className="btn-danger px-2 py-1 text-xs" data-requires-ack>
+            刪除所選檔案
           </button>
         </>
       )}

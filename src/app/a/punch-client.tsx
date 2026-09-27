@@ -71,6 +71,14 @@ export function PunchPanel({ locations, labels, next = 'in' }: { locations: Punc
     return () => navigator.geolocation.clearWatch(id);
   }, []);
 
+  // 打卡是整頁 POST：按「上一頁」回來時瀏覽器可能從快取還原畫面，busy 還是送出前那一刻的值——
+  // 兩顆鈕停在轉圈、按不下去。還原時解鎖（現在有轉圈，卡住會比以前只剩文字更明顯）
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => e.persisted && setBusy(null);
+    addEventListener('pageshow', onShow);
+    return () => removeEventListener('pageshow', onShow);
+  }, []);
+
   // Leaflet：CDN 載入。三個踩過的坑，缺一個地圖就是壞的：
   //   1. 容器必須先有尺寸——初始若是 display:none，L.map() 會在 0×0 上算格線，
   //      之後補 invalidateSize() 也常常來不及。所以容器一開始就佔位，只有「確定失敗」才隱藏。
@@ -236,21 +244,28 @@ export function PunchPanel({ locations, labels, next = 'in' }: { locations: Punc
         )}
       </div>
 
+      {/* 定位（最長 15 秒）到送出完成前都是 busy：按鈕裡轉圈。f.submit() 不觸發 submit 事件，
+          全站的 is-submitting 轉圈抓不到這裡，所以自己畫；spinner 用 currentColor，跟著按鈕字色。
+          按下的那顆不跟著 disabled 變半透明（opacity-100 蓋過 .btn 的 disabled 樣式）：半透明看起來像「按不下去」 */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <button
           type="button"
           onClick={() => punch('in')}
           disabled={!!busy || blocked}
-          className={`${next === 'in' ? 'btn-primary' : 'btn'} py-4 text-lg font-bold disabled:opacity-50`}
+          aria-busy={busy === 'in'}
+          className={`${next === 'in' ? 'btn-primary' : 'btn'} py-4 text-lg font-bold ${busy === 'in' ? 'opacity-100' : 'disabled:opacity-50'}`}
         >
+          {busy === 'in' && <span className="spinner" aria-hidden="true" />}
           {busy === 'in' ? labels.locating : labels.punchIn}
         </button>
         <button
           type="button"
           onClick={() => punch('out')}
           disabled={!!busy || blocked}
-          className={`${next === 'out' ? 'btn-primary' : 'btn'} py-4 text-lg font-bold disabled:opacity-50`}
+          aria-busy={busy === 'out'}
+          className={`${next === 'out' ? 'btn-primary' : 'btn'} py-4 text-lg font-bold ${busy === 'out' ? 'opacity-100' : 'disabled:opacity-50'}`}
         >
+          {busy === 'out' && <span className="spinner" aria-hidden="true" />}
           {busy === 'out' ? labels.locating : labels.punchOut}
         </button>
       </div>

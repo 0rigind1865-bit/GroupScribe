@@ -48,11 +48,24 @@ function KeyByUrl({ children }: { children: React.ReactNode }) {
 // 讀到的是按鈕元素不是網址（2026-09-27 複查抓到）
 const attr = (el: Element | null | undefined, name: string) => el?.getAttribute(name) ?? null;
 
-export function SoftNav() {
+/**
+ * 提示條的固定字：root layout 依語系（locale()）翻好傳進來。SoftNav 掛在 root、也接手員工端（/a）的表單，
+ * 越南、印尼籍員工在工地網路不穩時最常看到的就是斷線那句。failed 裡的 {msg} 換成伺服器回的原因
+ */
+export type SoftNavText = { dismiss: string; done: string; failed: string; offline: string };
+
+export function SoftNavClient({ text }: { text: SoftNavText }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [sending, setSending] = useState(0);
   const remountAfter = useRef(false);
+  // 送出結果的提示條（原本是 alert()：LINE 的 LIFF 文件警告在 Promise 回呼裡叫 alert 部分裝置會出問題，
+  // 而且原生對話框會蓋住整個 App）。at 當 key：同一句話再出現也重新進場
+  const [note, setNote] = useState<{ text: string; err: boolean; at: number } | null>(null);
+  // 字放 ref、不放進下面 effect 的依賴：每次 router.refresh() root layout 都會重送一份新的 text 物件，
+  // effect 若跟著重跑，busy 會換一個新的空集合——還在匯入中的表單就又按得下去了
+  const textRef = useRef(text);
+  textRef.current = text;
 
   // 送出後回到同一網址：網址沒變、Remount 不會自己重建——等新資料到了（transition 結束）再重建一次
   useEffect(() => {
@@ -61,8 +74,17 @@ export function SoftNav() {
     dispatchEvent(new Event(DONE));
   }, [pending]);
 
+  // 成功訊息幾秒後自己收掉；錯誤要人按「知道了」——「沒有送出」不能一閃就過
   useEffect(() => {
-    const go = (url: string, afterPost = false) =>
+    if (!note || note.err) return;
+    const t = setTimeout(() => setNote(null), 4000);
+    return () => clearTimeout(t);
+  }, [note]);
+
+  useEffect(() => {
+    const go = (url: string, afterPost = false) => {
+      // 換到別頁（GET 表單也走這條）：上一頁的「沒有完成」不跟過去，看起來像新頁面出了錯
+      if (!afterPost) setNote(null);
       start(() => {
         if (!afterPost) return router.push(url);
         if (url === location.pathname + location.search) {
@@ -73,6 +95,9 @@ export function SoftNav() {
         router.replace(url, { scroll: /[?&](err|error|cerror)=/.test(url) });
         router.refresh(); // 連 layout 一起重抓：選單上的待辦數字、群組／員工膠囊
       });
+    };
+    // 上一頁／下一頁（Android 返回鍵、iOS 左緣滑回）不經過 go()：一樣收掉
+    const onPop = () => setNote(null);
 
     const closeMenus = () => document.querySelectorAll('details[open]').forEach((d) => d.removeAttribute('open'));
 
@@ -127,6 +152,7 @@ export function SoftNav() {
 
       busy.add(f);
       setSending((x) => x + 1);
+      setNote(null); // 重送時收掉上一次的提示，免得重試成功了還掛著「沒有完成」
       // 等伺服器回話的整段期間表單都鎖著（同原生送出）：匯入聊天記錄可能跑好幾分鐘，
       // 中途解鎖會讓人再按一次、整批訊息重複入庫（2026-09-27 最終審查）。
       // ponytail: 換頁重建也會解鎖另一張還在送出中的表單——跟以前整頁送出一樣，沒再多做
@@ -151,20 +177,26 @@ export function SoftNav() {
           }
           // 沒轉址又是 HTML＝登入過期被改寫成登入頁：整頁重載，讓登入頁接手（登入完會回到這一頁）
           if ((res.headers.get('content-type') ?? '').includes('text/html')) return location.reload();
-          // 錯誤（403／400 回 JSON）：原本會整頁顯示一段 JSON，現在跳一句話、留在原頁
+          // 錯誤（403／400 回 JSON）：原本會整頁顯示一段 JSON，現在底部提示條一句話、留在原頁
           const text = await res.text();
           let msg = text;
           try {
             const j = JSON.parse(text);
-            msg = j.error ?? (res.ok ? '完成' : text);
+            msg = j.error ?? (res.ok ? textRef.current.done : text);
           } catch {}
           unlock();
-          alert(res.ok ? String(msg).slice(0, 300) : `沒有完成：${String(msg).slice(0, 200)}`);
+          // replace 用函式：伺服器回的原因裡有 $& 之類也照字面放進去
+          const why = String(msg).slice(0, 200);
+          setNote(
+            res.ok
+              ? { text: String(msg).slice(0, 300), err: false, at: Date.now() }
+              : { text: textRef.current.failed.replace('{msg}', () => why), err: true, at: Date.now() },
+          );
         })
         .catch(() => {
           unlock();
           // 斷線不代表伺服器沒收到（長時間的匯入會照樣跑完）：不叫人直接重送，先看結果
-          alert('連線中斷，不確定有沒有送出。請先重新整理看結果，再決定要不要重送。');
+          setNote({ text: textRef.current.offline, err: true, at: Date.now() });
         })
         .finally(() => setSending((x) => x - 1));
     };
@@ -174,14 +206,41 @@ export function SoftNav() {
     addEventListener('keydown', onDown, true);
     addEventListener('click', onClick);
     addEventListener('submit', onSubmit);
+    addEventListener('popstate', onPop);
     return () => {
       removeEventListener('pointerdown', onDown, true);
       removeEventListener('keydown', onDown, true);
       removeEventListener('click', onClick);
       removeEventListener('submit', onSubmit);
+      removeEventListener('popstate', onPop);
     };
   }, [router]);
 
   // 換頁中、送出中：頂端一條細的進度線（點了有反應，長時間的 AI 解析也看得出還在跑）
-  return pending || sending > 0 ? <div className="softnav-bar" aria-hidden="true" /> : null;
+  // 提示條：位置在 globals.css 的 .softnav-note（平常浮在底部膠囊上方、手機批次列浮出時改貼頂端）。
+  // 報讀：錯誤 role=alert（連區塊帶字一起插入也會念）；成功走下面常駐的 role=status——polite 的即時區域
+  // 要先在 DOM 裡、之後內容改變才會被念，跟著提示條整塊插進來的 NVDA／JAWS 多半不念。提示條本身 aria-hidden 免得念兩次
+  return (
+    <>
+      {(pending || sending > 0) && <div className="softnav-bar" aria-hidden="true" />}
+      <div role="status" className="sr-only">
+        {note && !note.err && <span key={note.at}>{note.text}</span>}
+      </div>
+      {note && (
+        <div
+          key={note.at}
+          role={note.err ? 'alert' : undefined}
+          aria-hidden={note.err ? undefined : true}
+          className="softnav-note msg-in fixed inset-x-4 z-[70] mx-auto flex max-w-md items-center gap-2 rounded-xl bg-gray-900 py-1 pr-1 pl-4 text-sm text-white shadow-lg ring-1 ring-white/15"
+        >
+          <p className="min-w-0 flex-1 py-2 break-words">{note.text}</p>
+          {note.err && (
+            <button type="button" className="min-h-11 flex-none rounded-lg px-3 font-bold" onClick={() => setNote(null)}>
+              {text.dismiss}
+            </button>
+          )}
+        </div>
+      )}
+    </>
+  );
 }

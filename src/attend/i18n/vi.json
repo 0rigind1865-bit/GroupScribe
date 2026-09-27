@@ -133,5 +133,9 @@
   "SEE_ALL_TOOLS": "Tất cả công cụ →",
   "NOT_FOUND": "Không tìm thấy trang này, hoặc bạn không có quyền xem.",
   "GO_HOME": "Về trang chủ",
-  "BACK_PREV": "‹ Quay lại"
+  "BACK_PREV": "‹ Quay lại",
+  "SOFTNAV_DISMISS": "Đã hiểu",
+  "SOFTNAV_DONE": "Xong",
+  "SOFTNAV_FAILED": "Chưa hoàn tất: {msg}",
+  "SOFTNAV_OFFLINE": "Mất kết nối, không chắc đã gửi được chưa. Hãy tải lại trang để xem kết quả rồi mới quyết định gửi lại."
 }

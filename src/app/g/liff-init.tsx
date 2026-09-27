@@ -69,11 +69,17 @@ export function LiffInit({ liffId, msgs = ZH }: { liffId: string; msgs?: LiffMsg
     s.onerror = () => setMsg(msgs.sdkFailed);
     document.head.appendChild(s);
   }, [liffId, msgs]);
+  // 連線中才轉圈（初始 state 就是連線中，SSR 出來的 HTML 已帶轉圈，不用等 JS）；
+  // 錯誤訊息不轉圈——轉圈＝「等一下就好」，錯誤時那是在騙人
+  const connecting = msg === msgs.connecting;
   return (
     <main className="grid min-h-dvh place-items-center p-6 text-center">
       <div>
         <p className="mb-2 text-lg font-bold">{msgs.brand}</p>
-        <p className="text-sm text-gray-500">{msg}</p>
+        <p role="status" aria-live="polite" className="flex items-center justify-center gap-2 text-sm text-gray-500">
+          {connecting && <span className="spinner h-4 w-4 flex-none" aria-hidden="true" />}
+          {msg}
+        </p>
       </div>
     </main>
   );

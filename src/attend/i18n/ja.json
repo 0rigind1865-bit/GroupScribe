@@ -133,5 +133,9 @@
   "SEE_ALL_TOOLS": "すべてのツール →",
   "NOT_FOUND": "このページは見つからないか、アクセス権がありません。",
   "GO_HOME": "ホームへ",
-  "BACK_PREV": "‹ 戻る"
+  "BACK_PREV": "‹ 戻る",
+  "SOFTNAV_DISMISS": "了解",
+  "SOFTNAV_DONE": "完了",
+  "SOFTNAV_FAILED": "完了できませんでした：{msg}",
+  "SOFTNAV_OFFLINE": "接続が切れました。送信できたか分かりません。再読み込みして結果を確認してから、もう一度送るか決めてください。"
 }

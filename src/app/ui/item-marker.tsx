@@ -31,12 +31,15 @@ export function TaskCircle({
       <input type="hidden" name="id" value={id} />
       <input type="hidden" name="back" value={back} />
       {extraFields}
+      {/* 看起來 28px、按起來 44px：透明的 ::after 往外撐 10px（絕對定位以 padding box 為準，24＋20＝44），
+          不佔版面、不推開旁邊的字；各處用的間距都 ≥10px，不會蓋到隔壁的連結。
+          task-circle：送出中不塞轉圈、勾勾維持顯示＝按下去立刻有回饋（globals.css） */}
       <button
         name="action"
         value="done"
         aria-label={`標記完成：${title}`}
         title="標記完成"
-        className={`group grid h-7 w-7 place-items-center rounded-full border-2 transition-colors ${
+        className={`task-circle group relative grid h-7 w-7 place-items-center rounded-full border-2 transition-colors after:absolute after:-inset-2.5 after:content-[''] ${
           overdue ? 'border-red-400 text-red-500 hover:bg-red-50' : 'border-gray-400 text-emerald-700 hover:bg-emerald-50'
         }`}
       >

@@ -50,6 +50,24 @@ html {
   color-scheme: light dark;
 }
 
+/* 換頁淡入淡出：瀏覽器原生的跨頁 View Transition，只用預設的整頁交叉淡化。
+   站內連結多半由 soft-nav.tsx 以 router.push 接手（不是整頁換頁），這條管的是剩下的整頁換頁：
+   /go/*（換身分）、/api/* 轉址、送出後轉去端點、沒有 JS 時的一般連結。不支援的瀏覽器直接換頁。
+   soft-nav 若另外用 document.startViewTransition 包住站內換頁，兩者各管各的、互不干擾（這條只管整頁換頁）；
+   下面 reduce 那段是保險：不管哪一種 View Transition，減少動態效果時都沒有動畫。 */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none;
+  }
+}
+
 @layer base {
   body {
     font-family: system-ui, "PingFang TC", "Noto Sans TC", sans-serif;
@@ -67,6 +85,17 @@ html {
     .nav-gap h1 {
       font-size: 42px;
     }
+  }
+  /* 標題換行平均分配：長標題斷成兩行時不會剩一個字孤零零掛在第二行 */
+  h1,
+  h2 {
+    text-wrap: balance;
+  }
+  /* 線條圖示一律圓線帽＋圓轉角：`h.01` 這種「點」要靠圓線帽才畫得出來（月曆格點、警示的驚嘆號點）。
+     全站圖示都是 fill="none" 的線條圖示、沒有刻意用 butt 的；寫了 strokeLinecap 的本來就是 round */
+  svg[stroke='currentColor'] {
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 }
 
@@ -89,8 +118,8 @@ html {
   .card-title {
     @apply text-base font-bold;
   }
-  /* Button（Component Gallery 同名）：四個 variant 共用一組骨架——高 36、圓角 8、medium 字重、
-     3px 焦點環、disabled 半透明（Origin UI button.tsx 的 base class）。手機 44px 觸控目標見下方 media。 */
+  /* Button（Component Gallery 同名）：四個 variant 共用一組骨架——高 44（手機、桌機一樣）、圓角 xl、粗體、
+     3px 焦點環、disabled 半透明（骨架取自 Origin UI button.tsx）。只有 .btn-sm 桌機縮到 32，觸控裝置撐回 44（見 .btn-sm）。 */
   .btn,
   .btn-primary,
   .btn-danger,
@@ -106,9 +135,15 @@ html {
   .btn-danger {
     @apply border-red-200 bg-white text-red-700 hover:bg-red-50 focus-visible:border-red-500 focus-visible:ring-red-500/30;
   }
-  /* size=sm（Origin：h-8 px-3 text-xs）：列內動作鈕用 */
+  /* size=sm（Origin：h-8 px-3 text-xs）：列內動作鈕用。32px 只給滑鼠；
+     手指點的裝置（手機、平板）撐回 44px 觸控目標——外觀一樣小字，只是按得到 */
   .btn-sm {
     @apply min-h-8 rounded-[10px] px-3 text-xs;
+  }
+  @media (pointer: coarse) {
+    .btn-sm {
+      @apply min-h-11;
+    }
   }
   /* 「確認」＝核可 AI 的判斷（對資料的判斷）；「完成」＝這件事做完了（對工作的狀態）。
      兩者語意完全不同卻長得一樣，是最容易按錯的一對。用琥珀＝AI 待確認的既有狀態色，
@@ -116,7 +151,7 @@ html {
   .btn-confirm {
     @apply border-amber-300 bg-amber-50 font-bold text-amber-900 hover:bg-amber-100 focus-visible:border-amber-500 focus-visible:ring-amber-500/30;
   }
-  /* Text input / Select / Textarea：高 36、圓角 8、淡陰影、3px 焦點環（Origin UI input.tsx） */
+  /* Text input / Select / Textarea：高 44、圓角 xl、3px 焦點環（Origin UI input.tsx） */
   .input {
     @apply min-h-11 rounded-xl border border-gray-300 bg-white px-3 py-1 text-[15px] transition-[color,box-shadow] outline-none placeholder:text-gray-400 focus-visible:border-emerald-500 focus-visible:ring-[3px] focus-visible:ring-emerald-500/30 disabled:opacity-50;
   }
@@ -149,6 +184,10 @@ html {
     @apply ring-2 ring-emerald-500/40;
   }
   .segmented > [aria-current='page'] {
+    @apply bg-white text-gray-900 shadow-xs;
+  }
+  /* 按鈕版（不換頁、只切畫面上的顯示）：用 aria-pressed 標選中，外觀跟連結版一樣 */
+  .segmented button[aria-pressed='true'] {
     @apply bg-white text-gray-900 shadow-xs;
   }
   input[type='checkbox'],
@@ -236,6 +275,71 @@ html {
     }
   }
 
+  /* ── 進場動畫（底部抽屜、下拉選單、圖表）──
+     只做「進場」、只動 transform／opacity，全部只寫在 no-preference 裡：系統開了「減少動態效果」就直接出現。
+     唯一例外是遮罩的淡入——不是位移，兩種設定都保留（iOS 的「減少動態效果」也是把滑入換成淡入）。
+     一律不加 animation-fill-mode forwards／both：播完 transform 要消失，否則抽屜裡 fixed 的
+     Lightbox 會改以抽屜為定位基準（transform 會變成 fixed 子元素的定位框）。 */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+  @keyframes sheet-in {
+    from {
+      transform: translateY(100%);
+    }
+  }
+  @keyframes pop-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px) scale(0.97);
+    }
+  }
+  @keyframes grow-x {
+    from {
+      transform: scaleX(0);
+    }
+  }
+  /* 底部抽屜（src/app/ui/expense/sheet.tsx 這類「fixed 遮罩＋貼底面板」）：
+     遮罩淡入；開著時鎖住背景捲動（手指在抽屜外滑，後面的頁面不跟著跑）。
+     只算看得見的抽屜：報帳 App 四個分頁同時掛著、只用 hidden 切換，抽屜開著時被換到別的分頁
+     （Android 返回鍵、iOS 左緣滑回）它不會卸載——:has() 不管看不看得見都成立，新分頁會整頁捲不動 */
+  .sheet-backdrop {
+    animation: fade-in 0.2s ease-out;
+  }
+  html:has(.sheet-backdrop:not([hidden] *)),
+  html:has(.sheet-backdrop:not([hidden] *)) body {
+    overflow: hidden; /* 同 .demo-lock：html、body 都鎖，iOS 才鎖得住 */
+  }
+  /* 面板捲到底不把捲動傳給後面的頁面 */
+  .sheet-panel {
+    overscroll-behavior: contain;
+  }
+  /* 長條圖的條在 SVG 裡時，transform-origin 要以條自己為準（預設是整張 SVG 的左上角） */
+  svg .bar-grow-x,
+  svg .bar-grow-y {
+    transform-box: fill-box;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .sheet-panel {
+      animation: sheet-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    /* 水平長條從左長出、垂直長條從下長出 */
+    .bar-grow-x {
+      transform-origin: left center;
+      animation: grow-x 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .bar-grow-y {
+      transform-origin: center bottom;
+      animation: grow-y 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    /* 圖表淡入：整張圖（或圖裡的線、點）一起出現 */
+    .chart-fade {
+      animation: fade-in 0.4s ease-out;
+    }
+  }
+
   /* 示範播放中鎖捲動（IntroDemo 在 html 加 .demo-lock）；底部 CTA 讓開，別擋住示範框 */
   html.demo-lock,
   html.demo-lock body {
@@ -305,6 +409,8 @@ html {
   .click-ripple {
     animation: click-ripple 0.45s ease-out both;
   }
+  /* 減少動態效果。抽屜滑入、下拉彈出、長條長出、圖表淡入（.sheet-panel／.id-panel／.ctx-panel／.bar-grow-*／.chart-fade）
+     本來就只寫在 no-preference 裡，不用列在這（遮罩淡入刻意保留）；懸浮膠囊與指示器見 .floating-nav 段末 */
   @media (prefers-reduced-motion: reduce) {
     .msg-in,
     .card-pop,
@@ -316,6 +422,13 @@ html {
     .spinner,
     .is-clicked::before {
       animation-duration: 1.6s;
+    }
+    /* 官網底部 CTA 讓位給示範：不往下滑走，原地淡出 */
+    [data-cta] {
+      transition: opacity 0.3s ease;
+    }
+    html.demo-lock [data-cta] {
+      transform: none;
     }
   }
 
@@ -406,6 +519,20 @@ html {
   }
   .floating-nav a:active {
     transform: scale(0.95);
+  }
+  /* 減少動態效果：捲動時不縮放、到底不滑出畫面，只剩半透明／淡出（仍讓出點擊，見 .nav-hidden）；
+     選中指示器直接跳到位，不滑過去 */
+  @media (prefers-reduced-motion: reduce) {
+    .floating-nav {
+      transition: opacity 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .floating-nav.nav-mini,
+    .floating-nav.nav-hidden {
+      transform: translateX(-50%);
+    }
+    .nav-ind {
+      transition: none;
+    }
   }
   /* 頁面讓開膠囊：膠囊高約 3.5rem，加上離底 0.75rem 與 inset */
   .nav-gap {
@@ -527,8 +654,9 @@ html {
   right: 0;
   bottom: 0;
   z-index: 40;
-  max-height: 80vh;
+  max-height: 80vh; /* dvh 版在下方 @supports */
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 6px 16px calc(24px + env(safe-area-inset-bottom));
   border-radius: 20px 20px 0 0;
   background: #ffffff;
@@ -555,7 +683,7 @@ html {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: 36px;
+  min-height: 44px; /* 觸控目標 */
   max-width: 128px;
   padding: 0 12px;
   border-radius: 9999px;
@@ -569,6 +697,13 @@ html {
 .ctx-pill::-webkit-details-marker { display: none; }
 .ctx-pill > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .id-bar--dark .ctx-pill { border-color: #3d4a43; background: transparent; color: #ffffff; }
+/* 點外面收合：跟身分列同一招——打開時 summary 長出全螢幕透明遮罩，點遮罩＝點 summary＝收合。
+   z 39：低於面板（z-40）、高於頁面與懸浮膠囊（20）。批次列（30）要另外讓：電腦版頂列是 md:sticky md:z-30，
+   自成一個堆疊層，遮罩的 39 只在頂列裡面算數、對外等於 30，會被 DOM 排在後面的批次列蓋住（見批次列段末）。
+   在遮罩上橫滑不換分頁靠 details 上的 data-no-swipe */
+details[open] > .ctx-pill::before { content: ''; position: fixed; inset: 0; z-index: 39; cursor: default; }
+/* 膠囊點開的清單面板（src/app/ui/group-switcher.tsx 的 PANEL，員工膠囊共用） */
+.ctx-panel { max-height: 70vh; overscroll-behavior: contain; }
 @media (min-width: 768px) {
   .id-bar { padding: 0 40px; gap: 20px; }
   .id-bar--light { padding: 14px 16px 4px; }
@@ -597,6 +732,26 @@ html {
     box-shadow: 0 12px 32px rgb(0 0 0 / 0.18);
   }
   .id-panel::before, .id-close { display: none; }
+}
+/* 選單最大高度改用 dvh：跟著 LINE／iOS 工具列伸縮，抽屜頂端、清單底端不會被推出畫面；上面的 vh 是後備。
+   分開寫在 @supports：同一條規則連寫兩次 max-height，建置時 lightningcss 認定目標瀏覽器都懂 dvh，會把 vh 那行刪掉 */
+@supports (max-height: 1dvh) {
+  .ctx-panel { max-height: 70dvh; }
+  .id-panel { max-height: 80dvh; }
+  @media (min-width: 768px) {
+    .id-panel { max-height: 70dvh; }
+  }
+}
+/* 選單進場（keyframes 在 @layer components「進場動畫」段）：手機抽屜從底部滑上來，跟 .sheet-panel 同一個 sheet-in；
+   電腦下拉與情境膠囊的清單從按鈕長出來（pop-in，縮放原點對準按鈕那一角）。
+   抽屜遮罩的淡入兩種設定都保留；位移只在 no-preference */
+.id-menu[open] > summary::before { animation: fade-in 0.2s ease-out; }
+@media (prefers-reduced-motion: no-preference) {
+  .id-menu[open] > .id-panel { animation: sheet-in 0.24s cubic-bezier(0.22, 1, 0.36, 1); }
+  details[open] > .ctx-panel { transform-origin: top right; animation: pop-in 0.14s ease-out; }
+}
+@media (prefers-reduced-motion: no-preference) and (min-width: 768px) {
+  .id-menu[open] > .id-panel { transform-origin: top left; animation: pop-in 0.14s ease-out; }
 }
 
 /* 首頁身分選單（src/app/page.tsx，畫布 IdHome）：個人段淺色卡；管理／平台段深色段頭＝跟頂列同一個角色色 */
@@ -653,6 +808,35 @@ body:has(.batch-box:checked) #batch {
     padding-bottom: 0.5rem;
   }
 }
+/* 身分列選單或情境膠囊打開時，批次列退到頂列（電腦 z-30 堆疊層）下面：點批次列那一塊＝點到選單的遮罩＝先收合，
+   不會直接執行批次動作；電腦版往下長的清單面板也不會被批次列蓋住 */
+body:has(details[open] > .ctx-pill, .id-menu[open]) #batch {
+  z-index: 20;
+}
+
+/* ── 送出結果提示條（src/app/ui/soft-nav.tsx）──
+   平常浮在底部膠囊上方（拇指按得到「知道了」）。手機上批次列浮出時它正好壓在批次列上
+   （批次列 flex-wrap 會變兩三行），而「沒勾就刪檔」這類錯誤正是從批次列觸發、又不會自己消失——改貼頂端，讓出批次按鈕 */
+.softnav-note {
+  bottom: calc(5.5rem + env(safe-area-inset-bottom));
+}
+@media (max-width: 767px) {
+  body:has(.batch-box:checked) .softnav-note {
+    bottom: auto;
+    top: calc(0.75rem + env(safe-area-inset-top));
+  }
+}
+
+/* ── 待辦完成圈送出中（src/app/ui/item-marker.tsx 的 TaskCircle，按鈕上加 .task-circle）──
+   全站的送出轉圈（.is-clicked::before）塞進 28px 的圈裡會把勾擠歪，這裡不畫；
+   改成送出中勾勾一直亮著＝按下去立刻看到「完成了」。未分層才勝過勾勾上的 opacity-0 utility */
+.task-circle.is-clicked::before { display: none; }
+.task-circle.is-clicked svg { opacity: 1; }
+
+/* ── 危險動作先勾確認：勾選框加 data-ack、按鈕加 data-requires-ack ──
+   同一張表單裡還有沒勾的確認框，按鈕就半透明、點不到。純 CSS :has()，零 JS。
+   pointer-events 只擋得住滑鼠與觸控：要連鍵盤（Enter）一起擋，勾選框本身再加 required */
+form:has([data-ack]:not(:checked)) [data-requires-ack] { opacity: 0.5; pointer-events: none; }
 
 /* ── 深色模式：跟隨系統。綠偏中性色盤（提案定案），utility 整表 remap ── */
 @media (prefers-color-scheme: dark) {
@@ -672,7 +856,7 @@ body:has(.batch-box:checked) #batch {
   .segmented { background: #232b27; }
   /* 未選那格：@apply text-gray-600 編成變數色，暗色不會跟著換（對比 2.4:1，最後審查） */
   .segmented > a, .segmented > button, .segmented > label { color: #a7b3ac; }
-  .segmented > [aria-current='page'], .segmented > label:has(:checked) { background: #1a211e; color: #e8edea; }
+  .segmented > [aria-current='page'], .segmented > label:has(:checked), .segmented button[aria-pressed='true'] { background: #1a211e; color: #e8edea; }
   .btn-danger { background: #1a211e; border-color: #542626; }
   .btn-danger:hover { background: #2b1d1d; }
   .btn-confirm { background: #33270f; border-color: #5c4718; color: #fcd34d; }
