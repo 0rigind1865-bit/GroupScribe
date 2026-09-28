@@ -211,22 +211,27 @@ html {
     border-radius: 9999px;
     animation: spin 0.7s linear infinite;
   }
-  /* 載入畫面的貓頭鷹（ui/spinner.tsx）：臉往右轉到後腦勺→停一下→轉回來→換左邊。
-     轉的角度 θ 換成「平移 100·sinθ、橫向縮 cosθ」，0°/45°/90° 三格就夠像球面在轉。
+  /* 載入畫面的貓頭鷹（ui/spinner.tsx）：正面→猛轉頭看右（側頭 90°）→回正→看左→回正。
+     貓頭鷹轉頭是「一下子」的，三顆頭用 step-end 瞬間切換（淡入淡出會有一瞬間兩顆頭半透明疊在一起）。
      顏色＝標誌的綠，兩種主題都看得清楚，不走 remap。 */
   .owl-loader {
     color: #0e9462;
   }
-  @keyframes owl-look {
-    0%, 41%, 50%, 91%, 100% { transform: translateX(0) scaleX(1); }
-    7%, 34% { transform: translateX(70.7px) scaleX(0.707); }
-    14%, 27% { transform: translateX(100px) scaleX(0); }
-    57%, 84% { transform: translateX(-70.7px) scaleX(0.707); }
-    64%, 77% { transform: translateX(-100px) scaleX(0); }
+  @keyframes owl-front {
+    0%, 45%, 95% { opacity: 1; }
+    20%, 70% { opacity: 0; }
   }
-  .owl-face {
-    animation: owl-look 2.8s linear infinite;
+  @keyframes owl-right {
+    0%, 45% { opacity: 0; }
+    20% { opacity: 1; }
   }
+  @keyframes owl-left {
+    0%, 95% { opacity: 0; }
+    70% { opacity: 1; }
+  }
+  .owl-front { animation: owl-front 2.4s step-end infinite; }
+  .owl-right { opacity: 0; animation: owl-right 2.4s step-end infinite; }
+  .owl-left { opacity: 0; animation: owl-left 2.4s step-end infinite; }
   /* 站內換頁中（soft-nav.tsx）：頂端一條細進度線，點了有反應 */
   .softnav-bar {
     position: fixed;
@@ -439,7 +444,9 @@ html {
     .is-clicked::before {
       animation-duration: 1.6s;
     }
-    .owl-face {
+    .owl-front,
+    .owl-right,
+    .owl-left {
       animation-duration: 6s;
     }
     /* 官網底部 CTA 讓位給示範：不往下滑走，原地淡出 */
