@@ -211,27 +211,36 @@ html {
     border-radius: 9999px;
     animation: spin 0.7s linear infinite;
   }
-  /* 載入畫面的貓頭鷹（ui/spinner.tsx）：正面→猛轉頭看右（側頭 90°）→回正→看左→回正。
-     貓頭鷹轉頭是「一下子」的，三顆頭用 step-end 瞬間切換（淡入淡出會有一瞬間兩顆頭半透明疊在一起）。
+  /* 載入畫面的貓頭鷹（ui/spinner.tsx）：正面→轉頭看右→停→回正→看左→停→回正，3.2 秒一輪。
+     0°→25°→50° 是正面那顆的臉（面具）在滑：角度 θ 換成「平移 100·sinθ、橫向縮 cosθ」；
+     到 50° 那一刻瞬間換成側頭 90° 那顆（step-end），回來時反過來。四個動畫同一個長度才會對齊。
      顏色＝標誌的綠，兩種主題都看得清楚，不走 remap。 */
   .owl-loader {
     color: #0e9462;
   }
+  @keyframes owl-look {
+    0%, 15%, 47%, 65%, 97%, 100% { transform: translateX(0) scaleX(1); }
+    17.5%, 44.5% { transform: translateX(42.3px) scaleX(0.906); }
+    20%, 42% { transform: translateX(76.6px) scaleX(0.643); }
+    67.5%, 94.5% { transform: translateX(-42.3px) scaleX(0.906); }
+    70%, 92% { transform: translateX(-76.6px) scaleX(0.643); }
+  }
   @keyframes owl-front {
-    0%, 45%, 95% { opacity: 1; }
+    0%, 42%, 92% { opacity: 1; }
     20%, 70% { opacity: 0; }
   }
   @keyframes owl-right {
-    0%, 45% { opacity: 0; }
+    0%, 42% { opacity: 0; }
     20% { opacity: 1; }
   }
   @keyframes owl-left {
-    0%, 95% { opacity: 0; }
+    0%, 92% { opacity: 0; }
     70% { opacity: 1; }
   }
-  .owl-front { animation: owl-front 2.4s step-end infinite; }
-  .owl-right { opacity: 0; animation: owl-right 2.4s step-end infinite; }
-  .owl-left { opacity: 0; animation: owl-left 2.4s step-end infinite; }
+  .owl-face { animation: owl-look 3.2s linear infinite; }
+  .owl-front { animation: owl-front 3.2s step-end infinite; }
+  .owl-right { opacity: 0; animation: owl-right 3.2s step-end infinite; }
+  .owl-left { opacity: 0; animation: owl-left 3.2s step-end infinite; }
   /* 站內換頁中（soft-nav.tsx）：頂端一條細進度線，點了有反應 */
   .softnav-bar {
     position: fixed;
@@ -444,6 +453,7 @@ html {
     .is-clicked::before {
       animation-duration: 1.6s;
     }
+    .owl-face,
     .owl-front,
     .owl-right,
     .owl-left {
