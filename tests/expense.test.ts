@@ -187,6 +187,19 @@ test('parseTextExpense：不是花費的句子不能中', () => {
     assert.equal(parseTextExpense(t, EXPENSE_CATEGORIES), null, t);
 });
 
+test('parseTextExpense：單價×數量', () => {
+  // 2026-09-29 實際傳的句子
+  assert.deepEqual(parseTextExpense('林口體育館 便當 中午 110元  20個', EXPENSE_CATEGORIES), { item: '林口體育館 便當 中午 110×20', amount: 2200, category: '餐飲' });
+  assert.equal(parseTextExpense('林口體育館 便當 晚餐 110元  19個', EXPENSE_CATEGORIES)?.amount, 2090);
+  assert.equal(parseTextExpense('林口體育館 飲料中午 21個 忘記多少錢有發票', EXPENSE_CATEGORIES), null); // 沒寫錢：不記
+  assert.equal(parseTextExpense('便當 110元×20', EXPENSE_CATEGORIES)?.amount, 2200);
+  assert.equal(parseTextExpense('便當 20個 每個110元', EXPENSE_CATEGORIES)?.amount, 2200);
+  assert.deepEqual(parseTextExpense('咖啡 2杯 120元', EXPENSE_CATEGORIES), { item: '咖啡 2杯', amount: 120, category: '餐飲' }); // 數量在前＝總價
+  assert.equal(parseTextExpense('便當 110元 20個 共2200元', EXPENSE_CATEGORIES), null); // 兩個金額：看不懂就不記
+  assert.equal(parseTextExpense('3 個人', EXPENSE_CATEGORIES), null);
+  assert.equal(parseTextExpense('便當 20個', EXPENSE_CATEGORIES), null); // 沒寫錢
+});
+
 test('parseTextExpense：公司自訂分類——品項等於分類名就直接用', () => {
   assert.equal(parseTextExpense('機票 5000', ['機票', '雜支'])?.category, '機票');
   assert.equal(parseTextExpense('午餐 120', ['機票', '雜支'])?.category, '雜支'); // 公司沒有「餐飲」這類
