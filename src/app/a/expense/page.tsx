@@ -6,7 +6,7 @@ import { AttendLiffBoot, LangMenu } from '../shell';
 import { shellData } from '../shell-data';
 import { locale, t, type MsgKey } from '@/attend/i18n';
 import { myExpenseIdentity } from '@/expense/mine';
-import { orgCategoryItems } from '@/expense/categories';
+import { orgCategoryItems, orgProjects } from '@/expense/categories';
 import type { ExpenseItem } from '@/expense/types';
 import { photoPathOf, rowToItem } from '@/expense/items';
 import { ExpenseApp, type Tab } from './expense-app';
@@ -32,11 +32,10 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
   const [sp, sd] = await Promise.all([searchParams, shellData(uid)]);
   const tab = TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : 'add';
   const db = getDb();
-  const [categories, { data: mine, error }, { data: named }, { data: used }] = await Promise.all([
+  const [categories, { data: mine, error }, projects] = await Promise.all([
     orgCategoryItems(me.org_id),
     db.from('expenses').select('*, media_assets(storage_path)').eq('org_id', me.org_id).eq('line_user_id', me.line_user_id).order('spent_on', { ascending: false }).limit(1000),
-    db.from('expense_projects').select('name').eq('org_id', me.org_id).order('created_at', { ascending: false }), // migration 027 前會失敗，當空的
-    db.from('expenses').select('project').eq('org_id', me.org_id).neq('project', '').order('created_at', { ascending: false }).limit(2000),
+    orgProjects(me.org_id),
   ]);
   const rows = (mine ?? []) as Record<string, any>[];
 
@@ -51,7 +50,6 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
   // 能管這家公司報帳（管理側有同一家的報帳）才給「去管理端改分類」的連結
   const mySlug = sd.groups.me.find((s) => s.id === 'myexpense')?.slugs?.[0];
   const manageHref = mySlug && sd.groups.admin.some((o) => o.slug === mySlug && o.items.some((i) => i.id === 'expense')) ? `/o/${mySlug}/expense/categories` : undefined;
-  const projects = [...new Set([...(named ?? []).map((p) => p.name as string), ...(used ?? []).map((p) => p.project as string)])];
 
   return (
     <ExpenseApp

@@ -29,6 +29,11 @@ function parseWithQty(t: string, categories: readonly string[]): { item: string;
     : { item: `${item} ${q[0][0].trim()}`, amount: price, category: classifyNote(item, categories) ?? '雜支' };
 }
 
+/** 句子裡提到公司已有的專案名稱 → 回那個名稱（多個中取最長的）；專案同時當地點用。只認已有的，不從句子猜新專案 */
+export function pickProject(text: string, projects: readonly string[]): string {
+  return projects.filter((p) => p.length >= 2 && text.includes(p)).sort((a, b) => b.length - a.length)[0] ?? '';
+}
+
 // 分類改用報帳頁同一套 AI 分類（classify.ts），猜不出來歸「雜支」
 export function guessCategory(item: string, categories: readonly string[]): string {
   return classifyNote(item, categories) ?? '雜支';

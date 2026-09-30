@@ -23,6 +23,16 @@ export function normalizeCategories(input: string): string[] {
   return list;
 }
 
+/** 公司的專案清單：建立過的（expense_projects，migration 027 前查不到當空的）＋紀錄裡用過的，新的在前 */
+export async function orgProjects(orgId: string): Promise<string[]> {
+  const db = getDb();
+  const [{ data: named }, { data: used }] = await Promise.all([
+    db.from('expense_projects').select('name').eq('org_id', orgId).order('created_at', { ascending: false }),
+    db.from('expenses').select('project').eq('org_id', orgId).neq('project', '').order('created_at', { ascending: false }).limit(2000),
+  ]);
+  return [...new Set([...(named ?? []).map((p) => p.name as string), ...(used ?? []).map((p) => p.project as string)])];
+}
+
 export async function orgCategories(orgId: string): Promise<string[]> {
   const { data, error } = await getDb().from('org_settings').select('expense_categories').eq('org_id', orgId).maybeSingle();
   const list = !error && Array.isArray(data?.expense_categories) ? (data.expense_categories as string[]) : [];

@@ -2,8 +2,8 @@ import { getDb } from '@/db';
 import { isDm } from '@/core/types';
 import { orgOfGroup } from '@/core/quota';
 import { parseReceipt, type Receipt } from './receipt';
-import { orgCategories } from './categories';
-import { parseTextExpense } from './text';
+import { orgCategories, orgProjects } from './categories';
+import { parseTextExpense, pickProject } from './text';
 import { withV2Fallback } from './store';
 
 // 收據照 → 一筆報帳（X1）。只收 1:1 私訊：私訊給群記＝本人明確說「這筆我墊的」；
@@ -83,6 +83,7 @@ export async function recordTextExpense(a: {
   const hit = parseTextExpense(a.text, await orgCategories(orgId));
   if (!hit) return null;
   const r: Receipt = { amount: hit.amount, spent_on: taipeiDate(a.at), vendor: '', category: hit.category, invoice_no: '' };
+  const project = pickProject(a.text, await orgProjects(orgId)); // 「林口體育館 便當 110元 20個」→ 專案＝地點＝林口體育館
   const row = {
     org_id: orgId,
     line_user_id: a.groupId.slice(3),
@@ -90,6 +91,8 @@ export async function recordTextExpense(a: {
     media_asset_id: a.assetId ?? null,
     ...r,
     note: hit.item,
+    project,
+    place_name: project,
     source: 'text',
   };
   const { data, error } = await withV2Fallback(row, (x) =>
