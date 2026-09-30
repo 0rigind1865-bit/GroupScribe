@@ -10,6 +10,8 @@ FROM node:22-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
+# 要聽 0.0.0.0：Docker 會把 HOSTNAME 設成容器 ID，server.js 就只聽容器 IP，健康檢查打 localhost 永遠失敗（unhealthy）
+ENV HOSTNAME=0.0.0.0
 # standalone 自帶 server.js 與最小 node_modules
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
