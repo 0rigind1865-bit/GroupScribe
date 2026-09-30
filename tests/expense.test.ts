@@ -169,7 +169,7 @@ test('pivot：交叉加總、列欄依合計排序、可指定列順序', () => 
 });
 
 // ── 文字／語音記帳（X2-6）：寧可漏記不要誤記 ──
-import { parseTextExpense, pickProject } from '../src/expense/text';
+import { parseTextExpense, pickPlace, pickProject } from '../src/expense/text';
 import { EXPENSE_CATEGORIES } from '../src/expense/receipt';
 
 test('parseTextExpense：品項＋金額要中，分類猜得出來', () => {
@@ -205,6 +205,14 @@ test('pickProject：只認已有的專案，多個取最長', () => {
   assert.equal(pickProject('林口體育館 便當 110元 20個', ['林口', '林口體育館']), '林口體育館');
   assert.equal(pickProject('全家 咖啡 50元', ['林口體育館']), ''); // 沒建過的不猜
   assert.equal(pickProject('A 便當 110元', ['A']), ''); // 一個字太容易誤中
+});
+
+test('pickPlace：第一個詞不是花費、不是時間才當地點', () => {
+  const item = (t: string) => parseTextExpense(t, EXPENSE_CATEGORIES)!.item;
+  assert.equal(pickPlace(item('林口體育館 便當 中午 110元  20個'), EXPENSE_CATEGORIES), '林口體育館');
+  assert.equal(pickPlace(item('全家 咖啡 50元'), EXPENSE_CATEGORIES), '全家');
+  for (const t of ['午餐 120', '郵資 8元', '咖啡 2杯 120元', '便當 110元×20', '中午 便當 110元', '椅子 500元 3張', '午餐 便當 120'])
+    assert.equal(pickPlace(item(t), EXPENSE_CATEGORIES), '', t);
 });
 
 test('parseTextExpense：公司自訂分類——品項等於分類名就直接用', () => {

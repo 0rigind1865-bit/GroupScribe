@@ -3,7 +3,7 @@ import { isDm } from '@/core/types';
 import { orgOfGroup } from '@/core/quota';
 import { parseReceipt, type Receipt } from './receipt';
 import { orgCategories, orgProjects } from './categories';
-import { parseTextExpense, pickProject } from './text';
+import { parseTextExpense, pickPlace, pickProject } from './text';
 import { withV2Fallback } from './store';
 
 // 收據照 → 一筆報帳（X1）。只收 1:1 私訊：私訊給群記＝本人明確說「這筆我墊的」；
@@ -80,10 +80,12 @@ export async function recordTextExpense(a: {
   if (!isDm(a.groupId)) return null;
   const orgId = await orgOfGroup(a.groupId);
   if (!orgId || !(await orgHasExpense(orgId))) return null;
-  const hit = parseTextExpense(a.text, await orgCategories(orgId));
+  const cats = await orgCategories(orgId);
+  const hit = parseTextExpense(a.text, cats);
   if (!hit) return null;
   const r: Receipt = { amount: hit.amount, spent_on: taipeiDate(a.at), vendor: '', category: hit.category, invoice_no: '' };
-  const project = pickProject(a.text, await orgProjects(orgId)); // 「林口體育館 便當 110元 20個」→ 專案＝地點＝林口體育館
+  // 「林口體育館 便當 110元 20個」→ 已有這個專案：專案＝地點；沒有：只猜地點（專案影響報表分組，不猜）
+  const project = pickProject(a.text, await orgProjects(orgId));
   const row = {
     org_id: orgId,
     line_user_id: a.groupId.slice(3),
@@ -92,7 +94,7 @@ export async function recordTextExpense(a: {
     ...r,
     note: hit.item,
     project,
-    place_name: project,
+    place_name: project || pickPlace(hit.item, cats),
     source: 'text',
   };
   const { data, error } = await withV2Fallback(row, (x) =>

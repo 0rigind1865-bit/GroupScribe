@@ -34,6 +34,20 @@ export function pickProject(text: string, projects: readonly string[]): string {
   return projects.filter((p) => p.length >= 2 && text.includes(p)).sort((a, b) => b.length - a.length)[0] ?? '';
 }
 
+const TIME_WORD = /^(今天|昨天|前天|早上|上午|中午|下午|傍晚|晚上|半夜|凌晨)$/;
+
+/**
+ * 沒對到專案時的地點：品項第一個詞不是花費、也不是時間 → 當地點（「林口體育館 便當 110×20」「全家 咖啡」）。
+ * LINE 文字拿不到定位（網頁記帳才有），只能看字。
+ * ponytail: 「老王 便當」會把老王當地點——地點只是標籤、回覆看得到、改得回來；真的常錯再改成只認地點字尾
+ */
+export function pickPlace(item: string, categories: readonly string[]): string {
+  const words = item.split(' ').filter((w) => w && !/\d/.test(w));
+  const first = words[0];
+  if (words.length < 2 || TIME_WORD.test(first)) return '';
+  return classifyNote(first, categories) || classifyNote(first, EXPENSE_CATEGORIES) ? '' : first.slice(0, 60);
+}
+
 // 分類改用報帳頁同一套 AI 分類（classify.ts），猜不出來歸「雜支」
 export function guessCategory(item: string, categories: readonly string[]): string {
   return classifyNote(item, categories) ?? '雜支';
