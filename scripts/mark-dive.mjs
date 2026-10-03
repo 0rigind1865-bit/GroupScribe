@@ -1,13 +1,16 @@
 // 產生「群記」俯衝版標誌：
 //   頭：銳利融合版（眉毛 V 往下壓蓋住眼睛上半、眼睛是尖角指向嘴的金色水滴、嘴是緊貼 V 尖的金色尖三角）
-//   翅膀＋身體：一整塊。每邊 5 根粗羽毛往上張開成 V 字，根部沿著頭的外圍排開、往外才裂開（縫由細變寬）；
-//   羽毛尖端是圓角尖頭；底部是有份量的 U 形身體，正中間收一個很淡的尖角（呼應原本 logo 的倒三角胸口）。
+//   翅膀＋身體：照原本 logo 的「幾何拼接」——每一塊都是獨立的形狀，片與片之間留一樣寬的縫：
+//     每邊 5 根彎刀形羽毛往上張開成 V 字；頭兩側各一片新月形「肩膀」蓋住羽根；
+//     身體是原本 logo 的倒三角胸口（尖端＝整隻最下面的尖角）加左右兩塊往上彎的側身，外緣連成一道往下的圓弧。
 //   感覺參考使用者給的 V 字翅膀貓頭鷹範例，但角度、長度、輪廓都是自己重新設計的。
 // 用法：node scripts/mark-dive.mjs → public/brand/mark-dive.svg、mark-dive-512.png
 import sharp from 'sharp';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const BG = '#0b4a38', IVORY = '#f6f4ee', GOLD = '#d4b26a';
+const G = 7; // 拼接的縫（畫布 px）
+const halo = `stroke="${BG}" stroke-width="${G * 2}" paint-order="stroke" stroke-linejoin="round"`; // 疊在別塊上面時切出等寬的縫
 const mark = readFileSync('public/brand/mark.svg', 'utf8');
 const pieces = [...mark.split('<g fill="#d4b26a">')[0].matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
 const NUM = /(-?\d+(?:\.\d+)?)[ ,]+(-?\d+(?:\.\d+)?)/g;
@@ -46,7 +49,7 @@ const head = (x, y, s, gapPx) => `<g transform="translate(${x} ${y}) scale(${s})
   <path d="${brow}" fill="${IVORY}" stroke="${BG}" stroke-width="${GAP_HEAD * 2}" paint-order="stroke" stroke-linejoin="round"/>
 </g>`;
 
-// ── 翅膀（左翅，畫布座標；右翅鏡像）：羽根沿著頭外圍的圓弧排開，往外上方張開；不描邊，相鄰羽毛在根部重疊、往外才分開
+// ── 翅膀（左翅，畫布座標；右翅鏡像）：羽根沿著頭外圍的圓弧排開，往外上方張開；每根描底色邊＝羽毛之間等寬的縫
 const H = [256, 318], R_ROOT = 78; // 頭的中心、羽根所在的圓
 // [羽根在頭外圍的角度, 往上幾度, 長, 寬]；由上到下
 const FEATHERS = [[130, 45, 222, 38], [150, 32, 190, 38], [170, 20, 158, 37], [194, 9, 126, 36], [218, 0, 94, 34]];
@@ -75,23 +78,28 @@ const blade = ([at, up, len, w]) => {
   }
   return smooth([...top, ...bot.slice(1), ...cap]);
 };
-const wing = FEATHERS.map((p) => `<path d="${blade(p)}"/>`).join('');
-// 身體：頭下方的 U 形，底部正中間收一個很淡的尖角；再加一圈繞著頭的扇形墊在羽根下面，頭旁邊的邊緣才會順
-const ring = (from, to, r1, r2) => {
-  const pt = (r, d) => `${f(H[0] + r * Math.cos(rad(d)))} ${f(H[1] - r * Math.sin(rad(d)))}`;
-  return `M${pt(r2, from)}A${r2} ${r2} 0 0 0 ${pt(r2, to)}L${pt(r1, to)}A${r1} ${r1} 0 0 1 ${pt(r1, from)}Z`;
-};
-// 下緣是一道往下的弧線，正中間收一個很淡的尖角；上半部藏在羽毛和頭後面
-const body = `M170 330L170 383C200 392 228 410 256 413C284 410 312 392 342 383L342 330Z`; // 從最下面那根羽毛的下緣順順地彎到底部（像碗底）
+const wing = FEATHERS.slice().reverse().map((p) => `<path d="${blade(p)}" ${halo}/>`).join(''); // 最下面那根先畫，上面的疊上去
+// 肩膀：直接用原本 logo 頭兩側那片翅膀（pieces 第 3 塊，斜斜、兩頭尖的葉片形），放大、稍微往外傾，站在頭旁邊蓋住羽根
+const SH = { x: 176, y: 322, s: 0.95, tilt: -32 }; // 放的位置（葉片中心）、放大、傾斜（負＝上端往外）
+const shoulder = (() => {
+  const c = Math.cos(rad(SH.tilt)), s = Math.sin(rad(SH.tilt));
+  return mapPath(pieces[3], (x, y) => { const u = (x + 88) * SH.s, v = (y - 278) * SH.s; return [SH.x + u * c - v * s, SH.y + u * s + v * c]; });
+})();
+// 身體：左右兩塊側身（外緣是往下的圓弧），中間疊上原本 logo 的倒三角胸口，胸口尖端＝整隻最下面的尖角
+const side = 'M170 330L170 383C200 392 228 410 256 413L256 330Z';
+const chest = mapPath(pieces[5], (x, y) => [H[0] + x * 0.5, 366 + (y - 245) * 0.29]);
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<!-- 群記俯衝版標誌：銳利融合版的頭坐在 U 形身體的凹口裡，兩邊各 5 根羽毛往上張開成 V 字，翅膀與身體一整塊。由 scripts/mark-dive.mjs 產生 -->
+<!-- 群記俯衝版標誌（幾何拼接）：銳利融合版的頭、新月形肩膀、兩邊各 5 根羽毛往上張開成 V 字、倒三角胸口加兩塊側身。由 scripts/mark-dive.mjs 產生 -->
 <rect width="512" height="512" fill="${BG}"/>
 <g transform="translate(0 -8)">
-  <g fill="${IVORY}">${wing}<g transform="translate(512 0) scale(-1 1)">${wing}</g>
-    <path d="${body}"/><path d="${ring(122, 236, 44, 94)}"/><path d="${ring(122, 236, 44, 94)}" transform="translate(512 0) scale(-1 1)"/>
+  <g fill="${IVORY}">
+    <path d="${side}"/><path d="${side}" transform="translate(512 0) scale(-1 1)"/>
+    ${wing}<g transform="translate(512 0) scale(-1 1)">${wing}</g>
+    <path d="${shoulder}" ${halo}/><path d="${shoulder}" transform="translate(512 0) scale(-1 1)" ${halo}/>
+    <path d="${chest}" ${halo}/>
   </g>
-  ${head(H[0], H[1], 0.56, 10)}
+  ${head(H[0], H[1], 0.56, G)}
 </g>
 </svg>
 `;
