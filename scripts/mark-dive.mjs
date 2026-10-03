@@ -1,11 +1,11 @@
-// 產生「群記」俯衝版標誌（構圖：U 字身體托住頭、兩邊各 5 根羽毛往外上方散開）
-// 頭、金色眼睛、嘴直接沿用定稿 mark.svg；馬蹄形身體托住頭，羽毛從它後面長出來，片與片之間是等寬的縫（跟原本 logo 一樣）
+// 產生「群記」俯衝版標誌：兩邊翅膀是平行四邊形（一條條平行的斜羽毛），中間是壓低眉頭、眼神銳利的頭，
+// 下面接小小的倒三角身體與尾巴。頭、身體取自定稿 mark.svg，照同一套語言（圓角尖頭、片與片之間等寬的縫）
 // 用法：node scripts/mark-dive.mjs → public/brand/mark-dive.svg、mark-dive-512.png
 import sharp from 'sharp';
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const BG = '#0b4a38', IVORY = '#f6f4ee', GOLD = '#d4b26a';
-const GAP = 9; // 片與片之間的縫（px，畫布 512）
+const GAP = 8; // 片與片之間的縫（px，畫布 512）
 
 const mark = readFileSync('public/brand/mark.svg', 'utf8');
 const [ivoryPart, goldPart] = mark.split('<g fill="#d4b26a">');
@@ -14,65 +14,60 @@ const beak = goldPart.match(/<path d="([^"]+)"/)[1];
 
 const f = (n) => +n.toFixed(2);
 const rad = (d) => (d * Math.PI) / 180;
-// 數學角度（0＝右、90＝上）轉成畫面上的單位向量（畫面 y 往下）
-const dir = (deg) => [Math.cos(rad(deg)), -Math.sin(rad(deg))];
-// 每片都描一圈底色邊：疊在別片上面時，自動切出等寬的縫
-const piece = (d, fill = IVORY) => `<path d="${d}" fill="${fill}" stroke="${BG}" stroke-width="${GAP * 2}" paint-order="stroke" stroke-linejoin="round"/>`;
+const dir = (deg) => [Math.cos(rad(deg)), -Math.sin(rad(deg))]; // 數學角度（0＝右、90＝上）→ 畫面向量（y 往下）
+const add = (p, v, k = 1) => [p[0] + v[0] * k, p[1] + v[1] * k];
+const cross = (a, b) => a[0] * b[1] - a[1] * b[0];
+const meet = (p, d, q, c) => add(p, d, cross([q[0] - p[0], q[1] - p[1]], c) / cross(d, c)); // 兩條線（點＋方向）的交點
+// 描一圈底色邊：疊在別片上面時切出等寬的縫；在縮放過的群組裡要除以縮放倍數
+const halo = (s = 1) => `stroke="${BG}" stroke-width="${f((GAP * 2) / s)}" paint-order="stroke" stroke-linejoin="round"`;
+// 圓角多邊形：每個角往兩邊退 r，用二次曲線圓過去（銳角就變成 logo 那種圓角尖頭）
+const rounded = (pts, r) => pts.map((p, i) => {
+  const a = pts[(i + pts.length - 1) % pts.length], b = pts[(i + 1) % pts.length];
+  const da = Math.hypot(a[0] - p[0], a[1] - p[1]), db = Math.hypot(b[0] - p[0], b[1] - p[1]);
+  const p1 = add(p, [(a[0] - p[0]) / da, (a[1] - p[1]) / da], Math.min(r, da / 2));
+  const p2 = add(p, [(b[0] - p[0]) / db, (b[1] - p[1]) / db], Math.min(r, db / 2));
+  return `${i ? 'L' : 'M'}${f(p1[0])} ${f(p1[1])}Q${f(p[0])} ${f(p[1])} ${f(p2[0])} ${f(p2[1])}`;
+}).join('') + 'Z';
 
-// ── 頭：mark.svg 的額頭、兩側臉、眼睛、嘴，縮小放進 U 字凹口
-const HEAD = { x: 256, y: 296, s: 0.58 }; // 頭的中心（mark.svg 頭部中心 y＝168）與縮放
-const head = `<g transform="translate(${HEAD.x} ${HEAD.y}) scale(${HEAD.s}) translate(0 -168)">
-  <g fill="${IVORY}">${[0, 1, 2].map((i) => `<path d="${pieces[i]}"/>`).join('')}</g>
-  <g fill="${GOLD}"><circle cx="-45.5" cy="186" r="18"/><circle cx="45.5" cy="186" r="18"/><path d="${beak}"/></g>
+// ── 翅膀（左邊；右邊鏡像）：同方向的平行羽毛疊成一片平行四邊形，每根羽毛兩端切在「內緣線」與「外緣線」上
+const WING = {
+  deg: 143, w: 24, n: 5, r: 9, // 羽毛方向（往外上方 37 度）、寬、根數、圓角
+  inner: [[186, 0], [0, 1]], top: 204, // 內緣線（貼著頭和身體的直線）、最上面那根羽毛上緣碰到內緣線的高度
+  outer: [[30, 92], dir(106)], // 外緣線：通過左上角、稍微往外傾（上面的羽毛比較長）
+};
+const leftWing = (() => {
+  const d = dir(WING.deg), down = [d[1], -d[0]]; // down：垂直羽毛、往下一根的方向
+  const start = [WING.inner[0][0], WING.top];
+  return Array.from({ length: WING.n }, (_, k) => {
+    const up = add(start, down, k * (WING.w + GAP)), lo = add(up, down, WING.w); // 這根羽毛的上、下兩條邊
+    const pts = [meet(up, d, ...WING.inner), meet(up, d, ...WING.outer), meet(lo, d, ...WING.outer), meet(lo, d, ...WING.inner)];
+    return `<path d="${rounded(pts, WING.r)}"/>`;
+  }).join('');
+})();
+
+// ── 頭：mark.svg 的兩側臉、眼睛、嘴；眉毛（額頭那塊）往下壓、切到眼睛上緣＝眼神銳利；整顆頭稍微壓扁＝低頭往前衝
+const HEAD = { x: 256, y: 238, s: 0.62, squash: 0.9, brow: 20 }; // 中心（mark.svg 頭部中心 y＝168）、縮放、上下壓扁、眉毛下壓多少
+const head = `<g transform="translate(${HEAD.x} ${HEAD.y}) scale(${HEAD.s} ${HEAD.s * HEAD.squash}) translate(0 -168)">
+  <g fill="${IVORY}">${[1, 2].map((i) => `<path d="${pieces[i]}"/>`).join('')}</g>
+  <g fill="${GOLD}"><ellipse cx="-45.5" cy="188" rx="21" ry="18"/><ellipse cx="45.5" cy="188" rx="21" ry="18"/><path d="${beak}"/></g>
+  <path d="${pieces[0]}" transform="translate(0 ${HEAD.brow})" fill="${IVORY}" ${halo(HEAD.s)}/>
 </g>`;
 
-// ── 馬蹄形身體：從左上繞過頭底下到右上，內緣是平順的弧、跟頭保持一圈縫；兩邊羽毛的根部都藏在它後面
-const U = { cx: 256, cy: 290, a1: 84, b1: 72, a2: 128, b2: 116, from: 148, to: 32 }; // 內外橢圓、兩端角度（數學角度，從左上經過下方繞到右上）
-const ell = (a, b, deg) => [U.cx + a * Math.cos(rad(deg)), U.cy - b * Math.sin(rad(deg))];
-const uPath = (() => {
-  const o1 = ell(U.a2, U.b2, U.from), o2 = ell(U.a2, U.b2, U.to), i2 = ell(U.a1, U.b1, U.to), i1 = ell(U.a1, U.b1, U.from);
-  const cap = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]) / 2;
-  return `M${f(o1[0])} ${f(o1[1])}A${U.a2} ${U.b2} 0 1 0 ${f(o2[0])} ${f(o2[1])}A${f(cap(o2, i2))} ${f(cap(o2, i2))} 0 0 0 ${f(i2[0])} ${f(i2[1])}` +
-    `A${U.a1} ${U.b1} 0 1 1 ${f(i1[0])} ${f(i1[1])}A${f(cap(i1, o1))} ${f(cap(i1, o1))} 0 0 0 ${f(o1[0])} ${f(o1[1])}Z`;
-})();
-
-// ── 羽毛：一條條寬帶、圓頭，根部藏在馬蹄形後面；羽毛之間描等寬的細縫（跟原本 logo 一樣）；最上面斜 47 度，往下每根平一點，最下面幾乎水平。
-// 尖端剛好落在一個大橢圓上，連成順的外輪廓
-const ROOTS = { cx: 256, cy: 290, r: 110 }; // 羽根所在的圓（繞著頭）
-const TIPS = { cx: 256, cy: 286, a: 224, b: 232 }; // 羽毛尖端所在的橢圓
-// [羽根在頭外圍的角度, 羽毛方向（數學角度）, 根部寬, 尖端寬]；由上到下
-const FEATHERS = [[136, 133, 46, 22], [151, 144, 46, 22], [166, 155, 46, 22], [181, 165, 46, 21], [196, 175, 46, 20]];
-const quarter = (c, r, a, b) => { // 四分之一圓：從 c+r*a 轉到 c+r*b（a、b 互相垂直）
-  const k = 0.5523, p = (u, v) => `${f(c[0] + r * (u[0] + k * v[0]))} ${f(c[1] + r * (u[1] + k * v[1]))}`;
-  return `C${p(a, b)} ${p(b, a)} ${f(c[0] + r * b[0])} ${f(c[1] + r * b[1])}`;
-};
-const feather = ([at, deg, w0, w1]) => {
-  const root = [ROOTS.cx + ROOTS.r * Math.cos(rad(at)), ROOTS.cy - ROOTS.r * Math.sin(rad(at))], u = dir(deg), n = [-u[1], u[0]];
-  // 沿著方向走到碰到尖端橢圓為止（二分法）
-  let lo = 0, hi = 600;
-  for (let i = 0; i < 40; i++) {
-    const m = (lo + hi) / 2, x = root[0] + u[0] * m - TIPS.cx, y = root[1] + u[1] * m - TIPS.cy;
-    (x / TIPS.a) ** 2 + (y / TIPS.b) ** 2 < 1 ? (lo = m) : (hi = m);
-  }
-  const tip = [root[0] + u[0] * (lo - w1 / 2), root[1] + u[1] * (lo - w1 / 2)]; // 圓頭剛好碰到橢圓
-  const side = (c, w, s) => `${f(c[0] + n[0] * s * w / 2)} ${f(c[1] + n[1] * s * w / 2)}`;
-  const neg = [-n[0], -n[1]], back = [-u[0], -u[1]];
-  return `M${side(root, w0, -1)}L${side(tip, w1, -1)}${quarter(tip, w1 / 2, neg, u)}${quarter(tip, w1 / 2, u, n)}` +
-    `L${side(root, w0, 1)}${quarter(root, w0 / 2, n, back)}${quarter(root, w0 / 2, back, neg)}Z`;
-};
-const leftWing = FEATHERS.slice().reverse().map((p) => piece(feather(p))).join(''); // 最下面那根先畫，上面的疊上去；描底色邊＝羽毛之間等寬的細縫
-// 最上面那根羽毛的根部跟馬蹄形上端之間補一段圓頭粗線，內側輪廓才會順（不然會有個小凹口）
-const joint = (() => {
-  const a = [ROOTS.cx + ROOTS.r * Math.cos(rad(FEATHERS[0][0])), ROOTS.cy - ROOTS.r * Math.sin(rad(FEATHERS[0][0]))];
-  const o = ell(U.a2, U.b2, U.from), i = ell(U.a1, U.b1, U.from), b = [(o[0] + i[0]) / 2, (o[1] + i[1]) / 2];
-  return `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${IVORY}" stroke-width="${f(Math.hypot(o[0] - i[0], o[1] - i[1]))}" stroke-linecap="round"/>`;
-})();
+// ── 身體：mark.svg 的倒三角胸口縮小；尾巴：3 根短羽毛往下散開，根部藏在身體後面，彼此之間留縫
+const BODY = { y: 296, s: 0.42 }; // 身體上緣高度、縮放
+const bodyTip = BODY.y + (403 - 245) * BODY.s;
+const body = `<path d="${pieces[5]}" transform="translate(256 ${BODY.y}) scale(${BODY.s}) translate(0 -245)" fill="${IVORY}" ${halo(BODY.s)}/>`;
+const tail = [[-114, 58], [-66, 58], [-90, 72]].map(([deg, len], i) => { // [方向（數學角度，-90＝正下方）, 長]；兩側先畫，中間那根疊上去
+  const d = dir(deg), side = [-d[1], d[0]], root = [256, bodyTip - 16], w = 20;
+  const a = add(root, side, w / 2), b = add(root, side, -w / 2);
+  return `<path d="${rounded([a, add(a, d, len), add(b, d, len), b], 8)}"${i === 2 ? ` ${halo()}` : ''}/>`;
+}).join('');
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-<!-- 群記俯衝版標誌：U 字身體托住頭、兩邊各 5 根羽毛往外上方散開。由 scripts/mark-dive.mjs 產生 -->
+<!-- 群記俯衝版標誌：平行四邊形翅膀、壓低眉頭的銳利眼神、小倒三角身體、尾巴。由 scripts/mark-dive.mjs 產生 -->
 <rect width="512" height="512" fill="${BG}"/>
-${leftWing}<g transform="translate(512 0) scale(-1 1)">${leftWing}</g>
-<path d="${uPath}" fill="${IVORY}"/>${joint}<g transform="translate(512 0) scale(-1 1)">${joint}</g>
+<g fill="${IVORY}">${leftWing}<g transform="translate(512 0) scale(-1 1)">${leftWing}</g>${tail}</g>
+${body}
 ${head}
 </svg>
 `;
