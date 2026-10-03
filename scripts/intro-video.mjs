@@ -1,6 +1,6 @@
 // 產生「群記」開場動畫影片（1920×1080、60fps、8.5 秒、無聲）
-// 故事：滿畫面亂抖的對話框（噪音）→ 暗處一雙金眼一直盯著 → 折扇般展翅，安靜滑翔爬升
-//      → 高處停一下、鎖定唯一的金色訊號 → 收翅加速俯衝、伸出金爪 → 張翅煞車、精準扣住訊號
+// 故事：滿畫面亂抖的對話框（噪音）→ 暗處一雙金眼一直盯著 → 折扇般展翅、露出尾巴與金爪，安靜滑翔爬升
+//      → 高處停一下、鎖定唯一的金色訊號 → 收翅加速俯衝 → 張翅張尾煞車、伸爪精準扣住訊號
 //      → 收翅，一圈波紋把噪音清空 → 訊號收走、眼睛一亮 → 帶出標題與標語
 // 用法：node scripts/intro-video.mjs → public/brand/intro.mp4（加 --still 3.2 只輸出那一秒的靜態圖）
 // 流程：每一格算好位置寫成 SVG → sharp 轉 PNG → macOS 內建 AVFoundation（swift）壓成 H.264 MP4，不用裝 ffmpeg
@@ -62,15 +62,41 @@ const POSE = keys([[2.5, 0], [2.75, 1], [3.08, 1], [3.24, -0.4], [3.4, 0]]); // 
 const TRAIL = keys([[2.7, 0], [3.12, 1], [3.3, 0]]); // 俯衝殘影的濃淡
 const BLINKS = [1.0, 7.0];
 
-// 翅膀：把 logo 原本的上翅（pieces 第 3 塊，左翅）複製 6 片，像折扇一樣繞翅膀頂端轉開；
-// 收起時 6 片全部疊回原位＝原本的 logo。每片描一圈底色邊，展開後片與片之間有縫，跟 logo 的語言一致。
-// 右翅＝左翅鏡像（第 4 塊本來就是第 3 塊的鏡像）。
-const WING_PIVOT = [-88, 232];
-const FAN = [30, 50, 70, 90, 110, 130]; // 全展開時每片轉幾度（由內到外）
-const FAN_GROW = [0, 0.12, 0.26, 0.42, 0.58, 0.72]; // 外側的片拉長，像飛羽
+// 翅膀：把 logo 原本的上翅（pieces 第 3 塊，左翅）複製 6 片，像折扇一樣展開；樣子參考羽毛一層層往外上方疊、最上面那根最長的貓頭鷹標誌。
+// 每片展開時形狀各自變化（不是同一個形狀放大縮小）：拉長、變窄、尖端往上彎；原本那片變成最上面、最大的那根。
+// 越下面的片，羽根沿著原本那片往下錯開越多，展開後羽毛一層層疊起來，不是全部從同一點散開。
+// 收起時全部回到原本那片的位置＝原本的 logo。每片描一圈底色邊，片與片之間有縫，跟 logo 的語言一致。右翅＝左翅鏡像。
+const WING_PIVOT = [-88, 232], ARM = 105; // 翅膀頂端（肩膀）、那片翅膀的長度
+// [展開時轉幾度, 拉長倍數, 寬度倍數, 尖端往上彎多少, 羽根往下錯開多少, 根部變粗尖端變細多少]；第 0 片＝原本那片（最上面、最大），第 5 片最靠身體
+const FAN = [
+  [128, 1.85, 0.8, -0.22, 0, 0.8], [114, 1.68, 0.82, -0.16, 14, 0.75], [100, 1.5, 0.85, -0.12, 28, 0.7],
+  [86, 1.33, 0.88, -0.08, 42, 0.6], [72, 1.16, 0.92, -0.05, 56, 0.5], [58, 1.0, 0.95, -0.03, 70, 0.4],
+];
+// 尾巴：翅膀張開時從身體後面滑出 4 根尾羽（同一片翅膀的縮小版），像小扇子往下散開；收翅時縮回身體後面
+const TAIL = [[34, 0.88], [-34, 0.88], [12, 1], [-12, 1]]; // [展開時轉幾度（正＝往左）, 長度倍數]；外側先畫，中間兩根疊上面
+// 把那片翅膀的路徑拆成點（直線切細，彎起來才順），每格再依展開程度拉長、變窄、彎曲
+const WING_SEGS = (() => {
+  const segs = [];
+  let cur;
+  for (const [, c, args] of pieces[3].matchAll(/([MQLZ])([^MQLZ]*)/g)) {
+    const n = args.trim().split(/\s+/).filter(Boolean).map(Number);
+    if (c === 'M') { cur = [n[0], n[1]]; segs.push(['M', cur]); }
+    if (c === 'Q') { segs.push(['Q', [n[0], n[1]], [n[2], n[3]]]); cur = [n[2], n[3]]; }
+    if (c === 'L') { for (let i = 1; i <= 6; i++) segs.push(['L', [lerp(cur[0], n[0], i / 6), lerp(cur[1], n[1], i / 6)]]); cur = [n[0], n[1]]; }
+  }
+  return segs;
+})();
+const wingPath = (len, wid, bend, taper) => {
+  const [px, py] = WING_PIVOT;
+  const w = ([x, y]) => {
+    const a = y - py, k = wid * (1 + taper * (0.5 - a / ARM)); // 越靠尖端越窄
+    return `${(px + (x - px) * k + bend * ARM * (a / ARM) ** 2).toFixed(2)} ${(py + a * len).toFixed(2)}`;
+  };
+  return WING_SEGS.map(([c, p, q]) => (c === 'Q' ? `Q${w(p)} ${w(q)}` : `${c}${w(p)}`)).join('') + 'Z';
+};
 const HEAD = [0, 1, 2], LOWER = [5, 6, 7]; // logo 的頭部（額頭、兩側臉）與下半身（身體、兩側下翅）；第 3、4 塊是上翅
 
-// 爪子（金色，跟嘴巴同色）：俯衝時從身體下面伸出、張開，落下瞬間一把抓緊訊號，再連同訊號收回身體
+// 爪子（金色，跟嘴巴同色）：翅膀張開時從身體下面伸出、張開，落下瞬間一把抓緊訊號，再連同訊號收回身體
 const CLAW = ((L) => `M-7 0C-9 ${L * 0.5} ${L * 0.1} ${L * 0.95} ${L * 0.45} ${L}C${L * 0.15} ${L * 0.75} 7 ${L * 0.45} 7 0Q0 -6 -7 0Z`)(38);
 const CLAW_OPEN = [55, 0], CLAW_SHUT = [22, 2]; // 左腳兩根爪的角度（右腳鏡像）
 const ANKLE_X = 24, ANKLE_IN = 365, ANKLE_OUT = 402; // 腳踝收在身體裡 / 伸出來的位置
@@ -104,24 +130,33 @@ function flight(t) {
   return { x: lerp(x, 540, move), y: lerp(y, 540, move), s: lerp(s, 1.78, move), tilt: TILT(t) };
 }
 
-function owl(t) {
+// under：要畫在「尾巴前面、爪子後面」的舞台元素（金色訊號），用舞台座標傳進來
+function owl(t, under = '') {
   const { x, y, s, tilt } = flight(t);
   const D = POSE(t);
   const lit = lerp(0.25, 1, inOutSine(prog(t, 1.3, 1.3))); // 暗處只看得到眼睛，飛起來後慢慢亮
   const ivory = mix(BG, IVORY, lit);
 
-  // 翅膀：每片用自己的時間（外側先動、內側慢一點跟上），展開收起像折扇；拍翅時外側慢半拍，像波浪
+  // 翅膀：最上面那片（原本那片）先開、下面的依序跟上，像折扇；拍翅時外側慢半拍，像波浪
   const [px, py] = WING_PIVOT;
-  const wing = FAN.map((deg, k) => {
-    const sp = SPREAD(t - 0.025 * (5 - k));
-    const flap = FLAP(t) * Math.sin((2 * Math.PI * (t - GLIDE_START - 0.035 * k)) / 0.9);
-    const a = deg * sp + (WING_LIFT(t) + flap) * (0.4 + 0.12 * k) * clamp(sp * 3);
-    return `<path d="${pieces[3]}" stroke="${BG}" stroke-width="${10 * clamp((sp - 0.15) * 2.5)}" paint-order="stroke" transform="translate(${px} ${py}) rotate(${a}) scale(${1 + FAN_GROW[k] * sp}) translate(${-px} ${-py})"/>`;
-  }).reverse().join(''); // 外側先畫，最內側（原本那片）疊在最上面，像從它底下展開
+  const wing = FAN.map(([deg, len, wid, bend, slide, taper], j) => {
+    const sp = SPREAD(t - 0.025 * j);
+    const flap = FLAP(t) * Math.sin((2 * Math.PI * (t - GLIDE_START - 0.035 * (5 - j))) / 0.9);
+    const a = deg * sp + (WING_LIFT(t) + flap) * (0.4 + 0.12 * (5 - j)) * clamp(sp * 3);
+    return `<path d="${wingPath(lerp(1, len, sp), lerp(1, wid, sp), bend * sp, taper * sp)}" stroke="${BG}" stroke-width="${10 * clamp((sp - 0.15) * 2.5)}" paint-order="stroke" transform="translate(0 ${slide * sp}) rotate(${a} ${px} ${py})"/>`;
+  }).reverse().join(''); // 最下面那片先畫，原本那片疊在最上層
   const head = HEAD.map((i) => `<path d="${pieces[i]}"/>`).join(''), lower = LOWER.map((i) => `<path d="${pieces[i]}"/>`).join('');
 
-  // 爪子：2.75 秒伸出張開 → 落下瞬間抓緊 → 3.95 秒連同訊號收回身體
-  const ext = outCubic(prog(t, 2.75, 0.4)) * (1 - inOutCubic(prog(t, 3.95, 0.4)));
+  // 尾巴：跟著翅膀晚一點點張開／收起；藏起來時整個躲在身體後面
+  const r = SPREAD(t - 0.08), rk = clamp(r);
+  const tail = TAIL.map(([deg, len]) => {
+    const ty = lerp(300, 378, rk), sc = lerp(0.45, 1.05, rk) * lerp(1, len, rk);
+    const [src, sx] = deg >= 0 ? [pieces[3], 88] : [pieces[4], -88];
+    return `<g transform="rotate(${deg * r} 0 ${ty}) translate(0 ${ty}) scale(${sc}) translate(${sx} -232)"><path d="${src}" stroke="${BG}" stroke-width="${(10 * clamp((r - 0.15) * 2.5)) / sc}" paint-order="stroke"/></g>`;
+  }).join('');
+
+  // 爪子：翅膀張開時一起伸出（俯衝收翅時縮回），煞車時再往前一伸 → 落下瞬間抓緊 → 3.95 秒連同訊號收回身體
+  const ext = t < STRIKE ? clamp((SPREAD(t - 0.05) - 0.15) * 1.4) + 0.25 * bump(t, 3.22, 0.08) : 1 - inOutCubic(prog(t, 3.95, 0.4));
   const ankleY = lerp(ANKLE_IN, ANKLE_OUT, ext);
   const grip = outBack(prog(t, STRIKE - 0.06, 0.16));
   const foot = `<g transform="translate(${-ANKLE_X} ${ankleY})">${CLAW_OPEN.map((o, i) =>
@@ -144,9 +179,11 @@ function owl(t) {
   // 俯衝變形：頭變大、壓低、耳羽往後貼（像朝鏡頭衝過來），身體變窄往後縮（遠一點）＝水滴形；煞車時反過來挺胸張開
   const headT = `translate(0 ${190 + 12 * D}) scale(${1 + 0.08 * D} ${1 - 0.06 * D}) translate(0 -190)`;
   const lowerT = `translate(0 245) scale(${1 - 0.16 * D} ${1 - 0.28 * D}) translate(0 -245)`;
+  // 把舞台座標的東西放進下半身圖層：先套上「反過來的」貓頭鷹變形，抵銷後位置不變，只改前後順序
+  const stage = under && `<g transform="translate(0 245) scale(${1 / (1 - 0.16 * D)} ${1 / (1 - 0.28 * D)}) translate(0 -245) translate(0 ${OWL_CY}) scale(${1 / (s * (1 - 0.1 * D))} ${1 / s}) rotate(${-tilt}) translate(${-x} ${-y})">${under}</g>`;
   return `<g transform="translate(${x} ${y}) rotate(${tilt}) scale(${s * (1 - 0.1 * D)} ${s}) translate(0 ${-OWL_CY})">
   <g transform="${headT}">${glows}</g><g fill="${ivory}">${wing}<g transform="scale(-1 1)">${wing}</g></g>
-  <g transform="${lowerT}">${held}<g fill="${mix(BG, GOLD, lit)}">${claws}</g><g fill="${ivory}">${lower}</g></g>
+  <g transform="${lowerT}"><g fill="${ivory}">${tail}</g>${stage}${held}<g fill="${mix(BG, GOLD, lit)}">${claws}</g><g fill="${ivory}">${lower}</g></g>
   <g transform="${headT}"><g fill="${ivory}">${head}</g><g fill="${GOLD}">${eyes}<path d="${beak}" fill="${mix(BG, GOLD, lit)}"/></g></g>
 </g>`;
 }
@@ -173,8 +210,8 @@ function frame(t) {
   const signal = `<g opacity="${sig}" fill="${GOLD}">
     <rect x="${sx - SIG_W - 6}" y="${sy - SIG_H - 2}" width="${SIG_W * 2 + 12}" height="${SIG_H * 2 + 4}" rx="${SIG_H + 2}" opacity="${sigGlow}" filter="url(#blur)"/>
     <rect x="${sx - SIG_W}" y="${sy - SIG_H}" width="${SIG_W * 2}" height="${SIG_H * 2}" rx="${SIG_H}"/>
-  </g>
-  <g stroke="${GOLD}" stroke-width="2" fill="none" opacity="${lock * 0.8}"><circle cx="${sx}" cy="${sy}" r="${r}"/>${ticks}</g>`;
+  </g>`;
+  const lockRing = `<g stroke="${GOLD}" stroke-width="2" fill="none" opacity="${lock * 0.8}"><circle cx="${sx}" cy="${sy}" r="${r}"/>${ticks}</g>`;
 
   // ── 俯衝時拖出幾道淡淡的殘影（同一隻貓頭鷹稍早的樣子），速度感
   const tr = TRAIL(t);
@@ -195,8 +232,8 @@ function frame(t) {
   <filter id="blur" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="14"/></filter>
 </defs>
 <rect width="${W}" height="${H}" fill="${BG}"/>
-${noise}${waveRing}${signal}
-${trail}${owl(t)}
+${noise}${waveRing}${lockRing}
+${trail}${owl(t, signal)}
 <line x1="864" x2="864" y1="${540 - line}" y2="${540 + line}" stroke="${IVORY}" stroke-opacity="0.25" stroke-width="2"/>
 ${title}${latin}${tagline}
 </svg>`;
