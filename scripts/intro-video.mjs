@@ -1,4 +1,6 @@
-// 產生「群記」開場動畫影片（1920×1080、60fps、6.5 秒、無聲）
+// 產生「群記」開場動畫影片（1920×1080、60fps、8.5 秒、無聲）
+// 故事：滿畫面亂抖的對話框（噪音）→ 暗處一雙金眼一直盯著 → 貓頭鷹安靜滑翔進場
+//      → 瞄準圈鎖定唯一的金色訊號 → 精準落下、收翅，一圈波紋把噪音清空 → 帶出標題與標語
 // 用法：node scripts/intro-video.mjs → public/brand/intro.mp4
 // 流程：每一格算好位置寫成 SVG → sharp 轉 PNG → macOS 內建 AVFoundation（swift）壓成 H.264 MP4，不用裝 ffmpeg
 import sharp from 'sharp';
@@ -7,9 +9,9 @@ import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-const W = 1920, H = 1080, FPS = 60, DUR = 6.5;
+const W = 1920, H = 1080, FPS = 60, DUR = 8.5;
 const OUT = 'public/brand/intro.mp4';
-const IVORY = '#f6f4ee', GOLD = '#d4b26a', MINT = '#e3ece5';
+const IVORY = '#f6f4ee', GOLD = '#d4b26a', MINT = '#e3ece5', NOISE_C = '#5b927d';
 
 // 形狀直接從定稿 mark.svg 抓，logo 改了重跑一次影片就跟著改
 const mark = readFileSync('public/brand/mark.svg', 'utf8');
@@ -18,82 +20,115 @@ const pieces = [...ivoryPart.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
 const beak = goldPart.match(/<path d="([^"]+)"/)[1];
 const EYES = [[-45.5, 186], [45.5, 186]];
 const OWL_CY = 252.5; // 貓頭鷹在 mark.svg 座標裡的中心 y
-
-// ponytail: 用所有座標點平均當重心，形狀很規則所以夠準
-const centroid = (d) => {
-  const n = d.match(/-?\d+(\.\d+)?/g).map(Number);
-  let x = 0, y = 0;
-  for (let i = 0; i < n.length; i += 2) { x += n[i]; y += n[i + 1]; }
-  return [x / (n.length / 2), y / (n.length / 2)];
-};
+// 翅膀：pieces 的第 3、6 塊是左翅，4、7 塊是右翅；張開時繞肩膀轉出去（度數＝上翅、下翅）
+const WINGS = { 3: [-1, 78], 6: [-1, 112], 4: [1, 78], 7: [1, 112] };
+const SHOULDER = [62, 240];
 
 const clamp = (x) => Math.min(1, Math.max(0, x));
 const prog = (t, start, dur) => clamp((t - start) / dur);
 const outCubic = (x) => 1 - (1 - x) ** 3;
 const outBack = (x) => 1 + 2.2 * (x - 1) ** 3 + 1.2 * (x - 1) ** 2; // 稍微衝過頭再彈回
 const inOutCubic = (x) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
+const inOutSine = (x) => (1 - Math.cos(Math.PI * x)) / 2;
 const lerp = (a, b, k) => a + (b - a) * k;
+const bump = (t, at, width) => Math.exp(-(((t - at) / width) ** 2));
 
-// 拼裝順序：額頭 → 臉兩側 → 上翅 → 身體 → 下翅
-const PIECE_START = [0.3, 0.45, 0.45, 0.6, 0.6, 0.75, 0.9, 0.9];
-const BLINKS = [2.15, 5.3];
+// 噪音：固定亂數種子，每次產生的畫面都一樣
+let seed = 7;
+const rand = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+const SIGNAL = [960, 790]; // 金色訊號的位置（貓頭鷹落下時剛好蓋住）
+const NOISE = Array.from({ length: 170 }, () => ({
+  x: 40 + rand() * 1840, y: 40 + rand() * 1000, w: 26 + rand() * 90, a: 0.25 + rand() * 0.35, p: rand() * 6.28, q: rand() * 6.28,
+})).filter((n) => Math.hypot(n.x - SIGNAL[0], n.y - SIGNAL[1]) > 110);
+
+// 飛行路線（三次貝茲曲線）：左上遠處 → 往右上拉高 → 繞回來俯衝到正中間
+const PATH = [[330, 250], [760, 40], [1330, 300], [960, 540]];
+const bez = (k, axis) => {
+  const [a, b, c, d] = PATH.map((p) => p[axis]), m = 1 - k;
+  return m ** 3 * a + 3 * m * m * k * b + 3 * m * k * k * c + k ** 3 * d;
+};
+const FLY_START = 1.4, FLY_DUR = 2.0, STRIKE = FLY_START + FLY_DUR; // 3.4 秒落下
+const BLINKS = [1.1, 7.0];
 
 function frame(t) {
-  // 整隻貓頭鷹：先在正中間，2.55 秒起滑到左邊、縮小，讓出位置給字
-  const move = inOutCubic(prog(t, 2.55, 0.9));
-  const ox = lerp(960, 540, move), scale = lerp(2.0, 1.78, move);
+  // ── 貓頭鷹位置：遠處盯著 → 滑翔 → 落在中間 → 4.4 秒起滑到左邊讓位給字
+  const fly = prog(t, FLY_START, FLY_DUR), u = inOutSine(fly);
+  let ox = bez(u, 0), oy = bez(u, 1);
+  let scale = lerp(0.45, 2.0, u ** 1.6); // 由遠而近，越靠近變大越快
+  const dx = bez(Math.min(u + 0.01, 1), 0) - bez(Math.max(u - 0.01, 0), 0);
+  const dy = bez(Math.min(u + 0.01, 1), 1) - bez(Math.max(u - 0.01, 0), 1);
+  const tilt = 14 * (dx / (Math.hypot(dx, dy) || 1)) * Math.sin(Math.PI * fly); // 轉彎時往前傾
+  if (t < FLY_START) oy += 4 * Math.sin(t * 3); // 停在遠處時輕微浮動
+  const move = inOutCubic(prog(t, 4.4, 0.9));
+  ox = lerp(ox, 540, move); scale = lerp(scale, 1.78, move);
+  const lit = lerp(0.25, 1, u ** 1.5); // 遠處暗暗的只剩眼睛，靠近才亮
 
+  // ── 翅膀：起飛張開，緩慢無聲地拍（一秒一下），落下前上揚煞車，落地收起（收過頭一點再彈回）
+  const spread = outCubic(prog(t, 1.25, 0.5)) * (1 - outBack(prog(t, STRIKE - 0.05, 0.6)));
+  const flap = 16 * Math.sin((2 * Math.PI * (t - FLY_START)) / 0.95) * clamp(spread) + 22 * bump(t, STRIKE - 0.2, 0.15);
   const ivory = pieces.map((d, i) => {
-    const [cx, cy] = centroid(d);
-    const e = outBack(prog(t, PIECE_START[i], 0.75));
-    const o = outCubic(prog(t, PIECE_START[i], 0.4));
-    const len = Math.hypot(cx, cy - OWL_CY) || 1;
-    const off = 170 * (1 - e); // 從外圍沿著「中心→這塊」的方向飛回來
-    const tx = cx + (cx / len) * off, ty = cy + ((cy - OWL_CY) / len) * off;
-    const rot = (cx === 0 ? 0 : Math.sign(cx) * 20) * (1 - e);
-    const sc = 0.7 + 0.3 * e;
-    return `<path d="${d}" opacity="${o}" transform="translate(${tx} ${ty}) rotate(${rot}) scale(${sc}) translate(${-cx} ${-cy})"/>`;
+    if (!WINGS[i]) return `<path d="${d}"/>`;
+    const [side, deg] = WINGS[i], px = side * SHOULDER[0], py = SHOULDER[1];
+    const a = -side * (deg * spread + flap * clamp(spread * 3));
+    return `<path d="${d}" transform="translate(${px} ${py}) rotate(${a}) scale(${1 + 0.35 * spread}) translate(${-px} ${-py})"/>`;
   }).join('');
 
-  // 眼睛：睜開（上下撐開）＋兩次眨眼
-  const open = outBack(prog(t, 1.45, 0.35));
+  // ── 眼睛：從頭到尾都亮著；遠處最亮、落下抓到訊號時閃一下、之後像呼吸一樣持續發光
   const blink = BLINKS.reduce((k, b) => k * (1 - 0.92 * Math.sin(Math.PI * prog(t, b, 0.2))), 1);
   const eyes = EYES.map(([ex, ey]) =>
-    `<circle cx="${ex}" cy="${ey}" r="18" opacity="${clamp(open * 3)}" transform="translate(${ex} ${ey}) scale(${0.6 + 0.4 * open} ${Math.max(0, open) * blink}) translate(${-ex} ${-ey})"/>`).join('');
-  const glow = 0.6 * Math.exp(-(((t - 1.7) / 0.3) ** 2));
-  const glows = EYES.map(([ex, ey]) => `<circle cx="${ex}" cy="${ey}" r="30" fill="${GOLD}" opacity="${glow}" filter="url(#blur)"/>`).join('');
-  const b = outBack(prog(t, 1.65, 0.4));
-  const beakEl = `<path d="${beak}" opacity="${outCubic(prog(t, 1.65, 0.25))}" transform="translate(0 ${-20 * (1 - b)})"/>`;
+    `<circle cx="${ex}" cy="${ey}" r="18" transform="translate(${ex} ${ey}) scale(1 ${blink}) translate(${-ex} ${-ey})"/>`).join('');
+  const glow = clamp(lerp(1, 0.35, u) + 0.1 * Math.sin(t * 2.4) * prog(t, STRIKE, 0.6) + 0.7 * bump(t, STRIKE + 0.1, 0.18)) * blink;
+  const glowR = lerp(70, 32, u);
+  const glows = EYES.map(([ex, ey]) => `<circle cx="${ex}" cy="${ey}" r="${glowR}" fill="${GOLD}" opacity="${glow}" filter="url(#blur)"/>`).join('');
 
-  // 開頭的金色光點擴散成光圈
-  const s = prog(t, 0, 0.8);
-  const spark = `<circle cx="960" cy="540" r="${6 + 420 * outCubic(s)}" fill="none" stroke="${GOLD}" stroke-width="${3 * (1 - s)}" opacity="${0.7 * (1 - s)}"/>
-    <circle cx="960" cy="540" r="7" fill="${GOLD}" opacity="${clamp(t / 0.15) * (1 - prog(t, 0.25, 0.3))}"/>`;
+  // ── 噪音對話框：亂抖、閃爍；落下那刻從訊號點擴散一圈波紋，波紋掃過的地方全部清空
+  const wave = 2300 * outCubic(prog(t, STRIKE, 1.1));
+  const noise = NOISE.map((n) => {
+    const d = Math.hypot(n.x - SIGNAL[0], n.y - SIGNAL[1]);
+    const a = n.a * (0.6 + 0.4 * Math.sin(t * 7 + n.p * 3)) * clamp(t / 0.8) * (t < STRIKE ? 1 : clamp((d - wave) / 60));
+    if (a <= 0.01) return '';
+    return `<rect x="${n.x + 4 * Math.sin(t * 11 + n.p)}" y="${n.y + 3 * Math.sin(t * 15 + n.q)}" width="${n.w}" height="16" rx="8" fill="${NOISE_C}" opacity="${a}"/>`;
+  }).join('');
+  const waveRing = t > STRIKE ? `<circle cx="${SIGNAL[0]}" cy="${SIGNAL[1]}" r="${wave}" fill="none" stroke="${GOLD}" stroke-width="2" opacity="${0.5 * (1 - prog(t, STRIKE, 1.1))}"/>` : '';
 
-  // 右邊的分隔線與文字
-  const line = 208 * outCubic(prog(t, 2.95, 0.6));
+  // ── 金色訊號＋瞄準圈：飛行途中瞄準圈慢慢縮小鎖定，落下時訊號被收走
+  const sig = clamp(t / 0.8) * (1 - prog(t, STRIKE - 0.05, 0.2));
+  const sigGlow = 0.25 + 0.5 * prog(t, 1.9, 1.4);
+  const lock = clamp((t - 1.9) / 0.3) * (1 - prog(t, STRIKE - 0.1, 0.2));
+  const r = lerp(150, 50, inOutSine(prog(t, 1.9, STRIKE - 2.05))); // 一路縮到落下那刻才鎖死
+  const [sx, sy] = SIGNAL;
+  const ticks = [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([a, b]) =>
+    `<line x1="${sx + a * r}" y1="${sy + b * r}" x2="${sx + a * (r + 16)}" y2="${sy + b * (r + 16)}"/>`).join('');
+  const signal = `<g opacity="${sig}">
+    <rect x="${sx - 46}" y="${sy - 14}" width="92" height="28" rx="14" fill="${GOLD}" opacity="${sigGlow}" filter="url(#blur)"/>
+    <rect x="${sx - 40}" y="${sy - 12}" width="80" height="24" rx="12" fill="${GOLD}"/>
+  </g>
+  <g stroke="${GOLD}" stroke-width="2" fill="none" opacity="${lock * 0.8}"><circle cx="${sx}" cy="${sy}" r="${r}"/>${ticks}</g>`;
+
+  // ── 右邊的分隔線與文字
+  const line = 208 * outCubic(prog(t, 4.8, 0.6));
   const rise = (start, dur = 0.7) => { const k = outCubic(prog(t, start, dur)); return `opacity="${k}" transform="translate(0 ${30 * (1 - k)})"`; };
   const title = ['群', '記'].map((c, i) =>
-    `<text x="${979 + i * 250}" y="532" font-family="Songti TC" font-weight="bold" font-size="250" fill="${IVORY}" ${rise(3.1 + i * 0.15)}>${c}</text>`).join('');
-  const g = outCubic(prog(t, 3.55, 0.9));
+    `<text x="${979 + i * 250}" y="532" font-family="Songti TC" font-weight="bold" font-size="250" fill="${IVORY}" ${rise(4.95 + i * 0.15)}>${c}</text>`).join('');
+  const g = outCubic(prog(t, 5.4, 0.9));
   const latin = `<text x="984" y="638" font-family="PingFang TC" font-weight="500" font-size="38" letter-spacing="${lerp(36, 14, g)}" fill="${MINT}" opacity="${g * 0.9}">GROUPSCRIBE</text>`;
   const tagline = [...'群裡講過的，都記得。'].map((c, i) =>
-    `<text x="${981 + i * 62}" y="745" font-family="PingFang TC" font-weight="500" font-size="58" fill="${MINT}" ${rise(3.85 + i * 0.06, 0.5)}>${c}</text>`).join('');
+    `<text x="${981 + i * 62}" y="745" font-family="PingFang TC" font-weight="500" font-size="58" fill="${MINT}" ${rise(5.7 + i * 0.06, 0.5)}>${c}</text>`).join('');
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
 <defs>
-  <radialGradient id="bg" cx="50%" cy="50%" r="75%"><stop offset="0" stop-color="#0e5541"/><stop offset="1" stop-color="#083c2e"/></radialGradient>
   <filter id="blur" x="-200%" y="-200%" width="500%" height="500%"><feGaussianBlur stdDeviation="14"/></filter>
 </defs>
-<rect width="${W}" height="${H}" fill="url(#bg)"/>
-${spark}
-<g transform="translate(${ox} 540) scale(${scale}) translate(0 ${-OWL_CY})">
-  ${glows}<g fill="${IVORY}">${ivory}</g><g fill="${GOLD}">${eyes}${beakEl}</g>
+<rect width="${W}" height="${H}" fill="#0b4a38"/>
+${noise}${waveRing}${signal}
+<g transform="translate(${ox} ${lerp(oy, 540, move)}) rotate(${tilt}) scale(${scale}) translate(0 ${-OWL_CY})">
+  ${glows}<g fill="${IVORY}" opacity="${lit}">${ivory}</g><g fill="${GOLD}">${eyes}<path d="${beak}" opacity="${lit}"/></g>
 </g>
 <line x1="864" x2="864" y1="${540 - line}" y2="${540 + line}" stroke="${IVORY}" stroke-opacity="0.25" stroke-width="2"/>
 ${title}${latin}${tagline}
 </svg>`;
 }
+
 
 // 只輸出一張靜態圖檢查構圖：node scripts/intro-video.mjs --still 4.5
 const stillAt = process.argv.indexOf('--still');
