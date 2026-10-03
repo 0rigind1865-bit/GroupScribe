@@ -20,9 +20,6 @@ const pieces = [...ivoryPart.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
 const beak = goldPart.match(/<path d="([^"]+)"/)[1];
 const EYES = [[-45.5, 186], [45.5, 186]];
 const OWL_CY = 252.5; // 貓頭鷹在 mark.svg 座標裡的中心 y
-// 翅膀：pieces 的第 3、6 塊是左翅，4、7 塊是右翅；張開時繞肩膀轉出去（度數＝上翅、下翅）
-const WINGS = { 3: [-1, 78], 6: [-1, 112], 4: [1, 78], 7: [1, 112] };
-const SHOULDER = [62, 240];
 
 const clamp = (x) => Math.min(1, Math.max(0, x));
 const prog = (t, start, dur) => clamp((t - start) / dur);
@@ -32,6 +29,25 @@ const inOutCubic = (x) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
 const inOutSine = (x) => (1 - Math.cos(Math.PI * x)) / 2;
 const lerp = (a, b, k) => a + (b - a) * k;
 const bump = (t, at, width) => Math.exp(-(((t - at) / width) ** 2));
+const BG = '#0b4a38';
+// 兩個顏色混合（k=0 是 a、k=1 是 b）；用來讓貓頭鷹「由暗變亮」但身體不透明，背景噪音不會透過來
+const mix = (a, b, k) => '#' + [1, 3, 5].map((i) => Math.round(lerp(parseInt(a.slice(i, i + 2), 16), parseInt(b.slice(i, i + 2), 16), k)).toString(16).padStart(2, '0')).join('');
+
+// 飛行用的大翅膀（logo 裡沒有，另外畫）：一片「手臂」羽毛＋9 根扇形張開的羽毛，
+// 每根羽毛描一圈底色邊，做出跟 logo 一樣「一塊一塊、中間有縫」的風格。
+// 座標以肩膀為原點、往右伸出（右翅）；左翅用鏡像。
+const feather = (L, a, b) => `M0 ${-a * 0.55}C${L * 0.3} ${-a} ${L * 0.65} ${-a} ${L * 0.92} ${-a * 0.35}` +
+  `Q${L} 0 ${L * 0.92} ${b * 0.35}C${L * 0.65} ${b} ${L * 0.3} ${b} 0 ${b * 0.55}Q${-a * 0.6} 0 0 ${-a * 0.55}Z`;
+const piece = (d, x, y, deg) => `<path d="${d}" transform="translate(${x} ${y}) rotate(${deg})" stroke="${BG}" stroke-width="7" paint-order="stroke"/>`;
+const WING = [
+  ...Array.from({ length: 9 }, (_, i) => 8 - i).map((k) => { // 由內往外畫，外側的長羽毛疊在最上面
+    const f = k / 8; // 0＝最外側的長飛羽，1＝最內側靠身體的短羽毛
+    return piece(feather(lerp(125, 70, f ** 0.8), 18, 18), lerp(140, 20, f), lerp(-30, 14, f), lerp(-18, 88, f));
+  }),
+  piece(feather(160, 20, 30), 0, 0, -14), // 手臂（前緣）
+].join('');
+const SHOULDER = [70, 245];
+const UPPER_WINGS = [3, 4]; // logo 本身的上翅；飛行時換成大翅膀
 
 // 噪音：固定亂數種子，每次產生的畫面都一樣
 let seed = 7;
@@ -63,15 +79,13 @@ function frame(t) {
   ox = lerp(ox, 540, move); scale = lerp(scale, 1.78, move);
   const lit = lerp(0.25, 1, u ** 1.5); // 遠處暗暗的只剩眼睛，靠近才亮
 
-  // ── 翅膀：起飛張開，緩慢無聲地拍（一秒一下），落下前上揚煞車，落地收起（收過頭一點再彈回）
+  // ── 翅膀：起飛時大翅膀從身體旁邊展開，緩慢無聲地拍（一秒一下），落下前上揚煞車，落地收回、換回 logo 的小翅膀
   const spread = outCubic(prog(t, 1.25, 0.5)) * (1 - outBack(prog(t, STRIKE - 0.05, 0.6)));
-  const flap = 16 * Math.sin((2 * Math.PI * (t - FLY_START)) / 0.95) * clamp(spread) + 22 * bump(t, STRIKE - 0.2, 0.15);
-  const ivory = pieces.map((d, i) => {
-    if (!WINGS[i]) return `<path d="${d}"/>`;
-    const [side, deg] = WINGS[i], px = side * SHOULDER[0], py = SHOULDER[1];
-    const a = -side * (deg * spread + flap * clamp(spread * 3));
-    return `<path d="${d}" transform="translate(${px} ${py}) rotate(${a}) scale(${1 + 0.35 * spread}) translate(${-px} ${-py})"/>`;
-  }).join('');
+  const s = clamp(spread);
+  const flap = 16 * Math.sin((2 * Math.PI * (t - FLY_START)) / 0.95) * s + 22 * bump(t, STRIKE - 0.2, 0.15);
+  const wing = `<g transform="translate(${SHOULDER[0]} ${SHOULDER[1]}) rotate(${lerp(80, -8, spread) - flap}) scale(${lerp(0.35, 1, spread)})" opacity="${clamp(spread * 2)}">${WING}</g>`;
+  const ivory = (s > 0 ? wing + `<g transform="scale(-1 1)">${wing}</g>` : '') + pieces.map((d, i) =>
+    `<path d="${d}"${UPPER_WINGS.includes(i) ? ` opacity="${1 - clamp(spread * 2)}"` : ''}/>`).join('');
 
   // ── 眼睛：從頭到尾都亮著；遠處最亮、落下抓到訊號時閃一下、之後像呼吸一樣持續發光
   const blink = BLINKS.reduce((k, b) => k * (1 - 0.92 * Math.sin(Math.PI * prog(t, b, 0.2))), 1);
@@ -122,7 +136,7 @@ function frame(t) {
 <rect width="${W}" height="${H}" fill="#0b4a38"/>
 ${noise}${waveRing}${signal}
 <g transform="translate(${ox} ${lerp(oy, 540, move)}) rotate(${tilt}) scale(${scale}) translate(0 ${-OWL_CY})">
-  ${glows}<g fill="${IVORY}" opacity="${lit}">${ivory}</g><g fill="${GOLD}">${eyes}<path d="${beak}" opacity="${lit}"/></g>
+  ${glows}<g fill="${mix(BG, IVORY, lit)}">${ivory}</g><g fill="${GOLD}">${eyes}<path d="${beak}" fill="${mix(BG, GOLD, lit)}"/></g>
 </g>
 <line x1="864" x2="864" y1="${540 - line}" y2="${540 + line}" stroke="${IVORY}" stroke-opacity="0.25" stroke-width="2"/>
 ${title}${latin}${tagline}
