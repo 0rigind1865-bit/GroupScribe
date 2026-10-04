@@ -16,7 +16,7 @@ export function SubscribeToggle({
   groupId: string;
   back: string;
   enabled: boolean;
-  error?: boolean;
+  error?: 'fail' | 'full';
 }) {
   const [friend, setFriend] = useState<boolean | null>(null); // null = 還沒問到／問不到
 
@@ -55,7 +55,12 @@ export function SubscribeToggle({
           ⚠️ 還沒加我好友，LINE 不允許傳私訊給你。請回群組**點我的頭像 →「加入好友」**，摘要才收得到。
         </p>
       )}
-      {error && (
+      {error === 'full' && (
+        <p className="mt-2 rounded bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
+          這個團隊的每日提醒名額已經滿了。請團隊管理員升級方案，或請不需要提醒的人先關掉，再回來開啟。
+        </p>
+      )}
+      {error === 'fail' && (
         <p className="mt-2 rounded bg-red-50 px-2 py-1.5 text-[11px] text-red-700">
           設定失敗——管理者可能尚未執行 migration 009。
         </p>
