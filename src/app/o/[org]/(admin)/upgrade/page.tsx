@@ -3,6 +3,8 @@ import { getDb } from '@/db';
 import { orgSettings, requireModule } from '@/org/orgs';
 import { Banner } from '@/app/ui/banner';
 import { orgAiBudget } from '@/core/quota';
+import { pendingReferredBonus, REFERRAL } from '@/org/referral';
+import { oh } from '@/org/href';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,6 +35,8 @@ export default async function UpgradePage({
   const { count } = await getDb().from('groups').select('group_id', { count: 'exact', head: true }).eq('org_id', org.id).is('left_at', null).not('group_id', 'like', 'dm:%');
   const used = count ?? 0;
   const ai = await orgAiBudget(org.id, true);
+  const referredBonus = await pendingReferredBonus(org.id).catch(() => false);
+  const credit = Number(st.referral_credit_days ?? 0);
 
   return (
     <main className="page">
@@ -45,6 +49,8 @@ export default async function UpgradePage({
         <Banner tone="err">本月 AI 額度已用完：訊息會照常保存，但不再自動整理、問答與解析檔案，下個月 1 號恢復。升級可立即提高額度。</Banner>
       )}
       {limit && <Banner tone="warn">這個方案的群組數已用滿。升級後回到群裡再點一次認領連結即可。</Banner>}
+      {referredBonus && <Banner tone="ok">你是朋友推薦來的：第一次升級付費方案，多送 {REFERRAL.rewardDays} 天。</Banner>}
+      {credit > 0 && <Banner tone="ok">你有 {credit} 天推薦獎勵存著，升級付費方案時會自動加在到期日上。</Banner>}
       <div className="grid gap-3 md:grid-cols-3">
         {PLANS.map((p) => {
           const current = p.id === plan;
@@ -67,6 +73,13 @@ export default async function UpgradePage({
         })}
       </div>
       <p className="mt-4 text-xs text-gray-500">線上付款即將開通；目前升級請來信，我們會在一個工作天內開通並提供付款方式。</p>
+      <a className="card mt-6 flex items-center gap-3 hover:bg-gray-50" href={oh(slug, '/referral')}>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">推薦好友，雙方各得 {REFERRAL.rewardDays} 天</span>
+          <span className="block text-xs text-gray-500">對方開始付費時發，免費方案的你也拿得到（升級時折抵）。</span>
+        </span>
+        <span aria-hidden className="text-gray-400">→</span>
+      </a>
     </main>
   );
 }

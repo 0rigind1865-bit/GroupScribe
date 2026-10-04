@@ -3,9 +3,12 @@ import { getDb } from '@/db';
 import { redirectTo } from '@/http';
 import { isPlatformOwner } from '@/org/orgs';
 import { isPlanId, PLAN_LIMITS } from '@/org/plans';
+import { settleReferrals } from '@/org/referral';
 
 // 平台擁有者手動改某家公司的方案（PAYUNi 串接前的升級方式）：
 // 方案決定群組上限與每月 AI 額度；有效日選填（付費方案到期日）。
+// 改成付費方案＝視為已收到款：被推薦的組織第一次付費時，雙方的推薦獎勵在這一刻發出；
+// 存著的獎勵天數也在這裡折抵進到期日（所以存檔後到期日可能比你填的晚，見平台頁提示）。
 export async function POST(req: NextRequest) {
   if (!(await isPlatformOwner())) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const form = await req.formData();
@@ -32,5 +35,6 @@ export async function POST(req: NextRequest) {
     console.error('改方案失敗', orgId, error);
     return redirectTo('/platform?err=1');
   }
-  return redirectTo('/platform?ok=1');
+  const rewarded = await settleReferrals(orgId);
+  return redirectTo(`/platform?ok=${rewarded ? 'ref' : '1'}`);
 }

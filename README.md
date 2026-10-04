@@ -305,6 +305,11 @@ src/
 6. 方案上限（`org_settings.max_groups`，free＝1 群）：認領第 2 個群會導到 `/o/<slug>/upgrade`。
    線上付款（PAYUNi）尚未串接，升級目前由平台擁有者手動改 `org_settings.plan / max_groups / paid_until`
 
+**推薦獎勵**（migration 029）：管理員在「更多 → 推薦好友」拿推薦連結 `/r/<推薦碼>`、用 LINE 傳出去；
+對方用連結建立組織、**第一次升級付費方案**時，雙方各得 30 天（推薦人每家最多 12 次）。付費中直接延長 `paid_until`，
+免費方案的天數先存著、升級時折抵；免費方案的群數與 AI 額度不會因推薦增加。觸發點是平台頁「改方案」改成 Starter／Team 的那一刻——
+所以只在真的收到款時才改。退款要收回時，手動把 `referrals.status` 改成 `void` 並扣回雙方的 `paid_until`。
+
 每家組織每月有 AI 呼叫上限（`org_settings.monthly_ai_calls`，free 1,500／starter 6,000／team 20,000，null＝不限）：
 用完後訊息照存、暫停整理，方案頁與今天頁會顯示；用量記在 `org_usage`（migration 018）。
 服務條款與隱私權政策在 `/terms`、`/privacy`（草稿，收費前請律師審閱）。

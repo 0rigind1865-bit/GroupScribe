@@ -111,6 +111,7 @@
 | G4 | ✅ **已完成 2026-09-26**（migration 024 webhook_events＋claim_webhook_events；表不存在走舊路徑；補處理輪詢需 `WEBHOOK_WORKER=1`）。原規劃：**webhook 先落地再回 200**：新表 `webhook_events(channel_id, webhook_event_id 唯一, is_redelivery, payload, processed_at, error)`；route 只做「驗簽→同步 insert→200」；冪等鍵用 `webhookEventId` 並以 `deliveryContext.isRedelivery` 辨識（https://developers.line.biz/en/docs/messaging-api/receiving-messages/ ，2026-09-23 查閱；parseEvents 目前忽略這兩欄，src/connectors/line.ts:25-31）；處理改由 `instrumentation.ts` 啟動的同容器輪詢迴圈取代 `after()` | migration 016、webhook route、src/core/worker.ts | 2 |
 | L1 | ✅ **已完成 2026-09-26**（migration 021 funnel_events；`/g` 進入與群組頁帶 src 時落表；觸點帶 `?src=`，回答與提醒帶 `?g=`；`/` 與 `/g` 處理深連結含 liff.state）。原規劃：**（新增，K6 修正）** LIFF 開啟事件落表：`/api/liff/session`（src/app/api/liff/session/route.ts:8-25 目前不寫任何紀錄）建 session 時寫 `funnel_events(org_id, group_id, line_user_id, step='liff_open', source, at)`；`source` 由觸點帶 query（告知文／@回答／每日提醒，三處目前只放 LIFF 首頁 URL：src/core/ingest.ts:10,25-41,310-312、src/core/digest.ts:119-120）；加單群深連結 `https://liff.line.me/{LIFF_ID}?g=<groupId>`。沒有這項，第 6 節止損線永遠觸發不了 | liff/session route、ingest.ts、digest.ts、migration 016 | 0.5 |
 | G6 | LIFF 群組頁「把它拉進你的其他群」按鈕：`liff.shareTargetPicker()` 送 Flex 卡（加好友＋邀請三步＋`?ref=<orgId>`）；**前提未做**：全案無 shareTargetPicker 呼叫（`grep -rln share src` 只命中 links.ts、related-items.tsx），需在 Console 啟用並同意資訊使用協議、LINE ≥10.3.0、單次最多 5 則（https://developers.line.biz/en/reference/liff/ ，2026-09-23 查閱）；漏斗步驟寫入 funnel_events：告知→開啟→分享→新群 join→歸戶→第 2 群→付費 | src/app/g/[groupId]/page.tsx、src/app/ui/share-card.tsx | 1.5 |
+| R1 | ✅ **已完成 2026-10-04**（migration 029：`orgs.referral_code`、`org_settings.referral_credit_days`、`referrals`；規則常數 `src/org/plans.ts` 的 `REFERRAL`，邏輯 `src/org/referral.ts`）。**推薦獎勵：對方用推薦連結 `/r/<碼>` 建立組織、第一次升級付費方案時，雙方各得 30 天**；推薦人每家最多 12 次。付費中直接延長 `paid_until`，免費方案先存天數、升級時折抵。發天數不發現金（守住第 5 節「不做代理商分潤」），建立組織只記不發（守住第 4 節「Free 不做推薦解鎖」，tests/referral.test.ts 有守門）。觸發點：平台頁改成付費方案（`/api/platform/plan`→`settleReferrals`）；PAYUNi 結帳上線時同一支函式接上。漏斗：`funnel_events` 的 `ref_open`／`ref_signup`／`ref_paid`。與 G6 互補：G6 是成員把 bot 拉進別的群，R1 是管理員把產品推給別家公司 | src/org/referral.ts、src/app/r、(admin)/referral、platform | 1 |
 | G7 | ✅ **已完成 2026-09-26**（三段；明寫由認領公司管理、可匯出；完整輸出含入口 ≤400 字有測試；NOTICE_VERSION v2）。原規劃：進群告知改三段（DEFAULT_NOTICE 在 src/core/ingest.ts:13），租戶可在 `org_settings.join_notice_text` 署名；**明寫「本群整理由認領的組織管理，可匯出」**（第 8 節混合群條款風險） | src/core/ingest.ts | 0.3 |
 | G8 | ✅ **不需改程式（2026-09-26 驗證）**：三表 needs_confirmation 預設 true、抽取更新時強制 true，AI 抽出的項目本來就一律需確認。原規劃：新租戶前 7 天抽取門檻再高一級（`needs_confirmation` 全開），上手卡明說「前幾天需要你確認幾筆」（docs/principles.md 規則一） | src/core/extract.ts | 0.2 |
 | E1 | ◐ **部分完成 2026-09-26**（三行業題目＋比對器；抽取純入口待抽出才能跑）。原規劃：跨行業抽取回歸集：`scripts/extract-eval.ts`＋`tests/fixtures/golden/`（≥3 行業各 30–50 則）；上第一個非同業租戶前跑一次記錄假陽性率 | scripts/、tests/fixtures | 1 |
@@ -197,7 +198,7 @@
 
 | 方案 | 月費（未稅） | 群組 | 每日提醒訂閱者 | 抽取上限 | 保存 | 備註 |
 |---|---|---|---|---|---|---|
-| Free | NT$0 | 1 群 | 3 人 | **每月 300 次抽取呼叫（A8 `monthly_extract_cap`，K5 備援）** | 90 天後只留索引 | 每 LINE userId 限 1 個；不做推薦解鎖 |
+| Free | NT$0 | 1 群 | 3 人 | **每月 300 次抽取呼叫（A8 `monthly_extract_cap`，K5 備援）** | 90 天後只留索引 | 每 LINE userId 限 1 個；不做推薦解鎖（推薦獎勵 R1 只在對方付費時發天數，不動免費額度） |
 | Starter | NT$690 | 3 群 | 10 人 | 方案內不限，超 `monthly_budget_usd` 降級 | 無限 | 入門 |
 | Team | NT$2,190 | 10 群 | 30 人 | 同上 | 無限＋匯出＋稽核日誌 | 主力 |
 | Enterprise | 洽談（≥NT$4,900） | 不限 | 不限 | — | — | 自有 OA（形態 B）、白牌告知文、DPA 客製 |
@@ -351,7 +352,7 @@
 | 1 | **法人化／稅籍登記與收款時機**（K4 修正：台灣 B2B 買方索取統一發票是常態；個人身分只能開收據；當月網路銷售勞務達 NT$5 萬須辦稅籍登記） | 現在辦行號／稅籍登記：可開發票、日後 Certified Provider 有法人身分；固定成本先發生 | 前 3 家以收據處理並事先說明，**示範第一句就問「要不要發票」**；≥2 家要求或當月達 NT$5 萬即辦 | **B**——付費意願是第一個要驗證的假設；但把「發票」從被動翻案條件改成主動量測。**未查證**：小規模營業人能否自願使用統一發票，先打電話問國稅局。**注意：PAYUNi 個人會員只解決「怎麼收錢」，不解決「發票」——兩件事分開看** |
 | 2 | **bot 品牌名與告知文署名**（一旦定了不能改） | 顯示名維持「GroupScribe」，告知文可由租戶署名 | 改中性中文名（如「群組小記」） | **A**（與開源社群一致；中文暱稱放告知文第一句），但這是品牌決定 |
 
-其餘分岔本計劃已定：形態 A 為 Beta 預設、LINE 書面答覆為收費閘門；第一個月就收錢（設計夥伴半價 6 個月）；第一筆入帳當週搬 VPS；Free＝1 群永久免費、抽取每月封頂、無推薦解鎖；認領必須在群內可見、先認領者得；未認領群零落地、7 天退群；考勤作為加購不進主訊息；RLS 等階段三且用 per-org JWT。
+其餘分岔本計劃已定：形態 A 為 Beta 預設、LINE 書面答覆為收費閘門；第一個月就收錢（設計夥伴半價 6 個月）；第一筆入帳當週搬 VPS；Free＝1 群永久免費、抽取每月封頂、無推薦解鎖（R1 推薦獎勵只在對方付費時發天數）；認領必須在群內可見、先認領者得；未認領群零落地、7 天退群；考勤作為加購不進主訊息；RLS 等階段三且用 per-org JWT。
 
 ---
 

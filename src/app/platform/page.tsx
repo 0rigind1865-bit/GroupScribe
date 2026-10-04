@@ -3,6 +3,7 @@ import { getDb } from '@/db';
 import { isPlatformOwner } from '@/org/orgs';
 import { monthKey } from '@/core/quota';
 import { PLAN_LIMITS } from '@/org/plans';
+import { REFERRAL } from '@/org/referral';
 import { IdentityBar } from '@/app/ui/identity-bar';
 import { surfaces } from '@/org/surfaces';
 import { groupSurfaces } from '@/org/surface-groups';
@@ -37,13 +38,16 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const loc = await locale();
   const db = getDb();
 
-  const [{ data: orgsRaw }, { data: groups }, { data: usage }] = await Promise.all([
+  const [{ data: orgsRaw }, { data: groups }, { data: usage }, { data: refsRaw }, { data: credits }] = await Promise.all([
     db
       .from('orgs')
       .select('id, slug, name, created_at, org_settings(plan, max_groups, monthly_ai_calls, modules, paid_until), org_members(display_name, role)')
       .order('created_at'),
     db.from('groups').select('group_id, name, org_id, left_at, updated_at'),
     db.from('org_usage').select('org_id, calls').eq('month', monthKey()),
+    // 推薦（migration 029）分開查：表或欄位還不存在時只是空的，不拖垮整頁
+    db.from('referrals').select('referrer_org_id, referred_org_id, status'),
+    db.from('org_settings').select('org_id, referral_credit_days').gt('referral_credit_days', 0),
   ]);
   const orgs = (orgsRaw ?? []) as unknown as OrgRow[];
   const unclaimed = orgs.find((o) => o.slug === 'unclaimed');
@@ -53,6 +57,9 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const callsOf = new Map((usage ?? []).map((u: any) => [u.org_id, u.calls as number]));
   const waiting = unclaimed ? live.filter((g: any) => g.org_id === unclaimed.id) : [];
   const totalCalls = [...callsOf.values()].reduce((a, b) => a + b, 0);
+  const refs = ((refsRaw ?? []) as { referrer_org_id: string; referred_org_id: string; status: string }[]).filter((r) => r.status !== 'void');
+  const creditOf = new Map((credits ?? []).map((c: any) => [c.org_id, c.referral_credit_days as number]));
+  const nameOf = new Map(orgs.map((o) => [o.id, o.name]));
 
   return (
     <div className="pb-10">
@@ -68,7 +75,14 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
           </h1>
           <p className="text-sm text-gray-500">只有平台擁有者看得到這一頁。</p>
         </div>
-        {ok && <Banner tone="ok">方案已更新。</Banner>}
+        {ok === 'ref' ? (
+          <Banner tone="ok">
+            方案已更新。這家是被推薦來的、第一次付費：推薦獎勵已發放，雙方各 +{REFERRAL.rewardDays} 天
+            （推薦人已領滿 {REFERRAL.maxRewards} 次的話只發給這家）。到期日已自動延長，請看下方。
+          </Banner>
+        ) : (
+          ok && <Banner tone="ok">方案已更新。</Banner>
+        )}
         {err && <Banner tone="err">更新失敗，請再試一次。</Banner>}
 
         <div className="grid grid-cols-3 gap-3">
@@ -128,6 +142,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                     {cap !== null ? ` / ${cap}` : '（不限）'}・管理員：{owners}
                     {st.paid_until ? `・付費到 ${st.paid_until}` : ''}
                   </p>
+                  <ReferralLine orgId={o.id} refs={refs} credit={creditOf.get(o.id) ?? 0} nameOf={nameOf} />
                   <div className="flex flex-wrap items-center gap-2">
                     {mods.includes('gs') && (
                       <a className="btn btn-sm" href={go(`gs:${o.slug}`)}>
@@ -165,4 +180,17 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
       </main>
     </div>
   );
+}
+
+// 一行看完這家的推薦狀態：誰推薦它、它推薦了幾家、還有幾天沒折抵（沒有就不畫）
+function ReferralLine({ orgId, refs, credit, nameOf }: { orgId: string; refs: { referrer_org_id: string; referred_org_id: string; status: string }[]; credit: number; nameOf: Map<string, string> }) {
+  const by = refs.find((r) => r.referred_org_id === orgId);
+  const mine = refs.filter((r) => r.referrer_org_id === orgId);
+  const parts = [
+    by && `由「${nameOf.get(by.referrer_org_id) ?? '（已刪除）'}」推薦${by.status === 'rewarded' ? '（已付費、獎勵已發）' : '（付費時雙方各 +' + REFERRAL.rewardDays + ' 天）'}`,
+    mine.length > 0 && `推薦了 ${mine.length} 家（${mine.filter((r) => r.status === 'rewarded').length} 家已付費）`,
+    credit > 0 && `待折抵 ${credit} 天（改成付費方案並填到期日時自動加上）`,
+  ].filter(Boolean);
+  if (!parts.length) return null;
+  return <p className="text-xs text-gray-500">推薦：{parts.join('・')}</p>;
 }
