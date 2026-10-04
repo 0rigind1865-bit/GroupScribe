@@ -39,6 +39,18 @@
         "3100"
       ],
       "port": 3100
+    },
+    {
+      "name": "design-board",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4777",
+        "--directory",
+        "design-board"
+      ],
+      "port": 4777
     }
   ]
 }
