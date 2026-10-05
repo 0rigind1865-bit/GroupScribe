@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getDb } from '@/db';
 import { logFunnel } from '@/core/funnel';
-import { todayISO } from '@/core/date';
+import { addDays, todayISO } from '@/core/date';
 import { isPaidPlan, REFERRAL } from './plans';
 
 // 推薦獎勵（migration 029）：別家用你的連結建立組織，等他第一次升級付費方案，雙方各得 30 天。
@@ -29,12 +29,6 @@ export function newRefCode(): string {
 export function normalizeRefCode(v: unknown): string {
   const s = typeof v === 'string' ? v.trim().toUpperCase() : '';
   return CODE_RE.test(s) ? s : '';
-}
-
-export function addDays(ymd: string, days: number): string {
-  const d = new Date(`${ymd}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
 }
 
 export type CreditState = { plan: unknown; paidUntil: string | null; creditDays: number };

@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { addDays, newRefCode, normalizeRefCode, referrerDaysFor, settleCredit, summarizeReferrals } from '../src/org/referral';
+import { newRefCode, normalizeRefCode, referrerDaysFor, settleCredit, summarizeReferrals } from '../src/org/referral';
+import { addDays } from '../src/core/date';
 import { isPaidPlan, PLAN_LIMITS, REFERRAL } from '../src/org/plans';
 
 // 推薦獎勵（migration 029）：付費才發、發的是天數。
