@@ -86,6 +86,14 @@ html {
       font-size: 42px;
     }
   }
+  /* 表單元素別撐破容器：fieldset 預設 min-width 是內容寬、iOS 的日期欄位有自己的最小寬，
+     放在窄容器（手機抽屜）裡會比容器寬，出現橫向捲動 */
+  fieldset,
+  input[type='date'],
+  input[type='datetime-local'],
+  input[type='time'] {
+    min-width: 0;
+  }
   /* 標題換行平均分配：長標題斷成兩行時不會剩一個字孤零零掛在第二行 */
   h1,
   h2 {
@@ -336,9 +344,13 @@ html {
   html:has(.sheet-backdrop:not([hidden] *)) body {
     overflow: hidden; /* 同 .demo-lock：html、body 都鎖，iOS 才鎖得住 */
   }
-  /* 面板捲到底不把捲動傳給後面的頁面 */
+  /* 面板捲到底不把捲動傳給後面的頁面。
+     只准上下：overflow-y:auto 會讓 overflow-x 跟著變 auto，iOS 的 datetime-local／長選項 select 比面板寬時，
+     整個抽屜就能左右滑（報帳「編輯紀錄」，2026-10 回報）。抽屜裡沒有要橫捲的東西，直接鎖死 */
   .sheet-panel {
     overscroll-behavior: contain;
+    overflow-x: hidden;
+    touch-action: pan-y pinch-zoom; /* pinch-zoom：抽屜裡的收據照片（Lightbox）還要能兩指放大 */
   }
   /* 長條圖的條在 SVG 裡時，transform-origin 要以條自己為準（預設是整張 SVG 的左上角） */
   svg .bar-grow-x,
