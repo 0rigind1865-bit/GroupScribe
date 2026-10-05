@@ -216,7 +216,7 @@ src/
 | `POST /api/process` | 重跑卡在 pending 的媒體解析＋回補群組名稱/頭貼 |
 | `POST /api/reindex` | 換 embedding 模型後全量重建向量 |
 | `POST /api/extract` | 手動/回補抽取（form 參數 `group_id`，省略＝全部群組） |
-| `POST /api/digest` | 每日摘要推播（給 cron 打，`?key=CRON_SECRET`） |
+| `POST /api/digest` | 每日摘要推播（給 cron 打，`?key=CRON_SECRET`）。一人一天一則：訂了好幾個群的人，有事的群合成一則（推播按收件人次計費） |
 </details>
 
 ---
