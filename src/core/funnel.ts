@@ -39,7 +39,9 @@ export function liffStatePath(sp: Sp): string | null {
   return p && !/^\/(\?|$)/.test(p) ? p : null;
 }
 
-type Row = { org_id?: string | null; group_id?: string | null; line_user_id: string; step: string; source: Source | null };
+// step：liff_open（成員從哪個觸點打開）；ref_open／ref_signup／ref_paid（推薦連結被打開／建立組織／第一次付費，src/org/referral.ts）
+// line_user_id 可為 null：推薦連結被打開時對方多半還沒登入
+type Row = { org_id?: string | null; group_id?: string | null; line_user_id: string | null; step: string; source: Source | null };
 type Db = { from: (t: string) => { insert: (r: Row) => PromiseLike<{ error: { message: string } | null }> } };
 
 // 記一筆；任何失敗（表還沒建、網路）都吞掉——漏斗是量測，不能擋住成員看內容

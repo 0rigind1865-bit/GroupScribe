@@ -6,6 +6,8 @@ import { orgAiBudget } from '@/core/quota';
 import { fmtDate } from '@/core/date';
 import { isPlanId, PLAN_LIMITS, planLines, planPrice, PUBLIC_PLANS } from '@/org/plans';
 import { digestSeats } from '@/org/digest-seats';
+import { pendingReferredBonus, REFERRAL } from '@/org/referral';
+import { oh } from '@/org/href';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +37,8 @@ export default async function UpgradePage({
   const used = count ?? 0;
   const ai = await orgAiBudget(org.id, true);
   const seats = await digestSeats(org.id).catch(() => null);
+  const referredBonus = await pendingReferredBonus(org.id).catch(() => false);
+  const credit = Number(st.referral_credit_days ?? 0);
 
   return (
     <main className="page">
@@ -49,6 +53,8 @@ export default async function UpgradePage({
         <Banner tone="err">本月 AI 額度已用完：訊息會照常保存，但不再自動整理、問答與解析檔案，下個月 1 號恢復。升級可立即提高額度。</Banner>
       )}
       {limit && <Banner tone="warn">這個方案的群組數已用滿。升級後回到群裡再點一次認領連結即可。</Banner>}
+      {referredBonus && <Banner tone="ok">你是朋友推薦來的：第一次升級付費方案，多送 {REFERRAL.rewardDays} 天。</Banner>}
+      {credit > 0 && <Banner tone="ok">你有 {credit} 天推薦獎勵存著，升級付費方案時會自動加在到期日上。</Banner>}
       <div className="grid gap-3 md:grid-cols-3">
         {PUBLIC_PLANS.map((id) => {
           const current = id === plan;
@@ -83,6 +89,13 @@ export default async function UpgradePage({
         考勤（GPS 打卡、補卡審核、加班費計算）是另外加購的模組，不包含在上面的方案裡，
         <a className="underline" href={CONTACT_ATTEND}>來信洽詢</a>。
       </p>
+      <a className="card mt-6 flex items-center gap-3 hover:bg-gray-50" href={oh(slug, '/referral')}>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">推薦好友，雙方各得 {REFERRAL.rewardDays} 天</span>
+          <span className="block text-xs text-gray-500">對方開始付費時發，免費方案的你也拿得到（升級時折抵）。</span>
+        </span>
+        <span aria-hidden className="text-gray-400">→</span>
+      </a>
     </main>
   );
 }

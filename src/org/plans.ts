@@ -16,7 +16,7 @@ export const isPlanId = (x: string): x is PlanId => x in PLAN_LIMITS;
 /** 對外販售的方案（方案頁、首頁介紹的順序） */
 export const PUBLIC_PLANS = ['free', 'starter', 'team'] as const satisfies readonly PlanId[];
 
-/** 付費方案：有到期日要管、會被暫停 */
+/** 付費方案：有到期日要管、會被暫停；推薦獎勵也只在這些方案上折抵成到期日（internal 不算付費） */
 export const isPaidPlan = (x: unknown): boolean => x === 'starter' || x === 'team';
 
 export const planPrice = (id: PlanId) => (PLAN_LIMITS[id].price ? `NT$${PLAN_LIMITS[id].price.toLocaleString('en-US')} / 月` : '免費');
@@ -48,3 +48,12 @@ export function paidStatus(plan: unknown, paidUntil: unknown, today: string): Pa
   const lastDay = addDays(paidUntil, GRACE_DAYS);
   return { state: today <= lastDay ? 'grace' : 'expired', paidUntil, lastDay };
 }
+
+// 推薦獎勵規則（src/org/referral.ts 的邏輯、推薦頁、平台頁、選單說明都讀這裡）。
+// 放在這個純常數檔，前端元件（路由表）也能 import，不會把資料庫連線帶進瀏覽器。
+export const REFERRAL = {
+  rewardDays: 30, // 雙方各得
+  maxRewards: 12, // 每家推薦人最多領 12 次（約一年），封住單一組織的成本
+  cookie: 'gs_ref',
+  cookieDays: 30, // 點過連結 30 天內建立組織都算
+} as const;

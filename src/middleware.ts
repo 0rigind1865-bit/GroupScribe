@@ -126,5 +126,6 @@ export const config = {
   // /claim 為認領頁：從群組連結點進來的人還沒有 cookie，由頁面自己導去 LINE Login
   // /invite 為管理員邀請頁：同 /claim，被邀的人還沒登入，由頁面自己驗連結簽章再導去 LINE Login
   // /start 自助註冊、/api/org 建組織與接受邀請：由頁面／端點自己驗 LINE 身分
-  matcher: ['/((?!api/health|api/webhook|api/login|api/liff|api/digest|api/attend|api/auth|api/org|login|start|about|brand/|shots/|icon|apple-icon|manifest|expense-sw.js|privacy|terms|claim/|invite/|g/(?!a/|a$)|g$|a/|a$|_next|favicon.ico).*)'],
+  // /r/<推薦碼> 推薦連結：對方還沒登入，只記 cookie 後導到 /start
+  matcher: ['/((?!api/health|api/webhook|api/login|api/liff|api/digest|api/attend|api/auth|api/org|login|start|about|brand/|shots/|icon|apple-icon|manifest|expense-sw.js|privacy|terms|claim/|invite/|r/|g/(?!a/|a$)|g$|a/|a$|_next|favicon.ico).*)'],
 };
