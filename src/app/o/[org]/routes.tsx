@@ -83,13 +83,6 @@ export const I = {
       <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" />
     </>
   ),
-  more: (
-    <>
-      <circle cx="5" cy="12" r="1.4" />
-      <circle cx="12" cy="12" r="1.4" />
-      <circle cx="19" cy="12" r="1.4" />
-    </>
-  ),
   clock: (
     <>
       <circle cx="12" cy="12" r="9" />
@@ -104,6 +97,12 @@ export const I = {
     </>
   ),
   check: <path d="M4 12l5 5L20 6" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="M20 20l-4-4" />
+    </>
+  ),
   gift: (
     <>
       <rect x="3" y="8" width="18" height="4" rx="1" />
@@ -169,10 +168,13 @@ export const GS_MODULE: ModuleDef = {
   base: (slug) => `/o/${slug}`,
   ctxParam: 'group',
   items: [
-    { key: 'today', path: '', label: '今天', desc: '本週行程與到期待辦', icon: I.today, primary: true },
-    { key: 'inbox', path: '/inbox', label: '收件匣', desc: 'AI 抽取待你確認的項目', icon: I.inbox, primary: true, badge: 'pending' },
-    { key: 'calendar', path: '/calendar', label: '月曆', desc: '行程的月／週／日檢視', icon: I.calendar, primary: true },
+    // 2026-10 設計畫布「群記 介面重新設計」：底部 4 格＝今天／待辦／行程／找。
+    // 收件匣不再是分頁：「今天」頂端的「等你把關」卡進去，徽章掛在「今天」；其餘收進工具選單（ShellHeader）
+    { key: 'today', path: '', label: '今天', desc: '本週行程與到期待辦', icon: I.today, primary: true, badge: 'pending' },
     { key: 'tasks', path: '/tasks', label: '待辦', desc: '群組交辦的事情', icon: I.tasks, primary: true },
+    { key: 'calendar', path: '/calendar', label: '行程', desc: '行程的清單、月、週、日檢視', icon: I.calendar, primary: true },
+    { key: 'search', path: '/search', label: '找', desc: '對話、檔案、公告一起搜', icon: I.search, primary: true },
+    { key: 'inbox', path: '/inbox', label: '把關', desc: 'AI 從對話整理的，等你點頭才算數', icon: I.inbox, badge: 'pending' },
     { key: 'notes', path: '/notes', label: '公告 / 決議', desc: '群組裡拍板的規則與宣布', icon: I.notes },
     { key: 'files', path: '/files', label: '檔案', desc: '圖片與文件，依類型/專案分類', icon: I.files },
     { key: 'groups', path: '/groups', label: '群組', desc: '群組名稱、分類與資料管理', icon: I.groups },
@@ -217,15 +219,11 @@ export const MODULES: ModuleDef[] = [GS_MODULE, ATTEND_MODULE, EXPENSE_MODULE];
 /** 依 id 取模組定義（nav、頂欄共用；取代各處的三元判斷） */
 export const moduleById = (id: ModuleId): ModuleDef => MODULES.find((m) => m.id === id) ?? GS_MODULE;
 
-/** 手機底部 tab：primary 四格 ＋ 有非 primary 項時合成一格「更多」 */
-export function bottomItems(m: ModuleDef): NavItem[] {
-  const primary = m.items.filter((i) => i.primary);
-  const rest = m.items.filter((i) => !i.primary);
-  if (!rest.length) return primary;
-  return [...primary, { key: 'more', path: '/more', label: '更多', desc: '', icon: I.more }];
-}
+/** 底部 tab（手機）與頂部分頁（電腦）：只有 primary。
+ *  不再合成「更多」格——其餘項目收進頂欄工具選單（shell-header.tsx），分頁大、少、不擠 */
+export const bottomItems = (m: ModuleDef): NavItem[] => m.items.filter((i) => i.primary);
 
-/** /more 頁列出的項目＝沒進底部 tab 的那些 */
+/** 工具選單（與舊網址 /more 頁）列出的項目＝沒進底部 tab 的那些 */
 export const moreItems = (m: ModuleDef): NavItem[] => m.items.filter((i) => !i.primary);
 
 /** 從 pathname 反查所屬模組（client 端 nav 用；有子路徑前綴的模組先比對） */

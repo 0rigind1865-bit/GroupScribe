@@ -226,7 +226,7 @@ export default async function TasksPage({
                 <p className="mb-1 font-bold text-gray-700">目前沒有進行中的待辦</p>
                 <p>
                   群組裡交辦事情時，AI 會自動整理進來。也可以到{' '}
-                  <a className="text-emerald-700 underline" href={`/o/${slug}/inbox`}>收件匣</a> 看待確認的項目。
+                  <a className="text-emerald-700 underline" href={`/o/${slug}/inbox`}>把關</a> 看待確認的項目。
                 </p>
               </div>
             )}

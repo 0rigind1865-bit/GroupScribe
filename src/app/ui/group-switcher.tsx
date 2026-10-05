@@ -10,7 +10,7 @@ export interface GroupOption {
 }
 
 // 切群組時保留的 view 參數白名單；entity 參數（event/task/q）一律丟棄，避免把 A 群的詳情帶進 B 群
-const KEEP_PARAMS = ['view', 'date', 'range'];
+const KEEP_PARAMS = ['view', 'date', 'range', 'q']; // q：在「找」頁換群組時保留搜尋詞
 
 export function GroupSwitcher({ groups }: { groups: GroupOption[] }) {
   const pathname = usePathname();
@@ -23,7 +23,7 @@ export function GroupSwitcher({ groups }: { groups: GroupOption[] }) {
   const rel = pathname.replace(/^\/o\/[^/]+/, '') || '/';
   // 「今天」與收件匣是跨群聚合視圖；更多／群組／匯入／設定不屬於任何一群——這些頁面沒選群組是正常狀態，
   // 不該顯示「選擇群組…」催人去選。其餘頁面（月曆／待辦／公告／檔案）一定落在單一群組。
-  const supportsAll = rel === '/' || ['/inbox', '/more', '/groups', '/import', '/settings', '/upgrade'].some((p) => rel.startsWith(p));
+  const supportsAll = rel === '/' || ['/inbox', '/search', '/more', '/groups', '/import', '/settings', '/upgrade'].some((p) => rel.startsWith(p));
   const label = cur ? (cur.name ?? cur.group_id) : supportsAll ? '全部群組' : '選擇群組…';
 
   const byCat = new Map<string, GroupOption[]>();

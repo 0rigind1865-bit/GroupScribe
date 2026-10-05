@@ -569,7 +569,7 @@ export default async function CalendarPage({
             ) : (
               <div className="card text-sm text-gray-500">
                 <p className="mb-1 font-bold text-gray-700">沒有已忽略的事件</p>
-                <p>在收件匣或月曆忽略掉的事件會留在這裡，隨時可以復原。</p>
+                <p>在把關或行程頁忽略掉的行程會留在這裡，隨時可以復原。</p>
               </div>
             )}
             {events.length === AGENDA_LIMIT && (

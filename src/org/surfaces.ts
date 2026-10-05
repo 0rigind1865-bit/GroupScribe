@@ -128,7 +128,7 @@ export const surfaces = cache(async (): Promise<Surfaces> => {
     // 平台擁有者（用密碼登入、沒有 LINE 身分）的主場是群組助理
     const base = { slug: o.slug, orgName: o.name, role: 'admin' as const };
     if (o.modules.has('gs'))
-      list.push({ ...base, key: `gs:${o.slug}`, id: 'gs', label: '群組助理', desc: '群組行程、待辦與收件匣把關', href: `/o/${o.slug}`, rank: 3 + i * 0.001 });
+      list.push({ ...base, key: `gs:${o.slug}`, id: 'gs', label: '群組助理', desc: '群組行程、待辦與把關', href: `/o/${o.slug}`, rank: 3 + i * 0.001 });
     if (o.modules.has('attend'))
       list.push({ ...base, key: `attend:${o.slug}`, id: 'attend', label: '考勤', desc: '員工、補卡審核、報表與薪資', href: `/o/${o.slug}/attend`, rank: 3 + i * 0.001 + 0.0001 });
     if (o.modules.has('expense'))

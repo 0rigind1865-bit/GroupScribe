@@ -48,7 +48,7 @@ export function OnboardingCard({
 
   const id = botBasicId?.trim().replace(/^@/, '');
   const started = messageCount > 0;
-  const inboxHint = '整理出的行程、待辦、公告會先進「收件匣」請你確認，確認過的才算數。';
+  const inboxHint = '整理出的行程、待辦、公告會先放在「今天」最上面等你把關，確認過的才算數。';
   return (
     <div className={hasGroups ? 'card mb-4 text-sm' : 'card'}>
       <p className="mb-3 font-semibold">{hasGroups ? '開始使用' : '三步開始'}</p>

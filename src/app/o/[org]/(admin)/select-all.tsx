@@ -34,7 +34,7 @@ export function SelectAll({ total, before }: { total?: number; before?: string }
       // getAttribute：f.id 會被 name="id" 的欄位蓋掉（同 soft-nav.tsx 的 attr）
       if (!(f instanceof HTMLFormElement) || f.getAttribute('id') !== 'batch') return;
       const btn = e.submitter instanceof HTMLButtonElement ? e.submitter : null;
-      if (btn?.value === 'ignore' && !confirm(`忽略全部 ${total} 筆？忽略後不會再出現在收件匣。`)) {
+      if (btn?.value === 'ignore' && !confirm(`忽略全部 ${total} 筆？忽略後不會再出現在把關清單。`)) {
         e.preventDefault();
         e.stopImmediatePropagation();
       }

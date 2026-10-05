@@ -2,22 +2,12 @@
 
 import { usePathname, useSearchParams } from 'next/navigation';
 import { FloatingNav } from '@/app/ui/floating-nav';
-import {
-  bottomItems,
-  moduleById,
-  moduleOf,
-  type BadgeKey,
-  type ModuleDef,
-  type ModuleId,
-  type NavItem,
-} from './routes';
+import { bottomItems, moduleById, moduleOf, type BadgeKey, type ModuleDef, type ModuleId } from './routes';
 
-// 導覽：手機五格底部膠囊＋桌面頂部 nav，同一份路由表（routes.tsx）、皆帶 active 標記。
+// 導覽：手機底部膠囊＋桌面頂部 nav，同一份路由表（routes.tsx）、皆帶 active 標記。
+// 只放 primary 項目；其餘收在頂欄工具選單（shell-header.tsx）。
 // 換頁保留該模組的 context 參數（群組助理＝?group、考勤＝?emp）——原本會掉，
 // 是「不直覺」的主因之一。
-//
-// 兩個模組共用這支：考勤原本是 6 個裸 <a>（無 active、無 badge、手機得橫捲），
-// 現在跟群組助理走同一套殼。
 
 export type Counts = Partial<Record<BadgeKey, number>>;
 
@@ -39,7 +29,7 @@ function useNav(module: ModuleDef) {
   };
   // active：模組首頁要精準比對（否則所有子頁都會亮），其餘用前綴
   const isActive = (path: string) => (path === '' ? rel === '' || rel === '/' : rel.startsWith(path));
-  return { href, isActive, rel };
+  return { href, isActive };
 }
 
 const Icon = ({ children }: { children: React.ReactNode }) => (
@@ -50,23 +40,15 @@ const Icon = ({ children }: { children: React.ReactNode }) => (
 
 export function BottomNav({ moduleId, counts = {} }: { moduleId: ModuleId; counts?: Counts }) {
   const module = modOf(moduleId);
-  const { href, isActive, rel } = useNav(module);
-  const items = bottomItems(module);
-  // 「更多」格的 active 範圍＝它自己的頁 ＋ 收在裡面的所有項目（路徑全來自路由表）
-  const moreItem = items.find((i) => i.key === 'more');
-  const morePaths = [
-    ...module.items.filter((i) => !i.primary).map((i) => i.path),
-    ...(moreItem ? [moreItem.path] : []),
-  ];
-
+  const { href, isActive } = useNav(module);
   return (
     <FloatingNav
       className="md:hidden"
-      tabs={items.map((i) => ({
+      tabs={bottomItems(module).map((i) => ({
         href: href(i.path),
         label: i.label,
         icon: <Icon>{i.icon}</Icon>,
-        active: i.key === 'more' ? morePaths.some((p) => rel.startsWith(p)) : isActive(i.path),
+        active: isActive(i.path),
         badge: i.badge ? counts[i.badge] : undefined,
       }))}
     />
@@ -75,24 +57,19 @@ export function BottomNav({ moduleId, counts = {} }: { moduleId: ModuleId; count
 
 export function TopNav({ moduleId, counts = {} }: { moduleId: ModuleId; counts?: Counts }) {
   const module = modOf(moduleId);
-  const { href, isActive, rel } = useNav(module);
-  // 電腦版分頁＝手機底部膠囊同一份（primary 四項＋「更多」）：身分列多了角色開關與工具按鈕，
-  // 九個分頁在 1024 寬會擠出畫面（審查 F25）；「更多」亮起的範圍同手機
-  const items = bottomItems(module);
-  const moreItem = items.find((i) => i.key === 'more');
-  const morePaths = [...module.items.filter((i) => !i.primary).map((i) => i.path), ...(moreItem ? [moreItem.path] : [])];
-  const on = (i: NavItem) => (i.key === 'more' ? morePaths.some((p) => rel.startsWith(p)) : isActive(i.path));
+  const { href, isActive } = useNav(module);
   return (
     <nav className="hidden gap-0.5 text-sm md:flex" aria-label={`${module.label}分頁`}>
-      {items.map((i: NavItem) => {
+      {bottomItems(module).map((i) => {
         const n = i.badge ? (counts[i.badge] ?? 0) : 0;
+        const on = isActive(i.path);
         return (
           <a
             key={i.key}
             href={href(i.path)}
-            aria-current={on(i) ? 'page' : undefined}
+            aria-current={on ? 'page' : undefined}
             className={`flex items-center gap-1.5 rounded-[10px] px-3 py-2 whitespace-nowrap ${
-              on(i) ? 'bg-[#2e3a34] font-bold text-white' : 'text-[#b8c2bc] hover:bg-white/10 hover:text-white'
+              on ? 'bg-[#2e3a34] font-bold text-white' : 'text-[#b8c2bc] hover:bg-white/10 hover:text-white'
             }`}
           >
             {i.label}

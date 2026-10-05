@@ -214,7 +214,8 @@ export function FloatingNav({ tabs, className = '' }: { tabs: NavTab[]; classNam
               {t.icon}
             </svg>
             {!!t.badge && (
-              <span className="absolute -top-1 -right-2 rounded-full bg-red-500 px-1.5 text-[10px] leading-4 font-bold text-white">
+              // 琥珀＝「等你決定」（把關、待審、待啟用）；紅色只留給逾期，徽章不搶那個意思
+              <span className="absolute -top-1 -right-2 rounded-full bg-[#e0a43a] px-1.5 text-[10px] leading-4 font-bold text-[#1c2420]">
                 {t.badge > 99 ? '99+' : t.badge}
               </span>
             )}

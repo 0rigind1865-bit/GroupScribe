@@ -29,7 +29,7 @@ const ME: Partial<Record<SurfaceId, { name: MsgKey; desc: MsgKey }>> = {
 };
 
 const ADMIN: Partial<Record<SurfaceId, { name: string; desc: string }>> = {
-  gs: { name: '群組助理', desc: '群組行程、待辦與收件匣把關' },
+  gs: { name: '群組助理', desc: '群組行程、待辦與把關' },
   attend: { name: '考勤', desc: '員工、補卡審核、報表與薪資' },
   expense: { name: '報帳', desc: '員工代墊的收據、核銷與匯出' },
   platform: { name: '平台管理', desc: '所有公司、未認領的群、方案' },
