@@ -226,7 +226,8 @@ html {
   @keyframes owl-t60l { 0% { opacity: 0; } 71.25% { opacity: 1; } 73.75% { opacity: 0; } 95% { opacity: 1; } 97.5% { opacity: 0; } }
   @keyframes owl-t90l { 0% { opacity: 0; } 73.75% { opacity: 1; } 95% { opacity: 0; } }
   /* 要拆開寫：沒寫名字的 animation 簡寫會被打包時的壓縮工具整個變成 animation:none，頭就不轉了 */
-  .owl-frame { opacity: 0; animation-duration: 3.2s; animation-timing-function: step-end; animation-iteration-count: infinite; }
+  /* delay -0.5s：從「正面停留」的尾巴開始播，出現 0.1 秒就開始轉；換頁通常不到 0.6 秒，不然只看得到正面 */
+  .owl-frame { opacity: 0; animation-duration: 3.2s; animation-timing-function: step-end; animation-iteration-count: infinite; animation-delay: -0.5s; }
   .owl-t0 { opacity: 1; animation-name: owl-t0; }
   .owl-t30 { animation-name: owl-t30; }
   .owl-t60 { animation-name: owl-t60; }
