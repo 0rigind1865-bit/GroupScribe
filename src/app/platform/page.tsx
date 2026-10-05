@@ -2,7 +2,8 @@ import { notFound } from 'next/navigation';
 import { getDb } from '@/db';
 import { isPlatformOwner } from '@/org/orgs';
 import { monthKey } from '@/core/quota';
-import { PLAN_LIMITS } from '@/org/plans';
+import { paidStatus, PLAN_LIMITS } from '@/org/plans';
+import { todayISO } from '@/core/date';
 import { IdentityBar } from '@/app/ui/identity-bar';
 import { surfaces } from '@/org/surfaces';
 import { groupSurfaces } from '@/org/surface-groups';
@@ -53,6 +54,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
   const callsOf = new Map((usage ?? []).map((u: any) => [u.org_id, u.calls as number]));
   const waiting = unclaimed ? live.filter((g: any) => g.org_id === unclaimed.id) : [];
   const totalCalls = [...callsOf.values()].reduce((a, b) => a + b, 0);
+  const today = todayISO();
 
   return (
     <div className="pb-10">
@@ -113,6 +115,7 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
               const mods = o.slug === (process.env.DEFAULT_ORG_SLUG ?? 'main') ? ['gs', 'attend', 'expense'] : enabledModuleIds(st.modules);
               const cap = st.monthly_ai_calls ?? null;
               const owners = o.org_members.map((m) => m.display_name ?? '（未命名）').join('、') || '（沒有管理員）';
+              const paid = paidStatus(plan, st.paid_until, today);
               return (
                 <div key={o.id} className="card space-y-3">
                   <div className="flex flex-wrap items-baseline gap-2">
@@ -121,6 +124,13 @@ export default async function PlatformPage({ searchParams }: { searchParams: Pro
                     <span className="rounded-full bg-emerald-100 px-2 py-px text-[11px] font-medium text-emerald-900">
                       {PLAN_LIMITS[plan]?.label ?? plan}
                     </span>
+                    {/* 付費到期（plans.ts paidStatus）：寬限期內要追款，過了寬限期 AI 已自動暫停 */}
+                    {paid.state === 'grace' && (
+                      <span className="rounded-full bg-amber-100 px-2 py-px text-[11px] font-medium text-amber-900">逾期・{paid.lastDay} 後暫停</span>
+                    )}
+                    {paid.state === 'expired' && (
+                      <span className="rounded-full bg-red-100 px-2 py-px text-[11px] font-medium text-red-800">已到期・AI 暫停中</span>
+                    )}
                     <span className="ml-auto text-xs text-gray-500">建立於 {fmt(o.created_at)}</span>
                   </div>
                   <p className="text-sm text-gray-600">

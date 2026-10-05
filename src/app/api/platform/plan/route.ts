@@ -3,9 +3,11 @@ import { getDb } from '@/db';
 import { redirectTo } from '@/http';
 import { isPlatformOwner } from '@/org/orgs';
 import { isPlanId, PLAN_LIMITS } from '@/org/plans';
+import { forgetOrgBudget } from '@/core/quota';
 
 // 平台擁有者手動改某家公司的方案（PAYUNi 串接前的升級方式）：
 // 方案決定群組上限與每月 AI 額度；有效日選填（付費方案到期日）。
+// 付費方案過了到期日＋14 天寬限期會自動暫停 AI（src/org/plans.ts paidStatus）；續約＝在這裡把到期日往後改。
 export async function POST(req: NextRequest) {
   if (!(await isPlatformOwner())) return NextResponse.json({ error: '沒有權限' }, { status: 403 });
   const form = await req.formData();
@@ -32,5 +34,6 @@ export async function POST(req: NextRequest) {
     console.error('改方案失敗', orgId, error);
     return redirectTo('/platform?err=1');
   }
+  forgetOrgBudget(orgId); // 續約或改方案立刻生效，不等額度快取過期
   return redirectTo('/platform?ok=1');
 }

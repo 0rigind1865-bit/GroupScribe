@@ -708,7 +708,7 @@ export default async function MemberView({
         )}
 
         {tab === 'today' && (
-          <SubscribeToggle groupId={groupId} back={here} enabled={!!sub?.enabled} error={!!sp.suberror} />
+          <SubscribeToggle groupId={groupId} back={here} enabled={!!sub?.enabled} error={sp.suberror === 'full' ? 'full' : sp.suberror ? 'fail' : undefined} />
         )}
 
         <p className="pt-2 text-center text-[11px] text-gray-400">

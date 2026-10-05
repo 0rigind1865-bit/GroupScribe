@@ -4,6 +4,13 @@
 
 export const todayISO = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
 
+/** YYYY-MM-DD 加減天數（以日曆日計，不受時區與夏令時間影響） */
+export function addDays(ymd: string, days: number): string {
+  const d = new Date(`${ymd}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
 export const isOverdue = (dueIso: string | null | undefined, today = todayISO()) => !!dueIso && dueIso < today;
 
 // 日期的唯一顯示格式：8/13（週四）。跨年才補年份——同一個期限曾經在三個頁面長成
