@@ -225,7 +225,8 @@ html {
   @keyframes owl-t30l { 0% { opacity: 0; } 68.75% { opacity: 1; } 71.25% { opacity: 0; } 97.5% { opacity: 1; } }
   @keyframes owl-t60l { 0% { opacity: 0; } 71.25% { opacity: 1; } 73.75% { opacity: 0; } 95% { opacity: 1; } 97.5% { opacity: 0; } }
   @keyframes owl-t90l { 0% { opacity: 0; } 73.75% { opacity: 1; } 95% { opacity: 0; } }
-  .owl-frame { opacity: 0; animation: 3.2s step-end infinite; }
+  /* 要拆開寫：沒寫名字的 animation 簡寫會被打包時的壓縮工具整個變成 animation:none，頭就不轉了 */
+  .owl-frame { opacity: 0; animation-duration: 3.2s; animation-timing-function: step-end; animation-iteration-count: infinite; }
   .owl-t0 { opacity: 1; animation-name: owl-t0; }
   .owl-t30 { animation-name: owl-t30; }
   .owl-t60 { animation-name: owl-t60; }
