@@ -1,4 +1,5 @@
 import { IntroDemo } from './intro-demo';
+import { PLAN_LIMITS, planLines, planPrice, PUBLIC_PLANS } from '@/org/plans';
 import { AskMock, FilesMock, PayrollMock, PunchMock, Shot } from './intro-mocks';
 
 // 官方網站（/about）與認領頁（/claim）共用的介紹區塊。純靜態，唯一的互動在 IntroDemo。
@@ -159,7 +160,7 @@ export function AttendSection() {
   return (
     <section>
       <div className="reveal">
-        <Eyebrow>考勤模組 · Team 方案</Eyebrow>
+        <Eyebrow>考勤模組 · 加購</Eyebrow>
         <h2 className="mb-1 text-lg font-semibold tracking-tight">打卡與薪資，也在 LINE 裡完成</h2>
         <p className="mb-5 text-sm text-gray-600">同一個 LINE 帳號，員工打卡、主管審核、月底算薪一次搞定。</p>
       </div>
@@ -182,17 +183,14 @@ export function AttendSection() {
   );
 }
 
-const PLANS = [
-  { n: 'Free', p: '免費', d: '1 個群 · 每月 1,500 次 AI' },
-  { n: 'Starter', p: 'NT$690/月', d: '3 個群 · 每月 6,000 次 AI' },
-  { n: 'Team', p: 'NT$2,190/月', d: '10 個群 · 每月 20,000 次 AI · 考勤' },
-];
+// 方案內容與價格從 src/org/plans.ts 產生（原本這裡寫死一份，Team 還寫了「考勤」——考勤是加購，不在任何方案裡）
+const PLANS = PUBLIC_PLANS.map((id) => ({ n: PLAN_LIMITS[id].label, p: planPrice(id).replace(' / ', '/'), d: planLines(id).join(' · ') }));
 
 export function PlansSection() {
   return (
     <section className="reveal">
       <h2 className="mb-1 text-lg font-semibold tracking-tight">方案</h2>
-      <p className="mb-3 text-sm text-gray-600">群組成員永遠免費，不用註冊、不用裝 App。</p>
+      <p className="mb-3 text-sm text-gray-600">群組成員永遠免費，不用註冊、不用裝 App。考勤模組另外加購。</p>
       <div className="space-y-2">
         {PLANS.map((x) => (
           <div key={x.n} className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5">

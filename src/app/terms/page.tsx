@@ -1,4 +1,5 @@
 import { H2, LegalDoc, UL } from '@/app/ui/legal';
+import { REFERRAL } from '@/org/plans';
 
 export const metadata = { title: '服務條款' };
 
@@ -7,7 +8,7 @@ const CONTACT = '0rigin.d.1865@gmail.com';
 
 export default function TermsPage() {
   return (
-    <LegalDoc title="服務條款" updated="2026-09-25">
+    <LegalDoc title="服務條款" updated="2026-10-04">
       <section className="space-y-2">
         <p>
           歡迎使用 GroupScribe（以下簡稱「本服務」）。建立組織、認領群組或以任何方式使用本服務，即表示你代表你的組織同意以下條款。
@@ -43,6 +44,11 @@ export default function TermsPage() {
             <>付費方案以月計費，費用以方案頁公告為準。你可隨時取消，服務持續至當期結束，當期費用不退還。</>,
             <>我們可能調整方案內容或價格，調整會提前 30 天通知，並自下一個計費週期生效。</>,
             <>逾期未付款超過 14 天，我們可暫停服務；再超過 30 天，bot 將退出群組，資料依隱私權政策保留 60 天後刪除。</>,
+            <>
+              推薦獎勵：其他組織透過你的推薦連結建立、並第一次升級付費方案時，雙方各得 {REFERRAL.rewardDays} 天服務期間；
+              每個組織最多領 {REFERRAL.maxRewards} 次。獎勵為服務期間的延長，不得兌換現金或轉讓；以不正當方式（例如虛設組織）取得者，
+              我們得取消該獎勵。我們可調整或終止推薦活動，已發放的獎勵不受影響。
+            </>,
           ]}
         />
       </section>

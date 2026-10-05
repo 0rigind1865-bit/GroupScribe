@@ -216,7 +216,7 @@ src/
 | `POST /api/process` | 重跑卡在 pending 的媒體解析＋回補群組名稱/頭貼 |
 | `POST /api/reindex` | 換 embedding 模型後全量重建向量 |
 | `POST /api/extract` | 手動/回補抽取（form 參數 `group_id`，省略＝全部群組） |
-| `POST /api/digest` | 每日摘要推播（給 cron 打，`?key=CRON_SECRET`） |
+| `POST /api/digest` | 每日摘要推播（給 cron 打，`?key=CRON_SECRET`）。一人一天一則：訂了好幾個群的人，有事的群合成一則（推播按收件人次計費） |
 </details>
 
 ---
@@ -305,9 +305,22 @@ src/
 6. 方案上限（`org_settings.max_groups`，free＝1 群）：認領第 2 個群會導到 `/o/<slug>/upgrade`。
    線上付款（PAYUNi）尚未串接，升級目前由平台擁有者手動改 `org_settings.plan / max_groups / paid_until`
 
+**推薦獎勵**（migration 029）：管理員在「更多 → 推薦好友」拿推薦連結 `/r/<推薦碼>`、用 LINE 傳出去；
+對方用連結建立組織、**第一次升級付費方案**時，雙方各得 30 天（推薦人每家最多 12 次）。付費中直接延長 `paid_until`，
+免費方案的天數先存著、升級時折抵；免費方案的群數與 AI 額度不會因推薦增加。觸發點是平台頁「改方案」改成 Starter／Team 的那一刻——
+所以只在真的收到款時才改。退款要收回時，手動把 `referrals.status` 改成 `void` 並扣回雙方的 `paid_until`。
+
 每家組織每月有 AI 呼叫上限（`org_settings.monthly_ai_calls`，free 1,500／starter 6,000／team 20,000，null＝不限）：
 用完後訊息照存、暫停整理，方案頁與今天頁會顯示；用量記在 `org_usage`（migration 018）。
 服務條款與隱私權政策在 `/terms`、`/privacy`（草稿，收費前請律師審閱）。
+
+方案內容與價格的唯一來源是 `src/org/plans.ts`（方案頁、首頁介紹都從這裡產生）。另外兩條規則：
+
+- **每日提醒名額**：free 3／starter 10／team 30 人。以人計算，同一個人訂同一家公司好幾個群只算一人；
+  名額滿了新的人開不了，已經在訂的人不受影響（降級也不會被踢掉）。
+- **付費到期**：Starter／Team 過了 `paid_until` 先有 14 天寬限期（後台每頁顯示續約提醒），
+  第 15 天起 AI 整理自動暫停、訊息照存（服務條款第三節）。續約＝在平台頁把到期日往後改，立刻恢復。
+  沒填 `paid_until` 的付費方案不會被暫停。考勤是加購模組，不包含在任何方案裡。
 
 平台擁有者的總控台在 `/platform`（身分列工具選單「平台」段的「平台管理」）：所有公司的方案、群組數、管理員、本月 AI 用量，可直接改方案；未認領的群也列在這裡。
 平台擁有者也可在 `/o/unclaimed/groups`（或任一 org 的群組頁）用「移轉」下拉手動歸戶。

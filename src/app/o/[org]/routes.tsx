@@ -7,6 +7,8 @@
 //
 // path 一律是模組內相對路徑，由 module.base(slug) 或 oh() 補上 /o/<slug>。
 
+import { REFERRAL } from '@/org/plans';
+
 export type BadgeKey = 'pending' | 'reviews' | 'pendingEmps';
 export type ModuleId = 'gs' | 'attend' | 'expense';
 
@@ -102,6 +104,13 @@ export const I = {
     </>
   ),
   check: <path d="M4 12l5 5L20 6" />,
+  gift: (
+    <>
+      <rect x="3" y="8" width="18" height="4" rx="1" />
+      <path d="M5 12v9h14v-9M12 8v13" />
+      <path d="M12 8c-1.5-3-5-3.5-5-1.25S9.5 8 12 8zM12 8c1.5-3 5-3.5 5-1.25S14.5 8 12 8z" />
+    </>
+  ),
   chart: (
     <>
       <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
@@ -168,6 +177,7 @@ export const GS_MODULE: ModuleDef = {
     { key: 'files', path: '/files', label: '檔案', desc: '圖片與文件，依類型/專案分類', icon: I.files },
     { key: 'groups', path: '/groups', label: '群組', desc: '群組名稱、分類與資料管理', icon: I.groups },
     { key: 'import', path: '/import', label: '匯入', desc: '把既有的 LINE 聊天記錄匯進來', icon: I.import },
+    { key: 'referral', path: '/referral', label: '推薦好友', desc: `推薦一家開始付費，雙方各得 ${REFERRAL.rewardDays} 天`, icon: I.gift },
     { key: 'settings', path: '/settings', label: '設定', desc: '進群告知、AI 模型與用量', icon: I.settings },
   ],
 };

@@ -1,5 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { getDb } from '@/db';
+import { todayISO } from './date';
+import { paidStatus, type PaidStatus } from '@/org/plans';
 
 // 每家 org 的 AI 額度（商業計劃 B5/B7）。
 //
@@ -25,7 +27,8 @@ export const monthKey = () => `${new Date().toLocaleDateString('sv', { timeZone:
 
 // ponytail: in-memory 快取（單容器）；群→org 60 秒、額度 30 秒——超跑幾次呼叫可接受
 const orgCache = new Map<string, { orgId: string | null; at: number }>();
-const budgetCache = new Map<string, { used: number; cap: number | null; suspended: boolean; at: number }>();
+type Budget = { used: number; cap: number | null; suspended: boolean; paid: PaidStatus };
+const budgetCache = new Map<string, Budget & { at: number }>();
 
 export async function orgOfGroup(groupId: string): Promise<string | null> {
   const hit = orgCache.get(groupId);
@@ -40,19 +43,27 @@ export async function orgOfGroup(groupId: string): Promise<string | null> {
 export const isSuspended = (row: { status?: unknown } | null | undefined, error: unknown): boolean =>
   !error && row?.status === 'suspended';
 
-export async function orgAiBudget(orgId: string, force = false): Promise<{ used: number; cap: number | null; suspended: boolean }> {
+/** 改方案、續約之後呼叫：不等 30 秒快取，下一則訊息就照新狀態走 */
+export const forgetOrgBudget = (orgId: string) => budgetCache.delete(orgId);
+
+/**
+ * suspended＝手動停權（status）或付費到期超過寬限期（paid.state === 'expired'），兩者 AI 一律停。
+ * paid 給畫面分辨原因、在寬限期內先提醒續約。
+ */
+export async function orgAiBudget(orgId: string, force = false): Promise<Budget> {
   const hit = budgetCache.get(orgId);
   if (!force && hit && Date.now() - hit.at < 30_000) return hit;
   const db = getDb();
   // status 分開查：欄位還不存在時不能拖垮額度查詢
   const [{ data: st, error }, { data: u }, { data: ss, error: se }] = await Promise.all([
-    db.from('org_settings').select('monthly_ai_calls').eq('org_id', orgId).maybeSingle(),
+    db.from('org_settings').select('monthly_ai_calls, plan, paid_until').eq('org_id', orgId).maybeSingle(),
     db.from('org_usage').select('calls').eq('org_id', orgId).eq('month', monthKey()).maybeSingle(),
     db.from('org_settings').select('status').eq('org_id', orgId).maybeSingle(),
   ]);
   // 欄位不存在（migration 018 未跑）→ cap null＝不限
   const cap = error ? null : Number.isFinite(Number(st?.monthly_ai_calls)) && st?.monthly_ai_calls != null ? Number(st.monthly_ai_calls) : null;
-  const res = { used: Number(u?.calls ?? 0), cap, suspended: isSuspended(ss, se), at: Date.now() };
+  const paid: PaidStatus = error ? { state: 'none' } : paidStatus(st?.plan, st?.paid_until, todayISO());
+  const res = { used: Number(u?.calls ?? 0), cap, suspended: isSuspended(ss, se) || paid.state === 'expired', paid, at: Date.now() };
   budgetCache.set(orgId, res);
   return res;
 }
@@ -61,8 +72,10 @@ export async function orgAiBudget(orgId: string, force = false): Promise<{ used:
 export async function aiScope<T>(groupId: string, fn: () => Promise<T>): Promise<T> {
   const orgId = await orgOfGroup(groupId).catch(() => null);
   if (!orgId) return fn();
-  const { used, cap, suspended } = await orgAiBudget(orgId);
+  const { used, cap, suspended, paid } = await orgAiBudget(orgId);
   // 停權也丟 QuotaError：下游已經把它當「訊息照存、暫停整理」處理（A8）
+  // 這句會在群裡被 @ 時直接回出去，群裡常有客戶與外包——不講「到期／欠費」，原因只在後台橫幅給管理員看
+  if (paid.state === 'expired') throw new QuotaError('群記暫停 AI 整理與問答（訊息照常保存），請管理員到後台查看');
   if (suspended) throw new QuotaError('此公司的服務已暫停，AI 整理暫停（訊息照常保存），請聯絡群記');
   if (cap !== null && used >= cap) throw new QuotaError(`本月 AI 額度已用完（${used} / ${cap} 次），請管理員到方案頁升級`);
   return als.run({ orgId }, fn);

@@ -1,15 +1,32 @@
+import { cookies } from 'next/headers';
 import { liffUser } from '@/core/liff';
 import { surfaces } from '@/org/surfaces';
+import { normalizeRefCode, REFERRAL, referrerByCode } from '@/org/referral';
 import { BrandBar } from '@/app/ui/intro';
 
 export const dynamic = 'force-dynamic';
 
 // 自助註冊（商業計劃：客戶自己來，平台擁有者不介入）：LINE 登入 → 取名 → 免費方案建好 → 去邀 bot 進群。
 // 只收一個欄位。slug 由系統產生（中文名稱做不出合法 slug，而且客戶不需要知道 slug 是什麼）。
-export default async function StartPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
-  const { next, error } = await searchParams;
+export default async function StartPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string; ref?: string }> }) {
+  const { next, error, ref: refParam } = await searchParams;
   const uid = await liffUser();
   const safeNext = next && /^\/(?!\/)/.test(next) ? next : '';
+  // 推薦碼：網址優先（/r/<碼> 導過來），沒有就看 30 天內點過的推薦連結留下的 cookie
+  const refCode = normalizeRefCode(refParam) || normalizeRefCode((await cookies()).get(REFERRAL.cookie)?.value);
+  const referrer = refCode ? await referrerByCode(refCode).catch(() => null) : null;
+  const ref = referrer ? refCode : '';
+  // 登入完回到這一頁時，推薦碼與回跳都要還在
+  const backQs = new URLSearchParams();
+  if (ref) backQs.set('ref', ref);
+  if (safeNext) backQs.set('next', safeNext);
+  const back = `/start${backQs.toString() ? `?${backQs}` : ''}`;
+  const referred = referrer && (
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+      <p className="font-medium">「{referrer.name}」推薦你使用群記</p>
+      <p className="mt-1 text-xs">之後第一次升級付費方案，多送 {REFERRAL.rewardDays} 天。</p>
+    </div>
+  );
 
   if (!uid) {
     return (
@@ -20,12 +37,13 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
             <p className="text-xs font-medium text-gray-500">GroupScribe</p>
             <h1 className="mt-1 text-xl font-semibold tracking-tight">免費建立你的組織</h1>
           </div>
+          {referred}
           <ol className="space-y-2 text-sm text-gray-700">
             <li>1. 用 LINE 登入（你就是這個組織的管理員）</li>
             <li>2. 把 GroupScribe 官方帳號邀進你的 LINE 工作群</li>
             <li>3. 點群裡的認領連結，從那一刻開始自動整理行程與待辦</li>
           </ol>
-          <a className="btn-primary w-full" href={`/api/auth/line?next=${encodeURIComponent(`/start${safeNext ? `?next=${encodeURIComponent(safeNext)}` : ''}`)}`}>
+          <a className="btn-primary w-full" href={`/api/auth/line?next=${encodeURIComponent(back)}`}>
             用 LINE 登入開始
           </a>
           <p className="text-xs text-gray-500">免費方案：1 個群、成員人數不限、不用綁卡。</p>
@@ -64,10 +82,12 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
             ))}
           </div>
         )}
+        {referred}
         {error === 'name' && <p className="text-sm text-red-600">組織名稱請填 2～40 個字。</p>}
         {error === 'limit' && <p className="text-sm text-red-600">一個 LINE 帳號最多建立 3 個組織。</p>}
         <form action="/api/org/create" method="post" className="space-y-3">
           {safeNext && <input type="hidden" name="next" value={safeNext} />}
+          {ref && <input type="hidden" name="ref" value={ref} />}
           <label className="label block">
             組織名稱（公司或團隊的名字）
             <input className="input mt-1 block w-full" name="name" required minLength={2} maxLength={40} placeholder="例如：宏達工程" autoFocus />
