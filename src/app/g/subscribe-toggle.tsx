@@ -38,7 +38,7 @@ export function SubscribeToggle({
         <span className="min-w-0 flex-1">
           <span className="block text-sm font-bold">每天早上私訊我這個群的摘要</span>
           <span className="block text-[11px] text-gray-500">
-            今日行程與到期待辦，沒事的日子不會打擾。只有你自己收得到，群組裡不會有任何訊息。
+            今日行程與到期待辦，沒事的日子不會打擾。訂了好幾個群的話，合成一則傳給你。只有你自己收得到，群組裡不會有任何訊息。
           </span>
         </span>
         <button
