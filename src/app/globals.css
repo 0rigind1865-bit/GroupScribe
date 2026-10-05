@@ -715,6 +715,7 @@ html {
 .id-row-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .id-row-name { font-size: 15px; font-weight: 700; }
 .id-row-desc { font-size: 12px; color: #5b665f; }
+.id-count { flex-shrink: 0; min-width: 22px; height: 22px; padding: 0 7px; border-radius: 9999px; display: grid; place-items: center; background: #e0a43a; color: #1c2420; font-size: 12px; font-weight: 800; }
 .id-check { flex-shrink: 0; color: #0f5c46; }
 .id-all { display: flex; align-items: center; min-height: 44px; margin-top: 4px; padding: 0 8px; font-size: 13px; color: #5b665f; text-decoration: none; }
 /* 情境膠囊（群組／員工）：淺色列白底細框；深色列透明底白字（審查 F17） */
@@ -806,6 +807,22 @@ details[open] > .ctx-pill::before { content: ''; position: fixed; inset: 0; z-in
     width: 1.15rem;
     height: 1.15rem;
   }
+}
+
+/* ── 把關卡（inbox/page.tsx）：「確認 N 筆」的 N＝這張卡勾了幾筆 ──
+   CSS 計數器數 :checked，零 JS；一筆都沒勾時確認鈕變灰（剩下的按「忽略整則」） */
+.review-card {
+  counter-reset: pick;
+}
+.review-pick:checked {
+  counter-increment: pick;
+}
+.review-n::before {
+  content: counter(pick);
+}
+.review-card:not(:has(.review-pick:checked)) .review-ok {
+  opacity: 0.45;
+  pointer-events: none;
 }
 
 /* ── 批次操作列：勾選後才浮出（principles.md 希克定律）──

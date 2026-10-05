@@ -7,13 +7,12 @@ import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
 import { Banner } from '@/app/ui/banner';
 import { SetupNotice } from '../setup-notice';
-import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
-import { fmtDate } from '@/core/date';
+import { fmtDate, isRevised } from '@/core/date';
 
 export const dynamic = 'force-dynamic';
 
-// 收件匣（UI 提案階段 C）：三表待確認合流成一條把關流水線。
-// 一張卡＝「來源訊息引文 → AI 整理結果 → 忽略/修改/確認」；確認/忽略直接打既有單筆 update 路由，零新 API。
+// 把關（原「收件匣」）：三表待確認合流成一條把關流水線。
+// 一張卡＝一句原話 → 它整理出的每一筆（可取消勾選）→ 忽略整則／確認 N 筆；兩顆都打既有的 /api/batch，零新 API。
 // 無 ?group ＝ 跨群聚合（admin 殼內天然安全）；有 ?group ＝ 單群。
 
 const LIMIT = 30;
@@ -26,9 +25,9 @@ const md = fmtDate; // 期限/日期的格式統一在 core/date.ts
 type Row = { kind: 'event' | 'task' | 'note'; item: any };
 
 const KIND_STYLE = {
-  event: { label: '事件', table: 'events', chip: 'bg-emerald-100 text-emerald-800', route: '/api/events/update', edit: (o: string, g: string, id: string) => oh(o, '/calendar', { group: g, event: id }) },
-  task: { label: '待辦', table: 'tasks', chip: 'bg-sky-100 text-sky-800', route: '/api/tasks/update', edit: (o: string, g: string, id: string) => oh(o, '/tasks', { group: g, task: id }) },
-  note: { label: '公告', table: 'notes', chip: 'bg-purple-100 text-purple-900', route: '/api/notes/update', edit: (o: string, g: string, id: string) => oh(o, '/notes', { group: g, note: id }) },
+  event: { label: '行程', table: 'events', chip: 'bg-emerald-100 text-emerald-800', edit: (o: string, g: string, id: string) => oh(o, '/calendar', { group: g, event: id }) },
+  task: { label: '待辦', table: 'tasks', chip: 'bg-sky-100 text-sky-800', edit: (o: string, g: string, id: string) => oh(o, '/tasks', { group: g, task: id }) },
+  note: { label: '公告', table: 'notes', chip: 'bg-purple-100 text-purple-900', edit: (o: string, g: string, id: string) => oh(o, '/notes', { group: g, note: id }) },
 } as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -145,24 +144,28 @@ export default async function InboxPage({
 
   // back 不帶 undo：處理下一張卡（或按復原）之後橫幅自然消失
   const back = oh(slug, '/inbox', { group });
-  const undoBack = (kind: Row['kind'], id: string) => oh(slug, '/inbox', { group, undo: `${kind}:${id}` });
+
+  // 同一句話整理出的幾筆收成一張卡（2026-10 設計畫布「把關模式」）：原話只出現一次、一次確認完。
+  // 卡的順序跟著卡裡最新的那一筆（rows 已經新到舊）
+  const cards = new Map<string, Row[]>();
+  for (const r of rows) {
+    const key = [...(r.item.source_message_ids ?? [])].sort().join(',') || `${r.kind}:${r.item.id}`;
+    cards.set(key, [...(cards.get(key) ?? []), r]);
+  }
 
   return (
     <main className="page">
       <div className="mb-2 flex items-center gap-3">
-        <h1>收件匣</h1>
+        <h1>把關</h1>
         {group && <span className="text-gray-500">{nameOf.get(group) ?? group}</span>}
         {total > 0 && <span className="ml-auto text-sm font-bold text-amber-700">還剩 {total} 筆</span>}
-        {rows.length > 0 && <SelectMode />}
       </div>
-      <p className="mb-5 text-sm leading-relaxed text-gray-500">
-        AI 從對話整理出來的項目先到這裡，經你把關才算數。確認過的內容 AI 之後不會亂改。
-      </p>
+      <p className="mb-5 text-sm leading-relaxed text-gray-600">AI 從對話整理出來的，你點頭才算數。確認過的內容 AI 之後不會亂改。</p>
 
       {/* 忽略可復原（principles.md：可逆性優先——按錯了五秒內救得回來）。原生表單零 JS；
           送出後全站換頁不捲動，手機上黏在頂端，往下處理到一半忽略也看得到 */}
       {undoneCount > 0 && (
-        <div className="sticky top-2 z-20 md:static">
+        <div className="sticky top-2 z-20 mb-3 md:static">
           <Banner tone="neutral">
             <div className="flex items-center gap-3">
               <span className="min-w-0 flex-1 break-words">
@@ -185,110 +188,136 @@ export default async function InboxPage({
       )}
 
       {!rows.length && (
-        <div className="card text-sm text-gray-500">
-          <p className="mb-1 font-bold text-gray-700">沒有待確認的項目</p>
-          <p>群組有新對話時，AI 抽取的事件/待辦/公告會出現在這裡。可先到「今天」看本週安排。</p>
+        <div className="card text-sm text-gray-600">
+          <p className="mb-1 font-bold text-gray-900">都把關完了</p>
+          <p>群組有新對話時，AI 整理出的行程、待辦、公告會先到這裡。</p>
         </div>
       )}
 
-      {/* 勾選後底部浮出批次列（與待辦/月曆頁同一套）：全選 → 確認，一次把關一批 */}
-      {rows.length > 0 && (
-        <BatchBar
-          kind="inbox"
-          back={back}
-          total={total}
-          group={group}
-          before={asof}
-          actions={[
-            { action: 'confirm', label: '確認' },
-            { action: 'ignore', label: '忽略', danger: true },
-          ]}
-        />
-      )}
-      <div className="space-y-3">
-        {rows.map(({ kind, item }) => {
-          const s = KIND_STYLE[kind];
-          const quotes = (item.source_message_ids ?? [])
+      <div className="space-y-4">
+        {[...cards].map(([key, items], ci) => {
+          const quotes = (items[0].item.source_message_ids ?? [])
             .map((id: string) => msgOf.get(id))
             .filter(Boolean)
             .slice(0, 2);
-          const meta =
-            kind === 'event'
-              ? [item.starts_at && md(item.starts_at), item.start_time && String(item.start_time).slice(0, 5), item.location]
-              : kind === 'task'
-                ? [item.due_at && `期限 ${md(item.due_at)}`, item.assignee]
-                : [item.kind === 'decision' ? '決議' : '公告'];
+          const gid = items[0].item.group_id;
+          const okForm = `ok-${ci}`;
           return (
-            <div key={item.id} className="card space-y-3 p-4">
+            // review-card：globals.css 用 CSS counter 數勾了幾筆，寫進「確認 N 筆」；一筆都沒勾時按鈕變灰
+            <article key={key} className="card review-card space-y-3 p-4">
               {quotes.length > 0 ? (
-                <div className="space-y-1 rounded-lg bg-gray-100 px-3 py-2 text-xs leading-relaxed text-gray-500">
-                  {quotes.map((m: any) => (
-                    <p key={m.id} className="line-clamp-2">
-                      [{fmt(m.created_at)} {m.sender_name ?? m.sender_id ?? '—'}]{' '}
-                      <span className="text-gray-700">{m.text}</span>
-                    </p>
-                  ))}
+                <div className="space-y-2">
+                  {quotes.map((m: any) => {
+                    const who = m.sender_name ?? m.sender_id ?? '—';
+                    return (
+                      <div key={m.id} className="flex gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5">
+                        <span className="grid h-8 w-8 flex-none place-items-center rounded-full bg-emerald-100 text-[13px] font-black text-emerald-900">
+                          {String(who).slice(0, 1)}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-xs text-amber-900">
+                            {who} · {fmt(m.created_at)}
+                            {!group && ` · ${nameOf.get(gid) ?? gid}`}
+                          </p>
+                          <p className="text-[15px] leading-relaxed break-words">{m.text}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">（來源訊息已被收回或刪除）</p>
+                <p className="text-xs text-gray-500">（來源訊息已被收回或刪除）{!group && ` · ${nameOf.get(gid) ?? gid}`}</p>
               )}
-              <div className="flex items-start gap-2">
-                <BatchBox id={`${kind}:${item.id}`} />
-                <span className={`mt-0.5 flex-none rounded-md px-2 py-0.5 text-xs font-bold ${s.chip}`}>
-                  {s.label}
-                </span>
-                <div className="min-w-0">
-                  <p className="text-[15px] font-bold">
-                    {item.title}
-                    {/* 分辨「AI 新抽的」與「AI 依新對話改過的」——後者你可能已經確認過一次 */}
-                    <span className="ml-1.5 align-middle">
-                      <PendingBadge item={item} compact />
-                    </span>
-                  </p>
-                  <p className="mt-0.5 text-xs text-gray-500">
-                    {meta.filter(Boolean).join(' · ')}
-                    {!group && (
-                      <span className="ml-1.5 rounded-md bg-emerald-100 px-1.5 py-0.5 text-[11px] font-bold text-emerald-800">
-                        {nameOf.get(item.group_id) ?? item.group_id}
-                      </span>
-                    )}
-                  </p>
-                </div>
-              </div>
-              <ItemPhotos items={photos.get(item.id)} compact />
+
+              <p className="text-xs font-bold tracking-wider text-gray-600">
+                AI 整理出 {items.length} 筆{items.length > 1 && '　不對的那筆取消勾選'}
+              </p>
+              <ul className="divide-y divide-gray-100">
+                {items.map(({ kind, item }) => {
+                  const s = KIND_STYLE[kind];
+                  const meta =
+                    kind === 'event'
+                      ? [item.starts_at && md(item.starts_at), item.start_time && String(item.start_time).slice(0, 5), item.location]
+                      : kind === 'task'
+                        ? [item.due_at && `期限 ${md(item.due_at)}`, item.assignee]
+                        : [item.kind === 'decision' ? '決議' : '公告'];
+                  return (
+                    <li key={item.id} className="flex items-start gap-2 py-2">
+                      {/* 整塊 label 都是勾選的觸控目標；勾選框掛到下面的確認表單（form 屬性，不巢狀） */}
+                      <label className="flex min-h-11 min-w-0 flex-1 cursor-pointer items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          name="ids"
+                          value={`${kind}:${item.id}`}
+                          form={okForm}
+                          defaultChecked
+                          className="review-pick mt-0.5 h-5 w-5 flex-none accent-amber-600"
+                        />
+                        <span className="min-w-0">
+                          <span className="flex flex-wrap items-center gap-1.5">
+                            <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${s.chip}`}>{s.label}</span>
+                            <span className="text-[15px] font-bold">{item.title}</span>
+                            {/* 只標「AI 依新對話改過的」——這一頁本來就全是待確認，不必每筆再貼一次 */}
+                            {isRevised(item) && <PendingBadge item={item} compact />}
+                          </span>
+                          {meta.some(Boolean) && <span className="mt-0.5 block text-[13px] text-gray-600">{meta.filter(Boolean).join(' · ')}</span>}
+                        </span>
+                      </label>
+                      <a className="flex min-h-11 flex-none items-center px-2 text-sm font-bold text-emerald-700" href={s.edit(slug, item.group_id, item.id)}>
+                        修改
+                      </a>
+                    </li>
+                  );
+                })}
+              </ul>
+              <ItemPhotos items={photos.get(items[0].item.id)} compact />
+
+              {/* 左小「忽略整則」、右大「確認」：最常按的放最大、最靠拇指（principles.md：費茨定律） */}
               <div className="flex gap-2">
-                <form action={s.route} method="post" className="flex-1">
-                  <input type="hidden" name="id" value={item.id} />
-                  {/* 忽略後回來帶 ?undo=：上方出現「已忽略…」＋「復原」 */}
-                  <input type="hidden" name="back" value={undoBack(kind, item.id)} />
-                  <button className="btn-danger w-full" name="action" value="ignore">
-                    忽略
+                <form action="/api/batch" method="post" className="flex-1">
+                  <input type="hidden" name="kind" value="inbox" />
+                  <input type="hidden" name="back" value={back} />
+                  {items.map(({ kind, item }) => (
+                    <input key={item.id} type="hidden" name="ids" value={`${kind}:${item.id}`} />
+                  ))}
+                  {/* /api/batch 忽略後回來會帶 ?undo=：上方出現「已忽略…」＋「復原」 */}
+                  <button className="btn w-full" name="action" value="ignore">
+                    {items.length > 1 ? '忽略整則' : '忽略'}
                   </button>
                 </form>
-                <a
-                  className="btn flex flex-1 items-center justify-center"
-                  href={s.edit(slug, item.group_id, item.id)}
-                >
-                  編輯
-                </a>
-                <form action={s.route} method="post" className="flex-[1.6]">
-                  <input type="hidden" name="id" value={item.id} />
+                <form id={okForm} action="/api/batch" method="post" className="flex-[2]">
+                  <input type="hidden" name="kind" value="inbox" />
                   <input type="hidden" name="back" value={back} />
-                  <button className="btn-confirm inline-flex w-full items-center justify-center gap-1" name="action" value="confirm">
+                  <button className="btn-confirm review-ok w-full gap-1.5" name="action" value="confirm">
                     <ConfirmIcon />
-                    確認
+                    {items.length > 1 ? (
+                      <>
+                        確認 <span className="review-n" /> 筆
+                      </>
+                    ) : (
+                      '確認'
+                    )}
                   </button>
                 </form>
               </div>
-            </div>
+            </article>
           );
         })}
       </div>
 
-      {total > rows.length && (
-        <p className="mt-4 text-center text-sm text-gray-400">
-          先顯示最新 {rows.length} 筆，處理完會自動補上下一批。要一次處理全部 {total} 筆：按右上「選取」→ 勾任一筆 → 底下「全選」→「選取全部 {total} 筆」。
-        </p>
+      {total > rows.length && <p className="mt-4 text-center text-sm text-gray-500">先顯示最新 {rows.length} 筆，處理完會自動補上下一批。</p>}
+      {total > 1 && (
+        // 匯入舊記錄後一次幾百筆時用：照本頁同一組條件處理全部（/api/batch 的 all=1，before 之後進來的不算）
+        <form action="/api/batch" method="post" className="mt-6 text-center">
+          <input type="hidden" name="kind" value="inbox" />
+          <input type="hidden" name="back" value={back} />
+          <input type="hidden" name="all" value="1" />
+          <input type="hidden" name="before" value={asof} />
+          {group && <input type="hidden" name="group" value={group} />}
+          <button className="min-h-11 px-3 text-sm font-bold text-gray-600 underline" name="action" value="confirm">
+            都看過了，全部 {total} 筆一次確認
+          </button>
+        </form>
       )}
     </main>
   );

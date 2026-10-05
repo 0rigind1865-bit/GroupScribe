@@ -9,6 +9,7 @@ import { isOverdue, todayISO } from '@/core/date';
 import { orgAiBudget } from '@/core/quota';
 import { Banner } from '@/app/ui/banner';
 import { OnboardingCard } from '@/app/ui/onboarding-card';
+import { ConfirmIcon } from '@/app/ui/review-ui';
 
 export const dynamic = 'force-dynamic';
 
@@ -79,6 +80,24 @@ export default async function Today({
     only(db.from('notes').select('id', { count: 'exact', head: true }).eq('needs_confirmation', true).eq('status', 'active')),
   ]);
   const pendingCount = (ev.count ?? 0) + (tk.count ?? 0) + (nt.count ?? 0);
+  // 「等你把關」卡要給一句原話預覽：三表各取最新一筆待確認，挑最新的那筆的第一則來源訊息
+  let preview: { who: string; at: string; text: string; group_id: string } | null = null;
+  if (pendingCount > 0) {
+    const newest = (
+      await Promise.all([
+        only(db.from('events').select('source_message_ids, created_at').eq('needs_confirmation', true).neq('status', 'ignored')).order('created_at', { ascending: false }).limit(1),
+        only(db.from('tasks').select('source_message_ids, created_at').eq('needs_confirmation', true).eq('status', 'open')).order('created_at', { ascending: false }).limit(1),
+        only(db.from('notes').select('source_message_ids, created_at').eq('needs_confirmation', true).eq('status', 'active')).order('created_at', { ascending: false }).limit(1),
+      ])
+    )
+      .flatMap((r: any) => r.data ?? [])
+      .sort((a: any, b: any) => b.created_at.localeCompare(a.created_at))[0];
+    const mid = newest?.source_message_ids?.[0];
+    if (mid) {
+      const { data: m } = await only(db.from('messages').select('sender_name, sender_id, text, created_at, group_id').eq('id', mid)).maybeSingle();
+      if (m?.text) preview = { who: m.sender_name ?? m.sender_id ?? '—', at: fmt(m.created_at), text: m.text, group_id: m.group_id };
+    }
+  }
   const ai = await orgAiBudget(org.id);
   const aiExhausted = ai.cap !== null && ai.used >= ai.cap;
 
@@ -96,7 +115,6 @@ export default async function Today({
       .in('messages.group_id', group ? [group] : ids), // media_assets 無 group_id，經 messages 反查
   ]);
   const attention: { n: number; label: string; href: string; hint: string }[] = [
-    { n: pendingCount, label: '待你確認', href: oh(slug, '/inbox'), hint: 'AI 整理的內容等你把關' },
     { n: odq.count ?? 0, label: '已逾期', href: oh(slug, '/tasks'), hint: '過了期限還沒完成' },
     { n: unassigned.count ?? 0, label: '沒有負責人', href: oh(slug, '/tasks'), hint: '沒指定人就不會有人做' },
     { n: media.count ?? 0, label: '檔案未解析', href: oh(slug, '/settings'), hint: 'AI 讀不到內容，也進不了抽取' },
@@ -179,8 +197,33 @@ export default async function Today({
               四項全部是例外——正常運作時都是 0，整區消失，版面讓給日期軌。 */}
           {/* 手機：「需要你處理」在上、兩欄小卡；桌機：右欄固定，左欄是日期軌 */}
           <div className="md:grid md:grid-cols-[minmax(0,1fr)_300px] md:gap-10">
-          {attention.length > 0 && (
-            <section className="mb-5 md:order-2 md:mb-0">
+          {(pendingCount > 0 || attention.length > 0) && (
+            <section className="mb-5 space-y-5 md:order-2 md:mb-0">
+              {/* 等你把關（2026-10 設計畫布，取代收件匣分頁）：一句原話預覽＋一顆進把關頁的大按鈕 */}
+              {pendingCount > 0 && (
+                <div className="space-y-3 rounded-2xl border border-amber-300 bg-amber-50 p-4">
+                  <p className="flex items-center gap-2 text-base font-black text-amber-900">
+                    <span className="grid h-7 w-7 place-items-center rounded-lg bg-amber-200">
+                      <ConfirmIcon />
+                    </span>
+                    {pendingCount} 筆等你把關
+                  </p>
+                  {preview && (
+                    <div className="rounded-xl bg-white px-3 py-2.5">
+                      <p className="text-xs text-gray-600">
+                        {preview.who} · {preview.at}
+                        {!group && ` · ${nameOf.get(preview.group_id) ?? ''}`}
+                      </p>
+                      <p className="line-clamp-2 text-[15px] leading-relaxed">{preview.text}</p>
+                    </div>
+                  )}
+                  <a href={oh(slug, '/inbox', { group })} className="btn-primary w-full">
+                    開始把關 →
+                  </a>
+                </div>
+              )}
+              {attention.length > 0 && (
+              <div>
               <h2 className="mb-2 section-title text-amber-700">需要你處理</h2>
               <div className="grid grid-cols-2 gap-2 md:grid-cols-1">
                 {attention.map((a) => {
@@ -208,6 +251,8 @@ export default async function Today({
                   );
                 })}
               </div>
+              </div>
+              )}
             </section>
           )}
 
