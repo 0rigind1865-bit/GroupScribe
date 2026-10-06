@@ -9,12 +9,10 @@ import { RelatedItems } from '../related-items';
 import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
+import { DetailSheet, SourceQuotes, safeFrom } from '@/app/ui/detail-sheet';
 
 export const dynamic = 'force-dynamic';
 
-function fmt(d: string) {
-  return new Date(d).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
-}
 const kindLabel = (k: string) => (k === 'decision' ? '決議' : '公告');
 const kindClass = (k: string) =>
   k === 'decision' ? 'bg-blue-100 text-blue-900' : 'bg-purple-100 text-purple-900';
@@ -70,7 +68,7 @@ export default async function NotesPage({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ group?: string; note?: string; view?: string }>;
+  searchParams: Promise<{ group?: string; note?: string; view?: string; from?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await routeParams;
@@ -130,6 +128,8 @@ export default async function NotesPage({
 
   const g = encodeURIComponent(group ?? '');
   const back = `/o/${slug}/notes?group=${g}${archived ? '&view=ignored' : ''}`;
+  // 從把關頁「修改」進來：關閉、存檔都回把關頁
+  const from = safeFrom(slug, params.from);
 
   return (
     <main className="page">
@@ -215,57 +215,50 @@ export default async function NotesPage({
       )}
 
       {detail && (
-        <div className="card mt-5">
-          <div className="mb-3 flex items-center gap-3">
-            <h2 className="card-title">編輯</h2>
-            {detail.needs_confirmation && (
-              <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">⚠ AI 抽取，待確認</span>
-            )}
-          </div>
+        <DetailSheet closeHref={from ?? back} title={detail.kind === 'decision' ? '決議' : '公告'} badge={<PendingBadge item={detail} compact />}>
           <form action="/api/notes/update" method="post" className="space-y-3 text-sm">
             <input type="hidden" name="id" value={detail.id} />
-            <input type="hidden" name="back" value={back} />
-            <div className="flex flex-wrap gap-3">
-              <label className="flex-1 basis-64">
-                標題
-                <input className="input mt-1 block w-full" name="title" defaultValue={detail.title} required />
-              </label>
-              <label>
-                類型
-                <select className="input mt-1 block" name="kind" defaultValue={detail.kind}>
-                  <option value="announcement">公告</option>
-                  <option value="decision">決議</option>
-                </select>
-              </label>
-            </div>
+            <input type="hidden" name="back" value={from ?? back} />
             <label className="block">
-              內容
+              <span className="label">標題</span>
+              <input className="input mt-1 block w-full" name="title" defaultValue={detail.title} required />
+            </label>
+            <label className="block">
+              <span className="label">類型</span>
+              <select className="input mt-1 block w-full" name="kind" defaultValue={detail.kind}>
+                <option value="announcement">公告</option>
+                <option value="decision">決議</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="label">內容</span>
               <textarea className="input mt-1 block w-full" name="body" rows={3} defaultValue={detail.body ?? ''} />
             </label>
-            <button className="btn-primary" name="action" value="save">
-              儲存修正
-            </button>
+            <div className="flex gap-2">
+              <button className="btn flex-1" name="action" value="save">
+                儲存修正
+              </button>
+              {detail.needs_confirmation && detail.status === 'active' && (
+                <button className="btn-confirm flex-1" name="action" value="confirm">
+                  <ConfirmIcon />
+                  確認沒錯
+                </button>
+              )}
+            </div>
+            {detail.status === 'ignored' ? (
+              <button className="btn w-full" name="action" value="restore">
+                復原
+              </button>
+            ) : (
+              <button className="block min-h-11 w-full text-center text-sm font-bold text-red-700" name="action" value="ignore">
+                忽略
+              </button>
+            )}
           </form>
-          <h3 className="mt-4 mb-2 text-sm font-bold text-gray-600">來源訊息</h3>
-          {sources.length ? (
-            <ul className="space-y-1 text-sm">
-              {sources.map((s, i) => (
-                <li key={i} className="rounded bg-gray-50 px-2 py-1">
-                  <span className="text-gray-500">
-                    {fmt(s.created_at)}｜{s.sender_name ?? s.sender_id ?? '—'}：
-                  </span>
-                  {s.text}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-400">
-              {detail.source === 'manual' ? '手動建立' : '來源訊息已被收回或刪除'}
-            </p>
-          )}
+          <SourceQuotes messages={sources} manual={detail.source === 'manual'} />
           <ItemPhotos items={photos} />
           <RelatedItems items={related} />
-        </div>
+        </DetailSheet>
       )}
     </main>
   );

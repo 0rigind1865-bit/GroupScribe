@@ -164,14 +164,11 @@ export default async function Today({
   // 勾完回到原本這一頁（含群組篩選），不要把人丟回全部群組
   const backHere = group ? `/o/${slug}/?group=${encodeURIComponent(group)}` : `/o/${slug}`;
 
+  // 點一列＝在那一頁拉出詳情抽屜；帶 from，關閉或存檔後回到今天
   const href = (r: Row) =>
     r.kind === 'event'
-      ? oh(slug, '/calendar', {
-          group: r.group_id,
-          view: 'day',
-          date: [...byDay.entries()].find(([, rs]) => rs.includes(r))?.[0] ?? today,
-        })
-      : oh(slug, '/tasks', { group: r.group_id, task: r.id });
+      ? oh(slug, '/calendar', { group: r.group_id, event: r.id, from: backHere })
+      : oh(slug, '/tasks', { group: r.group_id, task: r.id, from: backHere });
 
   return (
     <main className="mx-auto max-w-3xl p-4 md:max-w-5xl md:p-8">
@@ -310,7 +307,7 @@ export default async function Today({
               <p className="mb-1 font-bold text-gray-700">未來 7 天沒有安排</p>
               <p>
                 群組有新對話時，AI 會自動整理出行程與待辦。也可以到{' '}
-                <a className="text-emerald-700 underline" href={`/o/${slug}/calendar`}>月曆</a> 看更遠的行程。
+                <a className="text-emerald-700 underline" href={`/o/${slug}/calendar`}>行程</a> 看更遠的安排。
               </p>
             </div>
           )}

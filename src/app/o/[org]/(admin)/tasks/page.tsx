@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation';
-import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
+import { ConfirmIcon, DoneIcon, PendingBadge } from '@/app/ui/review-ui';
 import { TaskCircle, realAssignee } from '@/app/ui/item-marker';
-import { fmtDate, isOverdue } from '@/core/date';
+import { DetailSheet, SourceQuotes, safeFrom } from '@/app/ui/detail-sheet';
+import { addDays } from '@/core/grid';
+import { fmtDate, isOverdue, todayISO } from '@/core/date';
 import { requireModule } from '@/org/orgs';
 import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb } from '@/db';
@@ -14,67 +16,36 @@ import { ItemPhotos } from '@/app/ui/item-photos';
 
 export const dynamic = 'force-dynamic';
 
-function fmt(d: string) {
-  return new Date(d).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
-}
-
-function TaskRow({ t, back }: { t: any; back: string }) {
+// 一列只留一個動作（2026-10 設計畫布「待辦」）：左邊的圈＝完成；點列上其他地方＝從下面拉出詳情。
+// 「確認／修改／忽略」都收進詳情抽屜；待確認的不另開一區，直接在列上標「待把關」。
+function TaskRow({ t, back, open }: { t: any; back: string; open: string }) {
+  const late = t.status === 'open' && isOverdue(t.due_at);
   return (
     <li className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
       <BatchBox id={t.id} />
-      {t.status === 'open' && (
-        <TaskCircle formAction="/api/tasks/update" id={t.id} back={back} title={t.title} overdue={!!t.due_at && isOverdue(t.due_at)} />
-      )}
-      {/* 兩行：上＝標題（＋待確認徽章），下＝負責人與期限（設計稿 2026-09） */}
-      <div className="min-w-0 flex-1">
-        <p className={`font-bold ${t.status === 'done' ? 'text-gray-400 line-through' : ''}`}>
+      {t.status === 'open' && <TaskCircle formAction="/api/tasks/update" id={t.id} back={back} title={t.title} overdue={late} />}
+      <a href={open} className="min-w-0 flex-1 py-0.5 hover:opacity-70">
+        <span className={`block font-bold ${t.status === 'done' ? 'text-gray-500 line-through' : ''}`}>
           {t.title}
-          {/* 待確認的兩種來源要分開講：新抽的 vs AI 依新對話改過的 */}
-          <span className="ml-1.5 align-middle">
-            <PendingBadge item={t} />
-          </span>
-        </p>
+          {t.needs_confirmation && t.status === 'open' && (
+            <span className="ml-1.5 inline-block rounded-full bg-amber-100 px-2 py-0.5 align-middle text-[11px] font-bold text-amber-900">待把關</span>
+          )}
+        </span>
         {(realAssignee(t.assignee) || t.due_at) && (
-          <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
-            {realAssignee(t.assignee) && (
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{t.assignee}</span>
-            )}
-            {t.due_at &&
-              (t.status === 'open' && isOverdue(t.due_at) ? (
-                // 與「今天」頁同一套判斷與紅字（principles.md：一致性）
-                <span className="text-xs font-bold text-red-600">逾期 {fmtDate(t.due_at)}</span>
-              ) : (
-                <span className="text-xs text-gray-500">期限 {fmtDate(t.due_at)}</span>
-              ))}
-          </div>
+          <span className={`mt-0.5 block text-xs ${late ? 'font-bold text-red-600' : 'text-gray-600'}`}>
+            {[t.due_at && (late ? `逾期 ${fmtDate(t.due_at)}` : `期限 ${fmtDate(t.due_at)}`), realAssignee(t.assignee)].filter(Boolean).join(' · ')}
+          </span>
         )}
-      </div>
-      {/* 一列只留兩個動作（U3）：左邊的圈＝完成、右邊「編輯」；待確認多一顆「確認」、封存區多一顆「重新開啟」。
-          「忽略」降到編輯卡裡——它是低頻且不可逆度較高的動作，不該跟高頻動作並排。 */}
-      <span className="flex flex-none flex-wrap justify-end gap-1.5">
-        {t.needs_confirmation && t.status === 'open' && (
-          <form action="/api/tasks/update" method="post">
-            <input type="hidden" name="id" value={t.id} />
-            <input type="hidden" name="back" value={back} />
-            <button className="btn-confirm btn-sm" name="action" value="confirm">
-              <ConfirmIcon />
-              確認
-            </button>
-          </form>
-        )}
-        {t.status !== 'open' && (
-          <form action="/api/tasks/update" method="post">
-            <input type="hidden" name="id" value={t.id} />
-            <input type="hidden" name="back" value={back} />
-            <button className="btn btn-sm" name="action" value="reopen">
-              重新開啟
-            </button>
-          </form>
-        )}
-        <a className="btn btn-sm" href={`${back}&task=${t.id}`}>
-          編輯
-        </a>
-      </span>
+      </a>
+      {t.status !== 'open' && (
+        <form action="/api/tasks/update" method="post" className="flex-none">
+          <input type="hidden" name="id" value={t.id} />
+          <input type="hidden" name="back" value={back} />
+          <button className="btn btn-sm" name="action" value="reopen">
+            重新開啟
+          </button>
+        </form>
+      )}
     </li>
   );
 }
@@ -84,7 +55,7 @@ export default async function TasksPage({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ group?: string; task?: string; view?: string }>;
+  searchParams: Promise<{ group?: string; task?: string; view?: string; from?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await routeParams;
@@ -119,8 +90,17 @@ export default async function TasksPage({
           .order('created_at')
       ).data ?? [];
   }
-  const pending = archived ? [] : tasks.filter((t) => t.needs_confirmation);
-  const open = archived ? [] : tasks.filter((t) => !t.needs_confirmation);
+  // 依期限分組（逾期／7 天內／之後／沒有期限）；查詢已照期限排好
+  const today = todayISO();
+  const in7 = addDays(today, 7);
+  const buckets = archived
+    ? []
+    : [
+        { title: '逾期', tone: 'text-red-700', rows: tasks.filter((t) => isOverdue(t.due_at, today)) },
+        { title: '7 天內', tone: '', rows: tasks.filter((t) => t.due_at && t.due_at >= today && t.due_at <= in7) },
+        { title: '之後', tone: '', rows: tasks.filter((t) => t.due_at && t.due_at > in7) },
+        { title: '沒有期限', tone: '', rows: tasks.filter((t) => !t.due_at) },
+      ].filter((b) => b.rows.length);
 
   // 詳情（?task= 展開編輯）
   let detail: any = null;
@@ -146,6 +126,9 @@ export default async function TasksPage({
 
   const g = encodeURIComponent(group ?? '');
   const back = `/o/${slug}/tasks?group=${g}${archived ? `&view=${archived}` : ''}`;
+  // 從把關頁「修改」進來：關閉、存檔都回把關頁
+  const from = safeFrom(slug, params.from);
+  const openHref = (id: string) => `${back}&task=${id}`;
 
   return (
     <main className="page">
@@ -181,7 +164,7 @@ export default async function TasksPage({
             {tasks.length ? (
               <ul className="space-y-1.5">
                 {tasks.map((t) => (
-                  <TaskRow key={t.id} t={t} back={back} />
+                  <TaskRow key={t.id} t={t} back={back} open={openHref(t.id)} />
                 ))}
               </ul>
             ) : (
@@ -201,36 +184,23 @@ export default async function TasksPage({
 
       {group && !archived && (
         <div className="space-y-5">
-          {pending.length > 0 && (
-            <section>
-              <div className="space-y-2 rounded-2xl border border-amber-200 bg-amber-50 p-3">
-                <h2 className="section-title text-amber-700">待確認 · AI 抽取</h2>
+          {buckets.length ? (
+            buckets.map((b) => (
+              <section key={b.title}>
+                <h2 className={`mb-2 section-title ${b.tone}`}>{b.title}</h2>
                 <ul className="space-y-2">
-                  {pending.map((t) => (
-                    <TaskRow key={t.id} t={t} back={back} />
+                  {b.rows.map((t: any) => (
+                    <TaskRow key={t.id} t={t} back={back} open={openHref(t.id)} />
                   ))}
                 </ul>
-              </div>
-            </section>
+              </section>
+            ))
+          ) : (
+            <div className="card text-sm text-gray-600">
+              <p className="mb-1 font-bold text-gray-900">目前沒有進行中的待辦</p>
+              <p>群組裡交辦事情時，AI 會自動整理進來。</p>
+            </div>
           )}
-          <section>
-            <h2 className="mb-2 section-title">進行中</h2>
-            {open.length ? (
-              <ul className="space-y-2">
-                {open.map((t) => (
-                  <TaskRow key={t.id} t={t} back={back} />
-                ))}
-              </ul>
-            ) : (
-              <div className="card text-sm text-gray-500">
-                <p className="mb-1 font-bold text-gray-700">目前沒有進行中的待辦</p>
-                <p>
-                  群組裡交辦事情時，AI 會自動整理進來。也可以到{' '}
-                  <a className="text-emerald-700 underline" href={`/o/${slug}/inbox`}>把關</a> 看待確認的項目。
-                </p>
-              </div>
-            )}
-          </section>
           {/* 入口不帶筆數：計數本身就是噪音（principles.md 規則三） */}
           <div className="flex flex-wrap gap-4">
             <a className="text-sm text-gray-500 underline" href={`/o/${slug}/tasks?group=${g}&view=done`}>
@@ -244,65 +214,70 @@ export default async function TasksPage({
       )}
 
       {detail && (
-        <div className="card mt-5">
-          <div className="mb-3 flex items-center gap-3">
-            <h2 className="card-title">編輯待辦</h2>
-            {detail.needs_confirmation && (
-              <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">⚠ AI 抽取，待確認</span>
-            )}
-          </div>
+        <DetailSheet
+          closeHref={from ?? back}
+          title="待辦"
+          badge={
+            detail.status === 'open' && isOverdue(detail.due_at) ? (
+              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">逾期</span>
+            ) : (
+              <PendingBadge item={detail} compact />
+            )
+          }
+        >
           <form action="/api/tasks/update" method="post" className="space-y-3 text-sm">
             <input type="hidden" name="id" value={detail.id} />
-            <input type="hidden" name="back" value={back} />
-            <div className="flex flex-wrap gap-3">
-              <label className="flex-1 basis-64">
-                內容
-                <input className="input mt-1 block w-full" name="title" defaultValue={detail.title} required />
+            <input type="hidden" name="back" value={from ?? back} />
+            <label className="block">
+              <span className="label">內容</span>
+              <input className="input mt-1 block w-full" name="title" defaultValue={detail.title} required />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="label">負責人</span>
+                <input className="input mt-1 block w-full" name="assignee" defaultValue={detail.assignee ?? ''} />
               </label>
-              <label>
-                負責人
-                <input className="input mt-1 block w-32" name="assignee" defaultValue={detail.assignee ?? ''} />
-              </label>
-              <label>
-                期限
-                <input className="input mt-1 block" type="date" name="due" defaultValue={detail.due_at ?? ''} />
+              <label className="block">
+                <span className="label">期限</span>
+                <input className="input mt-1 block w-full" type="date" name="due" defaultValue={detail.due_at ?? ''} />
               </label>
             </div>
             <label className="block">
-              備註
+              <span className="label">備註</span>
               <input className="input mt-1 block w-full" name="note" defaultValue={detail.note ?? ''} />
             </label>
-            <div className="flex flex-wrap gap-2">
-              <button className="btn-primary" name="action" value="save">
+            {/* 「儲存修正」排在表單第一顆：在欄位裡按 Enter 送出的是它，不會誤按成完成或忽略 */}
+            <div className="flex gap-2">
+              <button className="btn flex-1" name="action" value="save">
                 儲存修正
               </button>
-              {detail.status !== 'ignored' && (
-                <button className="btn-danger" name="action" value="ignore">
-                  忽略
+              {detail.needs_confirmation && detail.status === 'open' && (
+                <button className="btn-confirm flex-1" name="action" value="confirm">
+                  <ConfirmIcon />
+                  確認沒錯
                 </button>
               )}
             </div>
+            {detail.status === 'open' ? (
+              <button className="btn-primary w-full" name="action" value="done">
+                <DoneIcon />
+                標成完成
+              </button>
+            ) : (
+              <button className="btn w-full" name="action" value="reopen">
+                重新開啟
+              </button>
+            )}
+            {detail.status !== 'ignored' && (
+              <button className="block min-h-11 w-full text-center text-sm font-bold text-red-700" name="action" value="ignore">
+                不是待辦，忽略
+              </button>
+            )}
           </form>
-          <h3 className="mt-4 mb-2 text-sm font-bold text-gray-600">來源訊息</h3>
-          {sources.length ? (
-            <ul className="space-y-1 text-sm">
-              {sources.map((s, i) => (
-                <li key={i} className="rounded bg-gray-50 px-2 py-1">
-                  <span className="text-gray-500">
-                    {fmt(s.created_at)}｜{s.sender_name ?? s.sender_id ?? '—'}：
-                  </span>
-                  {s.text}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-400">
-              {detail.source === 'manual' ? '手動建立' : '來源訊息已被收回或刪除'}
-            </p>
-          )}
+          <SourceQuotes messages={sources} manual={detail.source === 'manual'} />
           <ItemPhotos items={photos} />
           <RelatedItems items={related} />
-        </div>
+        </DetailSheet>
       )}
     </main>
   );

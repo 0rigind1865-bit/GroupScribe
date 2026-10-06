@@ -25,9 +25,10 @@ const md = fmtDate; // 期限/日期的格式統一在 core/date.ts
 type Row = { kind: 'event' | 'task' | 'note'; item: any };
 
 const KIND_STYLE = {
-  event: { label: '行程', table: 'events', chip: 'bg-emerald-100 text-emerald-800', edit: (o: string, g: string, id: string) => oh(o, '/calendar', { group: g, event: id }) },
-  task: { label: '待辦', table: 'tasks', chip: 'bg-sky-100 text-sky-800', edit: (o: string, g: string, id: string) => oh(o, '/tasks', { group: g, task: id }) },
-  note: { label: '公告', table: 'notes', chip: 'bg-purple-100 text-purple-900', edit: (o: string, g: string, id: string) => oh(o, '/notes', { group: g, note: id }) },
+  // edit：開那一頁的詳情抽屜，帶 from＝把關頁，存檔或關閉都回這裡（detail-sheet.tsx 的 safeFrom）
+  event: { label: '行程', table: 'events', chip: 'bg-emerald-100 text-emerald-800', edit: (o: string, g: string, id: string, from: string) => oh(o, '/calendar', { group: g, event: id, from }) },
+  task: { label: '待辦', table: 'tasks', chip: 'bg-sky-100 text-sky-800', edit: (o: string, g: string, id: string, from: string) => oh(o, '/tasks', { group: g, task: id, from }) },
+  note: { label: '公告', table: 'notes', chip: 'bg-purple-100 text-purple-900', edit: (o: string, g: string, id: string, from: string) => oh(o, '/notes', { group: g, note: id, from }) },
 } as const;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -263,7 +264,7 @@ export default async function InboxPage({
                           {meta.some(Boolean) && <span className="mt-0.5 block text-[13px] text-gray-600">{meta.filter(Boolean).join(' · ')}</span>}
                         </span>
                       </label>
-                      <a className="flex min-h-11 flex-none items-center px-2 text-sm font-bold text-emerald-700" href={s.edit(slug, item.group_id, item.id)}>
+                      <a className="flex min-h-11 flex-none items-center px-2 text-sm font-bold text-emerald-700" href={s.edit(slug, item.group_id, item.id, back)}>
                         修改
                       </a>
                     </li>

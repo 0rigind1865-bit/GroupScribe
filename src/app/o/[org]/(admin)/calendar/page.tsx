@@ -9,6 +9,8 @@ import { addDays, agendaRange, hourRange, monthGrid, parseHour, splitTimed, week
 import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
+import { DetailSheet, SourceQuotes, safeFrom } from '@/app/ui/detail-sheet';
+import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
 import { oh } from '@/org/href';
 
 export const dynamic = 'force-dynamic';
@@ -29,9 +31,6 @@ const RANGES = [
 ] as const;
 const AGENDA_LIMIT = 200; // 「全部」防爆量
 
-function fmt(d: string) {
-  return new Date(d).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false });
-}
 // YYYY-MM-DD → 中文顯示，用 UTC 正午鎖定避免跨日
 function zhDate(dateIso: string, opts: Intl.DateTimeFormatOptions) {
   return new Date(`${dateIso}T12:00:00Z`).toLocaleDateString('zh-TW', { timeZone: 'UTC', ...opts });
@@ -122,7 +121,7 @@ function TimeGrid({
   const hasUndated = perDay.some((p) => p.undated.length);
   const multi = days.length > 1;
 
-  if (!hr && !hasUndated) return <p className="card p-3 text-sm text-gray-400">這天沒有事件。</p>;
+  if (!hr && !hasUndated) return <p className="card p-3 text-sm text-gray-400">這天沒有行程。</p>;
 
   return (
     <div className="card overflow-x-auto p-2">
@@ -196,7 +195,7 @@ export default async function CalendarPage({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ group?: string; view?: string; date?: string; month?: string; event?: string; range?: string }>;
+  searchParams: Promise<{ group?: string; view?: string; date?: string; month?: string; event?: string; range?: string; from?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await routeParams;
@@ -300,6 +299,8 @@ export default async function CalendarPage({
   // 詳情編輯後回跳到當前視圖與日期；已忽略視圖回到已忽略清單
   const back = archived ? oh(slug, '/calendar', { group, view: 'ignored' }) : `${base}&view=${view}&date=${dateIso}`;
   const chipHref = (id: string) => `${back}&event=${id}`;
+  // 從把關頁「修改」進來：關閉、存檔都回把關頁
+  const from = safeFrom(slug, params.from);
   const navBase = `${base}&view=${view}`;
 
   // 導航步長與標題依 view
@@ -334,7 +335,7 @@ export default async function CalendarPage({
   return (
     <main className="page">
       <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2">
-        <h1>月曆</h1>
+        <h1>行程</h1>
         {archived && <span className="rounded bg-gray-100 px-2 py-0.5 text-sm text-gray-600">已忽略</span>}
         {group && <span className="text-gray-500">{groupName}</span>}
         {/* 視圖切換器：手機四等分、桌機 inline（已忽略清單沒有日期軸，不畫） */}
@@ -517,7 +518,7 @@ export default async function CalendarPage({
               </div>
             </div>
           ))}
-          {!agendaGroups.length && <p className="text-sm text-gray-400">這個範圍沒有事件。</p>}
+          {!agendaGroups.length && <p className="text-sm text-gray-400">這個範圍沒有行程。</p>}
           {agendaTruncated && (
             <p className="text-sm text-gray-400">已達顯示上限，僅顯示前 {AGENDA_LIMIT} 筆（可縮小範圍）。</p>
           )}
@@ -530,7 +531,7 @@ export default async function CalendarPage({
           className="mt-4 inline-flex min-h-11 items-center text-sm text-gray-500 underline"
           href={oh(slug, '/calendar', { group, view: 'ignored' })}
         >
-          已忽略的事件 →
+          已忽略的行程 →
         </a>
       )}
 
@@ -568,7 +569,7 @@ export default async function CalendarPage({
               </ul>
             ) : (
               <div className="card text-sm text-gray-500">
-                <p className="mb-1 font-bold text-gray-700">沒有已忽略的事件</p>
+                <p className="mb-1 font-bold text-gray-700">沒有已忽略的行程</p>
                 <p>在把關或行程頁忽略掉的行程會留在這裡，隨時可以復原。</p>
               </div>
             )}
@@ -580,95 +581,75 @@ export default async function CalendarPage({
             className="inline-flex min-h-11 items-center text-sm text-emerald-700 underline"
             href={oh(slug, '/calendar', { group })}
           >
-            ← 回到月曆
+            ← 回到行程
           </a>
         </div>
       )}
 
       {detail && (
-        <div className="card mt-4">
-          <div className="mb-3 flex items-center gap-3">
-            <h2 className="card-title">事件詳情</h2>
-            {detail.needs_confirmation ? (
-              <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-900">⚠ AI 抽取，待確認</span>
+        <DetailSheet
+          closeHref={from ?? back}
+          title="行程"
+          badge={
+            detail.status === 'ignored' ? (
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">已忽略</span>
             ) : (
-              <span className="rounded bg-emerald-100 px-2 py-0.5 text-xs text-emerald-900">已確認</span>
-            )}
-            {detail.status === 'ignored' && (
-              <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-gray-500">已忽略</span>
-            )}
-          </div>
+              <PendingBadge item={detail} compact />
+            )
+          }
+        >
           <form action="/api/events/update" method="post" className="space-y-3 text-sm">
             <input type="hidden" name="id" value={detail.id} />
-            <input type="hidden" name="back" value={back} />
-            <div className="flex flex-wrap gap-3">
-              <label className="flex-1 basis-64">
-                標題
-                <input className="input mt-1 block w-full" name="title" defaultValue={detail.title} required />
+            <input type="hidden" name="back" value={from ?? back} />
+            <label className="block">
+              <span className="label">標題</span>
+              <input className="input mt-1 block w-full" name="title" defaultValue={detail.title} required />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block">
+                <span className="label">日期</span>
+                <input className="input mt-1 block w-full" type="date" name="date" defaultValue={detail.starts_at} required />
               </label>
-              <label>
-                日期
-                <input className="input mt-1 block" type="date" name="date" defaultValue={detail.starts_at} required />
-              </label>
-              <label>
-                時間
-                <input
-                  className="input mt-1 block"
-                  type="time"
-                  name="time"
-                  defaultValue={detail.start_time ? String(detail.start_time).slice(0, 5) : ''}
-                />
-              </label>
-              <label className="flex-1 basis-48">
-                地點
-                <input className="input mt-1 block w-full" name="location" defaultValue={detail.location ?? ''} />
+              <label className="block">
+                <span className="label">時間（可空白＝全天）</span>
+                <input className="input mt-1 block w-full" type="time" name="time" defaultValue={detail.start_time ? String(detail.start_time).slice(0, 5) : ''} />
               </label>
             </div>
             <label className="block">
-              備註
+              <span className="label">地點</span>
+              <input className="input mt-1 block w-full" name="location" defaultValue={detail.location ?? ''} />
+            </label>
+            <label className="block">
+              <span className="label">備註</span>
               <input className="input mt-1 block w-full" name="note" defaultValue={detail.note ?? ''} />
             </label>
+            {/* 「儲存修正」排第一顆：欄位裡按 Enter 送出的是它 */}
             <div className="flex gap-2">
-              <button className="btn-primary" name="action" value="save">
+              <button className="btn flex-1" name="action" value="save">
                 儲存修正
               </button>
               {detail.needs_confirmation && detail.status !== 'ignored' && (
-                <button className="btn" name="action" value="confirm">
-                  確認無誤
-                </button>
-              )}
-              {/* 已忽略的事件：這裡換成「復原」（從收件匣的「編輯」或已忽略清單點進來都會看到） */}
-              {detail.status === 'ignored' ? (
-                <button className="btn" name="action" value="restore">
-                  復原
-                </button>
-              ) : (
-                <button className="btn-danger" name="action" value="ignore">
-                  忽略
+                <button className="btn-confirm flex-1" name="action" value="confirm">
+                  <ConfirmIcon />
+                  確認沒錯
                 </button>
               )}
             </div>
+            {/* 已忽略的行程：這裡換成「復原」（從把關頁的「修改」或已忽略清單點進來都會看到） */}
+            {detail.status === 'ignored' ? (
+              <button className="btn w-full" name="action" value="restore">
+                復原
+              </button>
+            ) : (
+              <button className="block min-h-11 w-full text-center text-sm font-bold text-red-700" name="action" value="ignore">
+                不是行程，忽略
+              </button>
+            )}
           </form>
-          <h3 className="mt-4 mb-2 text-sm font-bold text-gray-600">來源訊息</h3>
-          {sources.length ? (
-            <ul className="space-y-1 text-sm">
-              {sources.map((s, i) => (
-                <li key={i} className="rounded bg-gray-50 px-2 py-1">
-                  <span className="text-gray-500">
-                    {fmt(s.created_at)}｜{s.sender_name ?? s.sender_id ?? '—'}：
-                  </span>
-                  {s.text}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-gray-400">
-              {detail.source === 'manual' ? '手動建立' : '來源訊息已被收回或刪除'}
-            </p>
-          )}
+          <SourceQuotes messages={sources} manual={detail.source === 'manual'} />
           <ItemPhotos items={photos} />
           <RelatedItems items={related} />
-        </div>
+        </DetailSheet>
       )}
     </main>
   );
