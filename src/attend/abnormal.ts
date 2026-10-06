@@ -71,10 +71,9 @@ export function monthStatuses(
       status = 'STATUS_PUNCH_BOTH_MISSING';
     }
 
-    const abnormal =
-      status === 'STATUS_PUNCH_IN_MISSING' ||
-      status === 'STATUS_PUNCH_OUT_MISSING' ||
-      status === 'STATUS_PUNCH_BOTH_MISSING';
+    // 整天沒卡不算：多半是放假日（月曆也畫灰，見 day-tone.ts）。只有「打了一張、少一張」確定是忘了
+    // ponytail: 真正「該上班卻整天沒來」要先知道哪天是工作日（規則＋假日），有排班再補
+    const abnormal = status === 'STATUS_PUNCH_IN_MISSING' || status === 'STATUS_PUNCH_OUT_MISSING';
     out.push({ date, punches: day, status, abnormal });
   }
   return out;

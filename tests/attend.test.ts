@@ -29,9 +29,10 @@ test('只有下班卡 = 未打上班卡（異常）', () => {
   assert.equal(days[0].status, 'STATUS_PUNCH_IN_MISSING');
 });
 
-test('無卡 = 未打上下班卡', () => {
+test('無卡 = 未打上下班卡（多半是放假日，不算異常）', () => {
   const days = monthStatuses('2026-07', '2026-07-31', [], new Set());
   assert.equal(days[0].status, 'STATUS_PUNCH_BOTH_MISSING');
+  assert.equal(days[0].abnormal, false);
 });
 
 test('pending 補卡申請 = 審核中（不算異常）', () => {
