@@ -65,7 +65,6 @@
   "OUT_CARD": "下班卡",
   "DATETIME_LABEL": "日期與時間",
   "REASON_LABEL": "原因（選填）",
-  "REASON_PLACEHOLDER": "例：忘記打卡、外勤",
   "SUBMIT_ADJUST": "送出補卡申請",
   "MY_REQUESTS": "我的申請",
   "REQ_PENDING": "審核中",
@@ -74,8 +73,8 @@
   "NOT_ACTIVE": "帳號尚未啟用。",
   "DB_NOT_CONFIGURED": "系統尚未設定資料庫。",
   "TAB_DASHBOARD": "打卡",
-  "TAB_RECORDS": "月曆",
-  "TAB_REQUESTS": "我的申請",
+  "TAB_RECORDS": "紀錄",
+  "TAB_REQUESTS": "補卡",
   "IN_RANGE": "在「{name}」範圍內",
   "OUT_OF_RANGE": "不在任何打卡範圍內",
   "LOCATING_STATUS": "正在定位…",
@@ -137,5 +136,13 @@
   "SOFTNAV_DISMISS": "知道了",
   "SOFTNAV_DONE": "完成",
   "SOFTNAV_FAILED": "沒有完成：{msg}",
-  "SOFTNAV_OFFLINE": "連線中斷，不確定有沒有送出。請先重新整理看結果，再決定要不要重送。"
+  "SOFTNAV_OFFLINE": "連線中斷，不確定有沒有送出。請先重新整理看結果，再決定要不要重送。",
+  "SHIFT_NOT_STARTED": "還沒上班",
+  "SHIFT_ON": "上班中",
+  "SHIFT_OFF": "已下班",
+  "ADJUST_AUTO_FILL": "點一下，時間自動帶入 {t}",
+  "REASON_FORGOT": "忘記打卡",
+  "REASON_FIELD": "外勤",
+  "REASON_BATTERY": "手機沒電",
+  "REASON_OTHER_PLACEHOLDER": "其他原因（自己寫，選填）"
 }

@@ -43,9 +43,11 @@ export default async function RecordsPage({
   const [y, m] = month.split('-').map(Number);
   const sel = sp.d && byDate.has(sp.d) ? byDate.get(sp.d)! : null;
   const abnormal = [...byDate.values()].filter((d) => d.abnormal).length;
+  const thisMonth = today.slice(0, 7);
+  const alert = month === thisMonth ? abnormal : (await monthData(emp.org_id, emp.id, thisMonth)).days.filter((d) => d.abnormal).length;
 
   return (
-    <AttendShell emp={emp} current="records" loc={loc} tt={tt} back={`/a/records?month=${month}`} {...sd}>
+    <AttendShell emp={emp} current="records" loc={loc} tt={tt} back={`/a/records?month=${month}`} {...sd} alert={alert}>
       <div className="mb-3 flex items-center justify-between">
         <a className="btn px-3 py-1 text-sm" href={`/a/records?month=${shiftMonth(month, -1)}`}>←</a>
         <h1>{tt('MONTH_TITLE', { y, m })}</h1>

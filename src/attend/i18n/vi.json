@@ -65,7 +65,6 @@
   "OUT_CARD": "Công ra",
   "DATETIME_LABEL": "Ngày và giờ",
   "REASON_LABEL": "Lý do (không bắt buộc)",
-  "REASON_PLACEHOLDER": "VD: quên chấm công, đi công tác",
   "SUBMIT_ADJUST": "Gửi yêu cầu bổ sung",
   "MY_REQUESTS": "Yêu cầu của tôi",
   "REQ_PENDING": "Chờ duyệt",
@@ -74,8 +73,8 @@
   "NOT_ACTIVE": "Tài khoản chưa được kích hoạt.",
   "DB_NOT_CONFIGURED": "Cơ sở dữ liệu chưa được cấu hình.",
   "TAB_DASHBOARD": "Chấm công",
-  "TAB_RECORDS": "Lịch",
-  "TAB_REQUESTS": "Yêu cầu của tôi",
+  "TAB_RECORDS": "Lịch sử",
+  "TAB_REQUESTS": "Bổ sung công",
   "IN_RANGE": "Trong khu vực \"{name}\"",
   "OUT_OF_RANGE": "Không ở trong khu vực chấm công nào",
   "LOCATING_STATUS": "Đang định vị…",
@@ -137,5 +136,13 @@
   "SOFTNAV_DISMISS": "Đã hiểu",
   "SOFTNAV_DONE": "Xong",
   "SOFTNAV_FAILED": "Chưa hoàn tất: {msg}",
-  "SOFTNAV_OFFLINE": "Mất kết nối, không chắc đã gửi được chưa. Hãy tải lại trang để xem kết quả rồi mới quyết định gửi lại."
+  "SOFTNAV_OFFLINE": "Mất kết nối, không chắc đã gửi được chưa. Hãy tải lại trang để xem kết quả rồi mới quyết định gửi lại.",
+  "SHIFT_NOT_STARTED": "Chưa vào ca",
+  "SHIFT_ON": "Đang làm",
+  "SHIFT_OFF": "Đã tan ca",
+  "ADJUST_AUTO_FILL": "Chạm để tự điền {t}",
+  "REASON_FORGOT": "Quên chấm công",
+  "REASON_FIELD": "Đi công tác",
+  "REASON_BATTERY": "Điện thoại hết pin",
+  "REASON_OTHER_PLACEHOLDER": "Lý do khác (không bắt buộc)"
 }

@@ -19,6 +19,8 @@ export type NavTab = {
   icon: React.ReactNode;
   active: boolean;
   badge?: number;
+  /** 紅色數字：要你補救的（員工端缺卡天數）。紅色只給這種「已經出問題」的事 */
+  alert?: number;
 };
 
 type Mode = 'full' | 'mini' | 'hidden';
@@ -213,10 +215,12 @@ export function FloatingNav({ tabs, className = '' }: { tabs: NavTab[]; classNam
             <svg viewBox="0 0 24 24" className="h-5.5 w-5.5" fill="none" stroke="currentColor" strokeWidth="1.8">
               {t.icon}
             </svg>
-            {!!t.badge && (
-              // 琥珀＝「等你決定」（把關、待審、待啟用）；紅色只留給逾期，徽章不搶那個意思
-              <span className="absolute -top-1 -right-2 rounded-full bg-[#e0a43a] px-1.5 text-[10px] leading-4 font-bold text-[#1c2420]">
-                {t.badge > 99 ? '99+' : t.badge}
+            {!!(t.alert || t.badge) && (
+              // 琥珀＝「等你決定」（把關、待審、待啟用）；紅＝已經出問題（缺卡），兩種不混用
+              <span
+                className={`absolute -top-1 -right-2 rounded-full px-1.5 text-[10px] leading-4 font-bold ${t.alert ? 'bg-[#d14a3b] text-white' : 'bg-[#e0a43a] text-[#1c2420]'}`}
+              >
+                {(t.alert || t.badge)! > 99 ? '99+' : t.alert || t.badge}
               </span>
             )}
           </span>

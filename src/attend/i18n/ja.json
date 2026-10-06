@@ -65,7 +65,6 @@
   "OUT_CARD": "退勤",
   "DATETIME_LABEL": "日付と時間",
   "REASON_LABEL": "理由（任意）",
-  "REASON_PLACEHOLDER": "例：打刻忘れ、外勤",
   "SUBMIT_ADJUST": "修正打刻を申請",
   "MY_REQUESTS": "申請履歴",
   "REQ_PENDING": "承認待ち",
@@ -74,8 +73,8 @@
   "NOT_ACTIVE": "アカウントはまだ有効化されていません。",
   "DB_NOT_CONFIGURED": "データベースが未設定です。",
   "TAB_DASHBOARD": "打刻",
-  "TAB_RECORDS": "カレンダー",
-  "TAB_REQUESTS": "申請履歴",
+  "TAB_RECORDS": "記録",
+  "TAB_REQUESTS": "打刻修正",
   "IN_RANGE": "「{name}」の範囲内",
   "OUT_OF_RANGE": "打刻可能な範囲外です",
   "LOCATING_STATUS": "位置情報を取得中…",
@@ -137,5 +136,13 @@
   "SOFTNAV_DISMISS": "了解",
   "SOFTNAV_DONE": "完了",
   "SOFTNAV_FAILED": "完了できませんでした：{msg}",
-  "SOFTNAV_OFFLINE": "接続が切れました。送信できたか分かりません。再読み込みして結果を確認してから、もう一度送るか決めてください。"
+  "SOFTNAV_OFFLINE": "接続が切れました。送信できたか分かりません。再読み込みして結果を確認してから、もう一度送るか決めてください。",
+  "SHIFT_NOT_STARTED": "未出勤",
+  "SHIFT_ON": "勤務中",
+  "SHIFT_OFF": "退勤済み",
+  "ADJUST_AUTO_FILL": "タップで {t} を入力",
+  "REASON_FORGOT": "打刻忘れ",
+  "REASON_FIELD": "外勤",
+  "REASON_BATTERY": "スマホの電池切れ",
+  "REASON_OTHER_PLACEHOLDER": "その他の理由（任意）"
 }

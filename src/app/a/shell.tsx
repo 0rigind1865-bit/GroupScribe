@@ -44,10 +44,7 @@ const TABS: Tab[] = [
     href: '/a/adjust',
     label: 'TAB_REQUESTS',
     icon: (
-      <>
-        <path d="M4 4h16v12H8l-4 4z" />
-        <path d="M9 10h6" />
-      </>
+      <path d="M4 20h4L19 9l-4-4L4 16z" />
     ),
   },
 ];
@@ -64,6 +61,8 @@ export function AttendShell({
   org,
   title,
   sub,
+  aside,
+  alert,
 }: {
   // status：只有在職的員工才畫底部膠囊（還沒加入／待啟用時點月曆或申請只會看到一行訊息，審查 F34）
   emp?: (Pick<Employee, 'display_name' | 'dept' | 'picture_url'> & { status?: Employee['status'] }) | null;
@@ -81,6 +80,10 @@ export function AttendShell({
   /** 頁標題（襯線大標）＋副標（日期） */
   title?: string;
   sub?: string;
+  /** 標題列最右邊（打卡頁的「上班中」狀態） */
+  aside?: React.ReactNode;
+  /** 這個月還缺卡的天數：掛在「紀錄」分頁上的紅色數字（設計畫布 StaffPunch） */
+  alert?: number;
 }) {
   return (
     <main className="mx-auto max-w-md p-4 pt-0">
@@ -91,6 +94,7 @@ export function AttendShell({
           <div className="mb-4 flex items-baseline gap-2.5">
             <h1>{title}</h1>
             {sub && <span className="text-sm text-gray-500">{sub}</span>}
+            {aside && <span className="ml-auto self-center">{aside}</span>}
           </div>
         )}
         {children}
@@ -107,6 +111,7 @@ export function AttendShell({
             </svg>
           ),
           active: t.key === current,
+          alert: t.key === 'records' ? alert : undefined,
         }))}
       />
       )}

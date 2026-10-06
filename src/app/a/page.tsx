@@ -5,7 +5,7 @@ import { monthData } from '@/attend/data';
 import { workDate } from '@/attend/util';
 import { locale, t, type MsgKey } from '@/attend/i18n';
 import { Banner } from '@/app/ui/banner';
-import { PunchBadge } from '@/app/ui/badge';
+import { Badge, PunchBadge } from '@/app/ui/badge';
 import { Empty } from '@/app/ui/empty';
 import { AttendLiffBoot, AttendShell } from './shell';
 import { itemsOf } from '@/org/surface-groups';
@@ -14,7 +14,7 @@ import { PunchPanel, type PunchLocation } from './punch-client';
 
 export const dynamic = 'force-dynamic';
 
-// 員工打卡首頁（LIFF）：打卡專區（地圖＋狀態＋兩顆鈕）→ 今日紀錄 → 異常提醒。
+// 員工打卡首頁（LIFF）：打卡專區（地圖＋狀態＋兩顆鈕）→ 今日紀錄。缺卡天數掛在底部「紀錄」分頁的紅數字。
 // 版面對齊文輝考勤系統的儀表板。org 不放 URL——LIFF endpoint 只有一個固定連結，
 // org 由 employees 表以 line_user_id 反查。
 const MSG: Record<string, { key: MsgKey; ok?: boolean }> = {
@@ -130,15 +130,23 @@ export default async function AttendHome({
   }));
   const todayStatus = days.find((d) => d.date === today);
   const abnormalCount = days.filter((d) => d.abnormal).length;
+  const last = todayStatus?.punches.at(-1)?.type;
+  const shift = !last ? (
+    <Badge tone="neutral">{tt('SHIFT_NOT_STARTED')}</Badge>
+  ) : last === 'in' ? (
+    <Badge tone="ok">{tt('SHIFT_ON')}</Badge>
+  ) : (
+    <Badge tone="neutral">{tt('SHIFT_OFF')}</Badge>
+  );
 
   return (
-    <AttendShell emp={emp} current="dash" loc={loc} tt={tt} back="/a" {...sd} title={tt('TOOL_PUNCH')} sub={todayLabel(loc)}>
+    <AttendShell emp={emp} current="dash" loc={loc} tt={tt} back="/a" {...sd} title={tt('TOOL_PUNCH')} sub={todayLabel(loc)} aside={shift} alert={abnormalCount}>
       {banner}
       {!locations.length && <Banner tone="warn">{tt('NO_LOCATIONS')}</Banner>}
 
       <PunchPanel
         locations={locations}
-        next={todayStatus?.punches.at(-1)?.type === 'in' ? 'out' : 'in'}
+        next={last === 'in' ? 'out' : 'in'}
         labels={{
           punchIn: tt('PUNCH_IN_BTN'),
           punchOut: tt('PUNCH_OUT_BTN'),
@@ -171,13 +179,6 @@ export default async function AttendHome({
           <p className="text-sm text-gray-500">{tt('NO_PUNCH_TODAY')}</p>
         )}
       </section>
-
-      {abnormalCount > 0 && (
-        <a href="/a/adjust" className="card mt-3 flex items-center gap-2 text-sm hover:bg-gray-50">
-          <span className="font-bold text-red-600">{tt('ABNORMAL_DAYS', { n: abnormalCount })}</span>
-          <span className="ml-auto text-gray-400">›</span>
-        </a>
-      )}
     </AttendShell>
   );
 }

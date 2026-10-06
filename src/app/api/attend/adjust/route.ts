@@ -13,7 +13,8 @@ export async function POST(req: NextRequest) {
   const form = await req.formData();
   const type = String(form.get('type') ?? '');
   const datetime = String(form.get('datetime') ?? '');
-  const reason = String(form.get('reason') ?? '').trim() || null;
+  // 自己寫的優先，沒寫就用點選的（reason_pick 存的是中文）
+  const reason = String(form.get('reason') ?? '').trim() || String(form.get('reason_pick') ?? '').trim() || null;
   if ((type !== 'in' && type !== 'out') || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(datetime)) {
     return NextResponse.json({ error: '參數不足' }, { status: 400 });
   }

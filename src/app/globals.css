@@ -191,6 +191,20 @@ html {
   .segmented > label:has(:focus-visible) {
     @apply ring-2 ring-emerald-500/40;
   }
+  /* 單選籤（表單版、零 JS）：可換行的一排選項（補卡原因）；選中那顆反白。
+     不用 has-checked: utility——未分層的深色 remap（.bg-white 等）會蓋過它 */
+  .pick-chips {
+    @apply flex flex-wrap gap-2;
+  }
+  .pick-chips > label {
+    @apply flex min-h-11 cursor-pointer items-center rounded-full border border-gray-300 bg-white px-4 font-bold text-gray-700;
+  }
+  .pick-chips > label:has(:checked) {
+    @apply border-transparent bg-gray-900 text-white;
+  }
+  .pick-chips > label:has(:focus-visible) {
+    @apply ring-2 ring-emerald-500/40;
+  }
   .segmented > [aria-current='page'] {
     @apply bg-white text-gray-900 shadow-xs;
   }
@@ -931,6 +945,8 @@ form:has([data-ack]:not(:checked)) [data-requires-ack] { opacity: 0.5; pointer-e
   /* 未選那格：@apply text-gray-600 編成變數色，暗色不會跟著換（對比 2.4:1，最後審查） */
   .segmented > a, .segmented > button, .segmented > label { color: #a7b3ac; }
   .segmented > [aria-current='page'], .segmented > label:has(:checked), .segmented button[aria-pressed='true'] { background: #1a211e; color: #e8edea; }
+  .pick-chips > label { background: #1a211e; border-color: #39443e; color: #c8d2cd; }
+  .pick-chips > label:has(:checked) { background: #e8edea; border-color: transparent; color: #1c2420; }
   .btn-danger { background: #1a211e; border-color: #542626; }
   .btn-danger:hover { background: #2b1d1d; }
   .btn-confirm { background: #33270f; border-color: #5c4718; color: #fcd34d; }

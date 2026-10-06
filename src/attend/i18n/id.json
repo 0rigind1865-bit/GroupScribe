@@ -65,7 +65,6 @@
   "OUT_CARD": "Absen keluar",
   "DATETIME_LABEL": "Tanggal & waktu",
   "REASON_LABEL": "Alasan (opsional)",
-  "REASON_PLACEHOLDER": "cth: lupa absen, kerja lapangan",
   "SUBMIT_ADJUST": "Kirim permintaan susulan",
   "MY_REQUESTS": "Permintaan Saya",
   "REQ_PENDING": "Menunggu",
@@ -74,8 +73,8 @@
   "NOT_ACTIVE": "Akun belum diaktifkan.",
   "DB_NOT_CONFIGURED": "Basis data belum dikonfigurasi.",
   "TAB_DASHBOARD": "Absen",
-  "TAB_RECORDS": "Kalender",
-  "TAB_REQUESTS": "Permintaan Saya",
+  "TAB_RECORDS": "Riwayat",
+  "TAB_REQUESTS": "Koreksi absen",
   "IN_RANGE": "Di dalam \"{name}\"",
   "OUT_OF_RANGE": "Tidak berada di area absen mana pun",
   "LOCATING_STATUS": "Mencari lokasi…",
@@ -137,5 +136,13 @@
   "SOFTNAV_DISMISS": "Mengerti",
   "SOFTNAV_DONE": "Selesai",
   "SOFTNAV_FAILED": "Belum selesai: {msg}",
-  "SOFTNAV_OFFLINE": "Koneksi terputus, belum pasti sudah terkirim. Muat ulang halaman untuk melihat hasilnya sebelum mengirim ulang."
+  "SOFTNAV_OFFLINE": "Koneksi terputus, belum pasti sudah terkirim. Muat ulang halaman untuk melihat hasilnya sebelum mengirim ulang.",
+  "SHIFT_NOT_STARTED": "Belum masuk",
+  "SHIFT_ON": "Sedang kerja",
+  "SHIFT_OFF": "Sudah pulang",
+  "ADJUST_AUTO_FILL": "Ketuk untuk isi {t}",
+  "REASON_FORGOT": "Lupa absen",
+  "REASON_FIELD": "Kerja lapangan",
+  "REASON_BATTERY": "HP mati",
+  "REASON_OTHER_PLACEHOLDER": "Alasan lain (opsional)"
 }

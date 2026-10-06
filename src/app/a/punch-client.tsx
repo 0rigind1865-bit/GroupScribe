@@ -247,15 +247,16 @@ export function PunchPanel({ locations, labels, next = 'in' }: { locations: Punc
       {/* 定位（最長 15 秒）到送出完成前都是 busy：按鈕裡轉圈。f.submit() 不觸發 submit 事件，
           全站的 is-submitting 轉圈抓不到這裡，所以自己畫；spinner 用 currentColor，跟著按鈕字色。
           按下的那顆不跟著 disabled 變半透明（opacity-100 蓋過 .btn 的 disabled 樣式）：半透明看起來像「按不下去」 */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {/* 兩顆一直並排：地圖＋兩顆鈕一起留在首屏。whitespace-normal：越南文等較長的字可以換行，不會撐破 */}
+      <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
           onClick={() => punch('in')}
           disabled={!!busy || blocked}
           aria-busy={busy === 'in'}
-          className={`${next === 'in' ? 'btn-primary' : 'btn'} py-4 text-lg font-bold ${busy === 'in' ? 'opacity-100' : 'disabled:opacity-50'}`}
+          className={`${next === 'in' ? 'btn-primary' : 'btn'} min-h-[72px] py-3 text-base font-bold whitespace-normal sm:text-lg ${busy === 'in' ? 'opacity-100' : 'disabled:opacity-50'}`}
         >
-          {busy === 'in' && <span className="spinner" aria-hidden="true" />}
+          {busy === 'in' ? <span className="spinner" aria-hidden="true" /> : <DoorIcon dir="in" />}
           {busy === 'in' ? labels.locating : labels.punchIn}
         </button>
         <button
@@ -263,13 +264,34 @@ export function PunchPanel({ locations, labels, next = 'in' }: { locations: Punc
           onClick={() => punch('out')}
           disabled={!!busy || blocked}
           aria-busy={busy === 'out'}
-          className={`${next === 'out' ? 'btn-primary' : 'btn'} py-4 text-lg font-bold ${busy === 'out' ? 'opacity-100' : 'disabled:opacity-50'}`}
+          className={`${next === 'out' ? 'btn-primary' : 'btn'} min-h-[72px] py-3 text-base font-bold whitespace-normal sm:text-lg ${busy === 'out' ? 'opacity-100' : 'disabled:opacity-50'}`}
         >
-          {busy === 'out' && <span className="spinner" aria-hidden="true" />}
+          {busy === 'out' ? <span className="spinner" aria-hidden="true" /> : <DoorIcon dir="out" />}
           {busy === 'out' ? labels.locating : labels.punchOut}
         </button>
       </div>
       {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
     </section>
+  );
+}
+
+/** 上班＝箭頭走進門、下班＝箭頭走出門（設計畫布回饋：原本的圖示不直覺） */
+function DoorIcon({ dir }: { dir: 'in' | 'out' }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-5 w-5 flex-none" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {dir === 'in' ? (
+        <>
+          <path d="M14 4h4a2 2 0 012 2v12a2 2 0 01-2 2h-4" />
+          <path d="M9 16l4-4-4-4" />
+          <path d="M13 12H3" />
+        </>
+      ) : (
+        <>
+          <path d="M10 4H6a2 2 0 00-2 2v12a2 2 0 002 2h4" />
+          <path d="M16 16l4-4-4-4" />
+          <path d="M20 12H9" />
+        </>
+      )}
+    </svg>
   );
 }
