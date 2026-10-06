@@ -839,6 +839,29 @@ details[open] > .ctx-pill::before { content: ''; position: fixed; inset: 0; z-in
   opacity: 0.45;
   pointer-events: none;
 }
+/* 把關模式（2026-10 設計畫布）：取消勾選的那筆整張變淡；手機一次一則蓋滿畫面時鎖住後面的頁面；
+   「復原」在深色提示條上用琥珀字（兩種主題底色都是深的，不必 remap） */
+.review-item:has(.review-pick:not(:checked)) {
+  opacity: 0.5;
+}
+@media (max-width: 767px) {
+  html:has(.review-full),
+  html:has(.review-full) body {
+    overflow: hidden;
+  }
+  /* 底色只在手機蓋滿時要（電腦版是右欄、透明）：不用 bg-gray-50，它的深色 remap 會連電腦版一起蓋上 */
+  .review-full {
+    background: #f6f4ee; /* = gray-50 */
+  }
+}
+@media (max-width: 767px) and (prefers-color-scheme: dark) {
+  .review-full {
+    background: #111613;
+  }
+}
+.review-undo {
+  color: #f5c451;
+}
 
 /* ── 報帳收據（expense/page.tsx）：勾了才浮出「已選 N 筆 · 標成已核銷」，N 用 CSS 計數器 ── */
 .exp-list {
@@ -936,6 +959,8 @@ body:has(details[open] > .ctx-pill, .id-menu[open]) #batch {
    同一張表單裡還有沒勾的確認框，按鈕就半透明、點不到。純 CSS :has()，零 JS。
    pointer-events 只擋得住滑鼠與觸控：要連鍵盤（Enter）一起擋，勾選框本身再加 required */
 form:has([data-ack]:not(:checked)) [data-requires-ack] { opacity: 0.5; pointer-events: none; }
+/* 打字確認版（刪除群組要打出群組名）：輸入框加 data-ack-name＋required＋pattern，還沒打對（:invalid）按鈕就灰 */
+form:has([data-ack-name]:invalid) [data-requires-ack] { opacity: 0.5; pointer-events: none; }
 
 /* ── 深色模式：跟隨系統。綠偏中性色盤（提案定案），utility 整表 remap ── */
 @media (prefers-color-scheme: dark) {

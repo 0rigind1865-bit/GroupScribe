@@ -13,30 +13,41 @@ import { RelatedItems } from '../related-items';
 import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
 import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
+import { Badge } from '@/app/ui/badge';
+import { Empty } from '@/app/ui/empty';
+import { oh } from '@/org/href';
 
 export const dynamic = 'force-dynamic';
 
 // 一列只留一個動作（2026-10 設計畫布「待辦」）：左邊的圈＝完成；點列上其他地方＝從下面拉出詳情。
-// 「確認／修改／忽略」都收進詳情抽屜；待確認的不另開一區，直接在列上標「待把關」。
+// 「確認／修改／忽略」都收進詳情抽屜；待確認的不另開一區，直接在列上用琥珀虛線方框＋「待把關」標出——
+// 還沒確認 AI 抓得對不對，不給完成圈（方框＝跟「確認」同一個形狀語言，見 review-ui.tsx）。
+// 完成圈的 back 帶 ?done=：回來時下方跳「已完成『…』・復原」。
 function TaskRow({ t, back, open }: { t: any; back: string; open: string }) {
   const late = t.status === 'open' && isOverdue(t.due_at);
+  const pending = t.needs_confirmation && t.status === 'open';
+  const who = realAssignee(t.assignee);
   return (
-    <li className="flex items-center gap-3 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm">
+    <li className="flex min-h-16 items-center gap-3 px-3 py-2.5 text-sm">
       <BatchBox id={t.id} />
-      {t.status === 'open' && <TaskCircle formAction="/api/tasks/update" id={t.id} back={back} title={t.title} overdue={late} />}
-      <a href={open} className="min-w-0 flex-1 py-0.5 hover:opacity-70">
-        <span className={`block font-bold ${t.status === 'done' ? 'text-gray-500 line-through' : ''}`}>
-          {t.title}
-          {t.needs_confirmation && t.status === 'open' && (
-            <span className="ml-1.5 inline-block rounded-full bg-amber-100 px-2 py-0.5 align-middle text-[11px] font-bold text-amber-900">待把關</span>
-          )}
+      {pending ? (
+        <span aria-hidden className="grid h-7 w-7 flex-none place-items-center">
+          <span className="h-5 w-5 rounded-[5px] border-2 border-dashed border-amber-300" />
         </span>
-        {(realAssignee(t.assignee) || t.due_at) && (
-          <span className={`mt-0.5 block text-xs ${late ? 'font-bold text-red-600' : 'text-gray-600'}`}>
-            {[t.due_at && (late ? `逾期 ${fmtDate(t.due_at)}` : `期限 ${fmtDate(t.due_at)}`), realAssignee(t.assignee)].filter(Boolean).join(' · ')}
+      ) : (
+        t.status === 'open' && <TaskCircle formAction="/api/tasks/update" id={t.id} back={`${back}&done=${t.id}`} title={t.title} overdue={late} />
+      )}
+      <a href={open} className="min-w-0 flex-1 py-0.5 hover:opacity-70">
+        <span className={`block text-[15px] font-bold ${t.status === 'done' ? 'text-gray-500 line-through' : ''}`}>{t.title}</span>
+        {(who || t.due_at) && (
+          <span className="mt-0.5 block text-[13px] text-gray-600">
+            {t.due_at && <span className={late ? 'font-bold text-red-700' : ''}>{late ? `逾期 ${fmtDate(t.due_at)}` : `期限 ${fmtDate(t.due_at)}`}</span>}
+            {t.due_at && who && ' · '}
+            {who}
           </span>
         )}
       </a>
+      {pending && <Badge tone="warn">待把關</Badge>}
       {t.status !== 'open' && (
         <form action="/api/tasks/update" method="post" className="flex-none">
           <input type="hidden" name="id" value={t.id} />
@@ -55,7 +66,7 @@ export default async function TasksPage({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ group?: string; task?: string; view?: string; from?: string }>;
+  searchParams: Promise<{ group?: string; task?: string; view?: string; from?: string; filter?: string; done?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await routeParams;
@@ -90,17 +101,26 @@ export default async function TasksPage({
           .order('created_at')
       ).data ?? [];
   }
-  // 依期限分組（逾期／7 天內／之後／沒有期限）；查詢已照期限排好
+  // 篩選（設計稿：全部／逾期 N／沒人負責），選了就生效；再依期限分組（逾期／7 天內／之後／沒有期限），查詢已照期限排好
   const today = todayISO();
   const in7 = addDays(today, 7);
+  const filter = params.filter === 'overdue' || params.filter === 'unassigned' ? params.filter : '';
+  const overdueCount = tasks.filter((t) => isOverdue(t.due_at, today)).length;
+  const shown =
+    filter === 'overdue' ? tasks.filter((t) => isOverdue(t.due_at, today)) : filter === 'unassigned' ? tasks.filter((t) => !realAssignee(t.assignee)) : tasks;
   const buckets = archived
     ? []
     : [
-        { title: '逾期', tone: 'text-red-700', rows: tasks.filter((t) => isOverdue(t.due_at, today)) },
-        { title: '7 天內', tone: '', rows: tasks.filter((t) => t.due_at && t.due_at >= today && t.due_at <= in7) },
-        { title: '之後', tone: '', rows: tasks.filter((t) => t.due_at && t.due_at > in7) },
-        { title: '沒有期限', tone: '', rows: tasks.filter((t) => !t.due_at) },
+        { title: '逾期', tone: 'text-red-700', rows: shown.filter((t) => isOverdue(t.due_at, today)) },
+        { title: '7 天內', tone: '', rows: shown.filter((t) => t.due_at && t.due_at >= today && t.due_at <= in7) },
+        { title: '之後', tone: '', rows: shown.filter((t) => t.due_at && t.due_at > in7) },
+        { title: '沒有期限', tone: '', rows: shown.filter((t) => !t.due_at) },
       ].filter((b) => b.rows.length);
+  // 剛按完成圈的那筆（?done=）：現在還是已完成才跳「復原」，復原過或被改回就不顯示
+  const justDone =
+    group && !archived && /^[0-9a-f-]{36}$/i.test(params.done ?? '')
+      ? (await db.from('tasks').select('id, title, status').eq('id', params.done!).eq('group_id', group).maybeSingle()).data
+      : null;
 
   // 詳情（?task= 展開編輯）
   let detail: any = null;
@@ -125,7 +145,7 @@ export default async function TasksPage({
   }
 
   const g = encodeURIComponent(group ?? '');
-  const back = `/o/${slug}/tasks?group=${g}${archived ? `&view=${archived}` : ''}`;
+  const back = `/o/${slug}/tasks?group=${g}${archived ? `&view=${archived}` : ''}${filter ? `&filter=${filter}` : ''}`;
   // 從把關頁「修改」進來：關閉、存檔都回把關頁
   const from = safeFrom(slug, params.from);
   const openHref = (id: string) => `${back}&task=${id}`;
@@ -162,7 +182,7 @@ export default async function TasksPage({
         <div className="space-y-5">
           <section>
             {tasks.length ? (
-              <ul className="space-y-1.5">
+              <ul className="card divide-y divide-gray-100 p-0">
                 {tasks.map((t) => (
                   <TaskRow key={t.id} t={t} back={back} open={openHref(t.id)} />
                 ))}
@@ -184,17 +204,34 @@ export default async function TasksPage({
 
       {group && !archived && (
         <div className="space-y-5">
+          {tasks.length > 0 && (
+            <nav aria-label="篩選" className="segmented grid w-full grid-cols-3">
+              {(
+                [
+                  ['', '全部'],
+                  ['overdue', overdueCount ? `逾期 ${overdueCount}` : '逾期'],
+                  ['unassigned', '沒人負責'],
+                ] as const
+              ).map(([f, label]) => (
+                <a key={f} href={oh(slug, '/tasks', { group, filter: f })} aria-current={filter === f ? 'page' : undefined}>
+                  {label}
+                </a>
+              ))}
+            </nav>
+          )}
           {buckets.length ? (
             buckets.map((b) => (
               <section key={b.title}>
                 <h2 className={`mb-2 section-title ${b.tone}`}>{b.title}</h2>
-                <ul className="space-y-2">
+                <ul className="card divide-y divide-gray-100 p-0">
                   {b.rows.map((t: any) => (
                     <TaskRow key={t.id} t={t} back={back} open={openHref(t.id)} />
                   ))}
                 </ul>
               </section>
             ))
+          ) : filter ? (
+            <Empty variant="filtered" title={filter === 'overdue' ? '沒有逾期的待辦' : '每一筆都有人負責'} />
           ) : (
             <div className="card text-sm text-gray-600">
               <p className="mb-1 font-bold text-gray-900">目前沒有進行中的待辦</p>
@@ -203,13 +240,30 @@ export default async function TasksPage({
           )}
           {/* 入口不帶筆數：計數本身就是噪音（principles.md 規則三） */}
           <div className="flex flex-wrap gap-4">
-            <a className="text-sm text-gray-500 underline" href={`/o/${slug}/tasks?group=${g}&view=done`}>
-              已完成的待辦 →
+            <a className="inline-flex min-h-11 items-center text-sm font-bold text-gray-600" href={`/o/${slug}/tasks?group=${g}&view=done`}>
+              看已完成的待辦 →
             </a>
-            <a className="text-sm text-gray-500 underline" href={`/o/${slug}/tasks?group=${g}&view=ignored`}>
+            <a className="inline-flex min-h-11 items-center text-sm text-gray-500" href={`/o/${slug}/tasks?group=${g}&view=ignored`}>
               已忽略的待辦 →
             </a>
           </div>
+        </div>
+      )}
+
+      {/* 按錯完成圈救得回來（principles.md：可逆性優先）：浮在底部膠囊上方，按「復原」＝重新開啟 */}
+      {justDone?.status === 'done' && (
+        <div
+          role="status"
+          className="fixed inset-x-4 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] z-[60] mx-auto flex max-w-md items-center gap-2 rounded-xl bg-gray-900 py-1 pr-1 pl-4 text-sm text-white shadow-lg ring-1 ring-white/15 md:bottom-6"
+        >
+          <span className="min-w-0 flex-1 py-2 break-words">已完成「{justDone.title}」</span>
+          <form action="/api/tasks/update" method="post" className="flex-none">
+            <input type="hidden" name="id" value={justDone.id} />
+            <input type="hidden" name="back" value={back} />
+            <button className="review-undo min-h-11 rounded-lg px-3 font-bold" name="action" value="reopen">
+              復原
+            </button>
+          </form>
         </div>
       )}
 
@@ -227,7 +281,7 @@ export default async function TasksPage({
         >
           <form action="/api/tasks/update" method="post" className="space-y-3 text-sm">
             <input type="hidden" name="id" value={detail.id} />
-            <input type="hidden" name="back" value={from ?? back} />
+            <input type="hidden" name="back" value={from ?? `${back}&done=${detail.id}`} />
             <label className="block">
               <span className="label">內容</span>
               <input className="input mt-1 block w-full" name="title" defaultValue={detail.title} required />

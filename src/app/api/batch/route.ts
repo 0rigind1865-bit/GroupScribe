@@ -7,6 +7,7 @@ import { gsAccess } from '@/org/orgs';
 // task/event/note：confirm（清待確認）/ ignore / restore / done（僅 task）——與單筆 update 路由同一套欄位慣例。
 // inbox：confirm / ignore / restore（ignore 後轉回時帶 ?undo=，給收件匣的「復原」橫幅用；
 //        勾選的帶 kind:id，「選取全部 N 筆」帶 all@<毫秒>＝那次 update 寫進 updated_at 的時間）。
+//        confirm 另收把關卡上直接改的欄位（欄位:kind:id），見 reviewEdits。
 // file：project（指定專案）/ delete（需勾確認，沒勾回 400 講清楚；連 Storage 原檔一併刪除）。
 export async function POST(req: NextRequest) {
   const form = await req.formData();
@@ -62,6 +63,16 @@ export async function POST(req: NextRequest) {
     for (const raw of ids) {
       const [k, id] = raw.split(':');
       if (Object.hasOwn(TABLE, k) && id) byKind.set(k, [...(byKind.get(k) ?? []), id]);
+    }
+    // 把關頁直接改的欄位（name＝欄位:kind:id，掛在確認表單上）：勾選的那幾筆先照改，下面再一起清待確認
+    if (action === 'confirm') {
+      for (const [k, list] of byKind)
+        for (const id of list) {
+          const patch = reviewEdits(form, k, id);
+          if (!Object.keys(patch).length) continue;
+          const { error } = await db.from(TABLE[k]).update({ ...patch, updated_at: now }).eq('id', id).in('group_id', access.groupIds);
+          if (error) console.error('把關改欄位失敗', k, id, error);
+        }
     }
     for (const [k, list] of byKind) {
       // restore＝收件匣「已忽略…」橫幅的「復原」：只動目前還是 ignored 的，不會把別處完成的待辦翻回進行中
@@ -148,4 +159,27 @@ export async function POST(req: NextRequest) {
     }
   }
   return redirectTo(back);
+}
+
+// 把關卡上改過的欄位 → 該表的 patch。只寫有送來的欄位；標題留空＝不改，其餘清空＝移除（同各自 update 路由的 save）
+function reviewEdits(form: FormData, k: string, id: string): Record<string, unknown> {
+  const get = (f: string) => {
+    const v = form.get(`${f}:${k}:${id}`);
+    return v === null ? null : String(v).trim();
+  };
+  const DATE = /^\d{4}-\d{2}-\d{2}$/;
+  const p: Record<string, unknown> = {};
+  const title = get('title');
+  if (title) p.title = title;
+  if (k === 'event') {
+    const [date, time, loc] = [get('date'), get('time'), get('location')];
+    if (date && DATE.test(date)) p.starts_at = date; // 行程一定要有日期：清空＝不改
+    if (time !== null) p.start_time = /^\d{2}:\d{2}/.test(time) ? time : null;
+    if (loc !== null) p.location = loc || null;
+  } else if (k === 'task') {
+    const [who, due] = [get('assignee'), get('due')];
+    if (who !== null) p.assignee = who || null;
+    if (due !== null) p.due_at = DATE.test(due) ? due : null;
+  }
+  return p;
 }
