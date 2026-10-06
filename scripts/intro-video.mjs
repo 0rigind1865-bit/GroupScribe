@@ -1,18 +1,21 @@
-// 產生「群記」開場動畫影片（1920×1080、60fps、9 秒、無聲）
+// 產生「群記」開場動畫影片（1920×1080、60fps、9 秒、含配樂與音效：scripts/intro-audio.mjs）
 // 故事：滿畫面亂抖的對話框（噪音）→ 暗處樹枝上一隻貓頭鷹（原本的 logo），金眼左看右看 → 亮起來、變身張翅成俯衝版（甲）、
 //      起飛一路滑翔、越來越快撲向那個重要的訊息 → 金色爪子一把扣住 → 一圈波紋把噪音清空
 //      → 放開訊息，訊息往右飛、越飛越大，變成「群記」標題；貓頭鷹收翅變回原本的 logo、退到左邊（眼睛的光熄掉）→ 英文名與標語、眨眼
 // 貓頭鷹本身的動作（張翅、變身、伸爪抓）直接用 scripts/mark-dive-open.mjs 的 owlLayer，兩支影片的動作永遠一致
-// 用法：node scripts/intro-video.mjs → public/brand/intro.mp4（加 --still 3.2 只輸出那一秒的靜態圖）
+// 用法：node scripts/intro-video.mjs → public/brand/intro.mp4（加 --still 3.2 只輸出那一秒的靜態圖；--audio 只重做配樂；--wav 檔名 只輸出配樂試聽）
 // 流程：每一格算好位置寫成 SVG → sharp 轉 PNG → macOS 內建 AVFoundation（swift）壓成 H.264 MP4，不用裝 ffmpeg
 import sharp from 'sharp';
-import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { writeFileSync, mkdtempSync, rmSync, copyFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { owlLayer, bubbleSvg, eyesAt, BUBBLE_C, TIMES } from './mark-dive-open.mjs';
+import { renderIntroAudio, writeWav } from './intro-audio.mjs';
 
-const W = 1920, H = 1080, FPS = 60, DUR = 9;
+const W = 1920, H = 1080, FPS = 60;
+export const DUR = 9;
 const OUT = 'public/brand/intro.mp4';
 const BG = '#0b4a38', IVORY = '#f6f4ee', GOLD = '#d4b26a', MINT = '#e3ece5', NOISE_C = '#5b927d';
 
@@ -45,7 +48,7 @@ const stoop = (x, k = 0.78) => (x <= k ? (x * x) / k : k + (2 / (1 - k)) * (x - 
 
 // ── 時間軸（秒）：停在樹枝上、眼睛左右看 → TRANS 變身張翅 → FLY0 起飛、一路滑翔俯衝 → GRAB 爪子扣住訊息
 //    → REL 放開訊息、訊息往右飛、越飛越大 → ARRIVE 訊息變成標題；同時 BACK 收翅變回原本的 logo、退到左邊
-const TRANS = 2.0, FLY0 = 2.2, GRAB = 4.4, REL = 5.1, BACK = 5.3, BACK_D = 1.2, ARRIVE = 6.3;
+const TRANS = 2.0, FLY0 = 2.2, GRAB = 4.4, HIT = GRAB + 0.15, REL = 5.1, BACK = 5.3, BACK_D = 1.2, ARRIVE = 6.3, LOCK = 1.6;
 const T0 = TIMES.CAM[0], T1 = TIMES.RAISE[0] + TIMES.RAISE[1]; // 貓頭鷹動畫裡：變身開始、張翅完成
 // 舞台時間 → 貓頭鷹（mark-dive-open）的身體時間：變身照原速；飛行中停在張翅完成的樣子；最後倒著播回原本的 logo
 const owlT = (t) => (t < BACK ? Math.min(T1, T0 + Math.max(0, t - TRANS)) : T1 - (T1 - T0) * inOutCubic(prog(t, BACK, BACK_D)));
@@ -54,6 +57,8 @@ const ext = (t) => (t < REL + 0.1 ? inOutCubic(prog(t, GRAB - 0.45, 0.45)) : 1 -
 const close = (t) => outBack(prog(t, GRAB, 0.22)) * (1 - 0.6 * inOutCubic(prog(t, REL - 0.05, 0.15)));
 const pullK = (t) => outBack(prog(t, GRAB + 0.1, 0.45));
 const BLINKS = [1.25, 7.6]; // 眨眼：停在樹枝上時一次、結尾一次
+// 給配樂用的時間點（音效對準畫面）；LOOKS＝眼睛往左、往右看的時刻與方向
+export const INTRO_TIMES = { TRANS, FLY0, GRAB, HIT, REL, BACK, BACK_D, ARRIVE, LOCK, BLINKS, LOOKS: [[0.6, -0.3], [1.35, 0.3]] };
 const f1 = (n) => +n.toFixed(2);
 const look = (t) => 2.8 * keys([[0.3, 0], [0.7, -1], [1.15, -1], [1.45, 1], [1.85, 1], [2.1, 0]])(t); // 停在樹枝上時眼睛左看、右看
 
@@ -97,7 +102,7 @@ const NOISE = Array.from({ length: 170 }, () => ({
 
 function frame(t) {
   // ── 噪音對話框：亂抖、閃爍；抓住那刻從訊息擴散一圈波紋，波紋掃過的地方全部清空
-  const HIT = GRAB + 0.15, wave = 2300 * outCubic(prog(t, HIT, 1.1));
+  const wave = 2300 * outCubic(prog(t, HIT, 1.1));
   const noise = NOISE.map((n) => {
     const d = Math.hypot(n.x - SIGNAL[0], n.y - SIGNAL[1]);
     const a = n.a * (0.6 + 0.4 * Math.sin(t * 7 + n.p * 3)) * clamp(t / 0.8) * (t < HIT ? 1 : clamp((d - wave) / 60));
@@ -108,7 +113,7 @@ function frame(t) {
 
   // ── 訊息＋瞄準圈：貓頭鷹盯上它之後瞄準圈慢慢縮小，扣住那刻鎖死、交給貓頭鷹
   const [sx, sy] = SIGNAL, held = t >= GRAB, flying = t >= REL;
-  const lock = clamp((t - 1.6) / 0.4) * (1 - prog(t, GRAB - 0.15, 0.2));
+  const lock = clamp((t - LOCK) / 0.4) * (1 - prog(t, GRAB - 0.15, 0.2));
   const r = lerp(150, 62, inOutSine(prog(t, 1.6, GRAB - 1.8)));
   const ticks = [[0, -1], [1, 0], [0, 1], [-1, 0]].map(([a, b]) => `<line x1="${sx + a * r}" y1="${sy + b * r}" x2="${sx + a * (r + 16)}" y2="${sy + b * (r + 16)}"/>`).join('');
   const lockRing = `<g stroke="${GOLD}" stroke-width="2" fill="none" opacity="${lock * 0.8}"><circle cx="${sx}" cy="${sy}" r="${r}"/>${ticks}</g>`;
@@ -163,6 +168,7 @@ ${title}${latin}${tagline}${fly}
 </svg>`;
 }
 
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
 // 只輸出一張靜態圖檢查構圖：node scripts/intro-video.mjs --still 4.5 [輸出檔名]
 const stillAt = process.argv.indexOf('--still');
 if (stillAt > 0) {
@@ -172,9 +178,17 @@ if (stillAt > 0) {
   process.exit(0);
 }
 
+// --wav 檔名：只輸出配樂 WAV（試聽用）
+const wavAt = process.argv.indexOf('--wav');
+if (wavAt > 0) { const out = process.argv[wavAt + 1] ?? 'intro-audio.wav'; writeWav(out, renderIntroAudio(INTRO_TIMES, DUR)); console.log(out); process.exit(0); }
+
 const dir = mkdtempSync(join(tmpdir(), 'intro-'));
+const VIDEO = join(dir, 'video.mp4');
+// --audio：只重做配樂、換掉現有 intro.mp4 的聲音（畫面不重畫）
+const audioOnly = process.argv.includes('--audio');
+if (audioOnly) copyFileSync(OUT, VIDEO);
 const N = Math.round(DUR * FPS);
-for (let i = 0; i < N; i += 8) {
+for (let i = 0; !audioOnly && i < N; i += 8) {
   await Promise.all(Array.from({ length: Math.min(8, N - i) }, (_, k) =>
     sharp(Buffer.from(frame((i + k) / FPS))).png().toFile(join(dir, `f${String(i + k).padStart(4, '0')}.png`))));
   process.stdout.write(`\r畫格 ${Math.min(i + 8, N)}/${N}`);
@@ -207,7 +221,35 @@ input.markAsFinished()
 let done = DispatchSemaphore(value: 0); w.finishWriting { done.signal() }; done.wait()
 if w.status != .completed { print(w.error!); exit(1) }
 `);
-console.log('\n壓縮成 MP4…');
-execFileSync('swift', [join(dir, 'encode.swift'), dir, OUT, String(FPS), String(N)], { stdio: 'inherit' });
+if (!audioOnly) { console.log('\n壓縮成 MP4…'); execFileSync('swift', [join(dir, 'encode.swift'), dir, VIDEO, String(FPS), String(N)], { stdio: 'inherit' }); }
+
+// 配樂：合成 WAV → macOS 內建 afconvert 轉成 AAC → 跟畫面合在一起（畫面不重新壓縮）
+console.log('配樂…');
+writeWav(join(dir, 'audio.wav'), renderIntroAudio(INTRO_TIMES, DUR));
+execFileSync('afconvert', ['-f', 'm4af', '-d', 'aac', '-b', '192000', join(dir, 'audio.wav'), join(dir, 'audio.m4a')]);
+writeFileSync(join(dir, 'mux.swift'), `
+import AVFoundation
+let a = CommandLine.arguments
+let v = AVURLAsset(url: URL(fileURLWithPath: a[1])), au = AVURLAsset(url: URL(fileURLWithPath: a[2])), out = URL(fileURLWithPath: a[3])
+let done = DispatchSemaphore(value: 0)
+Task {
+  do {
+    let comp = AVMutableComposition(), dur = try await v.load(.duration)
+    let vt = try await v.loadTracks(withMediaType: .video)[0], at = try await au.loadTracks(withMediaType: .audio)[0]
+    try comp.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)!.insertTimeRange(CMTimeRange(start: .zero, duration: dur), of: vt, at: .zero)
+    let adur = try await au.load(.duration)
+    try comp.addMutableTrack(withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)!.insertTimeRange(CMTimeRange(start: .zero, duration: CMTimeMinimum(dur, adur)), of: at, at: .zero)
+    try? FileManager.default.removeItem(at: out)
+    let ex = AVAssetExportSession(asset: comp, presetName: AVAssetExportPresetPassthrough)!
+    ex.outputURL = out; ex.outputFileType = .mp4
+    await ex.export()
+    if ex.status != .completed { print(ex.error!); exit(1) }
+  } catch { print(error); exit(1) }
+  done.signal()
+}
+done.wait()
+`);
+execFileSync('swift', [join(dir, 'mux.swift'), VIDEO, join(dir, 'audio.m4a'), OUT], { stdio: 'inherit' });
 rmSync(dir, { recursive: true });
 console.log(`完成：${OUT}`);
+}
