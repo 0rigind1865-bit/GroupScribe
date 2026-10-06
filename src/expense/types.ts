@@ -12,6 +12,7 @@ export type ExpenseItem = {
   spent_at: string | null; // ISO；舊資料或還沒貼 migration 027 時為 null
   place_name: string;
   reimbursed: boolean;
+  submitted: boolean; // 員工按過「申請核銷」（migration 030）
   photo: string | null;
   person: string;
 };

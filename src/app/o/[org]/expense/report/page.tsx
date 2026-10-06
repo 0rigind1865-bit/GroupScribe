@@ -5,6 +5,7 @@ import { Banner } from '@/app/ui/banner';
 import { Empty } from '@/app/ui/empty';
 import { StatGrid } from '@/app/ui/stat';
 import { expenseQuery, sumBy, type ExpenseFilter, type ExpenseRow } from '@/expense/query';
+import { isSubmitted } from '@/expense/items';
 import { SetupNotice } from '../../(admin)/setup-notice';
 
 export const dynamic = 'force-dynamic';
@@ -61,7 +62,7 @@ export default async function ExpenseReport({
   const rows = (data ?? []) as unknown as ExpenseRow[];
   const projects = [...new Set((all ?? []).map((r) => r.project as string))].sort();
   const total = rows.reduce((n, r) => n + r.amount, 0);
-  const open = rows.filter((r) => !r.reimbursed_at).reduce((n, r) => n + r.amount, 0);
+  const open = rows.filter((r) => !r.reimbursed_at && isSubmitted(r)).reduce((n, r) => n + r.amount, 0);
   const qs = new URLSearchParams({ org: slug, status: f.status ?? 'all', ...(f.project ? { project: f.project } : {}), ...(f.month ? { month: f.month } : {}) });
 
   return (

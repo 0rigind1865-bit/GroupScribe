@@ -9,6 +9,7 @@ import { StatGrid } from '@/app/ui/stat';
 import { PAY_METHODS } from '@/expense/receipt';
 import { orgCategories } from '@/expense/categories';
 import { expenseQuery, type ExpenseFilter, type ExpenseRow } from '@/expense/query';
+import { isSubmitted } from '@/expense/items';
 import { SetupNotice } from '../(admin)/setup-notice';
 
 export const dynamic = 'force-dynamic';
@@ -77,7 +78,7 @@ export default async function ExpenseList({
     // exp-list：globals.css 用 CSS 計數器數勾了幾筆，寫進底部浮出的「已勾 N 筆」
     <main className="page exp-list">
       <h1 className="mb-1">收據</h1>
-      <p className="mb-3 text-sm text-gray-600">員工在 LINE 私訊群記一張收據照，就會自動記在這裡。</p>
+      <p className="mb-3 text-sm text-gray-600">員工記好、按了「申請核銷」，就會出現在「還沒核銷」；還沒申請的在「全部」看得到。</p>
       <Flash
         sp={sp}
         dict={{
@@ -188,7 +189,7 @@ export default async function ExpenseList({
                       <span className="text-lg font-semibold tabular-nums">{money(r.amount)}</span>
                       <span className="text-sm text-gray-600">{r.category}</span>
                       {r.pay_method && r.pay_method !== '代墊' && <span className="text-xs text-gray-500">{r.pay_method}</span>}
-                      {r.reimbursed_at ? <Badge tone="ok">已核銷</Badge> : <Badge tone="warn">還沒核銷</Badge>}
+                      {r.reimbursed_at ? <Badge tone="ok">已核銷</Badge> : isSubmitted(r) ? <Badge tone="warn">還沒核銷</Badge> : <Badge tone="neutral">員工還沒申請</Badge>}
                     </div>
                     <p className="truncate text-sm text-gray-600">
                       {md(r.spent_on)}

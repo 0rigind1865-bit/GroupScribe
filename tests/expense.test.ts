@@ -294,7 +294,7 @@ test('離線暫存：滿了不收、補送成功才移除、送失敗就停在�
 import { toCsv } from '../src/expense/csv';
 
 test('toCsv：新到舊、含時間與付款方式、表尾小計只列 >0 的付款方式、逗號跳脫', () => {
-  const base = { vendor: '', project: 'A 案', invoice_no: '', place_name: '', reimbursed: false, photo: null, person: '小明' };
+  const base = { vendor: '', project: 'A 案', invoice_no: '', place_name: '', reimbursed: false, submitted: true, photo: null, person: '小明' };
   const csv = toCsv(
     [
       { ...base, id: '1', amount: 100, category: '餐飲', note: '便當, 飲料', pay_method: '代墊', spent_on: '2026-09-25', spent_at: '2026-09-25T04:30:00.000Z' },
@@ -309,4 +309,12 @@ test('toCsv：新到舊、含時間與付款方式、表尾小計只列 >0 的�
   assert.ok(lines.includes('合計,,,,,150'));
   assert.ok(lines.includes('代墊請款,,,,,100'));
   assert.ok(!lines.some((l) => l.startsWith('現金')));
+});
+
+test('isSubmitted：按過申請、或已核銷才算；還沒貼 030（沒這欄）一律算已申請', async () => {
+  const { isSubmitted } = await import('../src/expense/items');
+  assert.equal(isSubmitted({ submitted_at: null, reimbursed_at: null }), false);
+  assert.equal(isSubmitted({ submitted_at: '2026-10-06T01:00:00Z', reimbursed_at: null }), true);
+  assert.equal(isSubmitted({ submitted_at: null, reimbursed_at: '2026-10-06T01:00:00Z' }), true);
+  assert.equal(isSubmitted({ reimbursed_at: null }), true);
 });

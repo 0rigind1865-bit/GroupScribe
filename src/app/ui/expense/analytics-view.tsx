@@ -22,9 +22,24 @@ const PAY_COLOR: Record<string, string> = { 代墊: '#d9773a', 公司卡: '#5b7f
 const ym = (e: ExpenseItem) => e.spent_on.slice(0, 7);
 const nowYm = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Taipei' }).slice(0, 7);
 
-export function AnalyticsView({ items, icons, projectLabel = '專案' }: { items: ExpenseItem[]; icons: Record<string, string>; projectLabel?: string }) {
+// project／onProject 可不給（後台）；員工 App 給，讓「我的清單」選的專案帶過來（看花費分析）
+export function AnalyticsView({
+  items,
+  icons,
+  projectLabel = '專案',
+  project: pinned,
+  onProject,
+}: {
+  items: ExpenseItem[];
+  icons: Record<string, string>;
+  projectLabel?: string;
+  project?: string;
+  onProject?: (p: string) => void;
+}) {
   const [period, setPeriod] = useState<Period>('all');
-  const [project, setProject] = useState('');
+  const [own, setOwn] = useState('');
+  const project = pinned ?? own;
+  const setProject = onProject ?? setOwn;
   const projects = useMemo(() => [...new Set(items.map((e) => e.project).filter(Boolean))], [items]);
   const byProject = useMemo(() => (project ? items.filter((e) => e.project === project) : items), [items, project]);
   const filtered = useMemo(() => {

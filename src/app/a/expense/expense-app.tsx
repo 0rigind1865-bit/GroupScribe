@@ -12,7 +12,7 @@ import { flushOutbox, readOutbox } from '@/expense/outbox';
 import { Sheet, Toast } from '@/app/ui/expense/sheet';
 import { AnalyticsView } from '@/app/ui/expense/analytics-view';
 import { AddView, type Loc } from './add-view';
-import { ListView } from './list-view';
+import { ListView, NONE } from './list-view';
 import { ReportView } from './report-view';
 
 // 我的報帳 App 外殼（從 Snaptab AppShell 搬來）：四個分頁（記一筆／清單／報帳／分析）、自動定位＋附近地點、
@@ -77,6 +77,7 @@ export function ExpenseApp({
   const [candidates, setCandidates] = useState<string[]>([]);
   const [showPlaces, setShowPlaces] = useState(false);
   const [pending, setPending] = useState(0);
+  const [proj, setProj] = useState(''); // 我的清單與分析共用的專案篩選
 
   useEffect(() => setCategories(initialCats), [initialCats]);
   useEffect(() => setProjects((p) => [...new Set([...initialProjects, ...p])]), [initialProjects]);
@@ -190,13 +191,13 @@ export function ExpenseApp({
           />
         </div>
         <div hidden={tab !== 'list'}>
-          <ListView items={items} categories={categories} projects={projects} onToast={showToast} onChanged={() => router.refresh()} />
+          <ListView items={items} categories={categories} projects={projects} proj={proj} onProj={setProj} onToast={showToast} onChanged={() => router.refresh()} />
         </div>
         <div hidden={tab !== 'report'}>
           <ReportView items={items} categories={categories} onToast={showToast} />
         </div>
         <div hidden={tab !== 'analytics'}>
-          <AnalyticsView items={items} icons={icons} projectLabel="專案" />
+          <AnalyticsView items={items} icons={icons} projectLabel="專案" project={proj === NONE ? '' : proj} onProject={setProj} />
         </div>
       </div>
 

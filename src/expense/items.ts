@@ -16,6 +16,7 @@ export function rowToItem(r: Record<string, any>, photo: string | null = null): 
     spent_at: r.spent_at ?? null,
     place_name: r.place_name ?? '',
     reimbursed: !!r.reimbursed_at,
+    submitted: isSubmitted(r),
     photo,
     person: r.person_name ?? '',
   };
@@ -23,3 +24,6 @@ export function rowToItem(r: Record<string, any>, photo: string | null = null): 
 
 /** 收據照片在哪：網頁上傳的在 photo_path、私訊的在 media_assets */
 export const photoPathOf = (r: Record<string, any>): string | null => r.photo_path ?? r.media_assets?.storage_path ?? null;
+
+/** 員工按過「申請核銷」了嗎：核銷過的一定算；還沒貼 migration 030（沒這欄）時全部算已申請，照舊 */
+export const isSubmitted = (r: Record<string, any>): boolean => r.submitted_at !== null || !!r.reimbursed_at;

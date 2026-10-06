@@ -11,27 +11,33 @@ import { Lightbox, Sheet } from '@/app/ui/expense/sheet';
 
 // 我的清單（從 Snaptab ListView／EditExpenseModal 搬來）：依專案分組＋小計，組照最新一筆排、組內新到舊。
 // 點一列開編輯；公司已核銷的鎖定（多人共用下，改了會讓會計對不上帳）。
-// 用詞（2026-10）：員工這邊記好＝「已申請」；公司處理好＝代墊「錢已發還」、公司卡／現金「公司已核銷」。
-const NONE = '\u0000none'; // 「沒選專案」籤的值：不會跟真的專案名撞
+// 狀態（2026-10）：記好＝「還沒申請」→ 勾起來按「申請核銷」＝「已申請」→ 公司處理好＝代墊「錢已發還」、公司卡／現金「公司已核銷」。
+export const NONE = '\u0000none'; // 「沒選專案」籤的值：不會跟真的專案名撞
 const PAY_TONE: Record<string, string> = { 代墊: 'bg-amber-100 text-amber-900', 公司卡: 'bg-sky-100 text-sky-900', 現金: 'bg-emerald-100 text-emerald-900' };
 
 export function ListView({
   items,
   categories,
   projects,
+  proj,
+  onProj,
   onToast,
   onChanged,
 }: {
   items: ExpenseItem[];
   categories: CategoryItem[];
   projects: string[];
+  /** 專案篩選（2026-10 設計畫布「我的清單」）：''＝所有專案、NONE＝記的時候沒選專案的；跟「分析」分頁共用 */
+  proj: string;
+  onProj: (p: string) => void;
   onToast: (m: string) => void;
   onChanged: () => void;
 }) {
   const [editing, setEditing] = useState<ExpenseItem | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
-  // 專案篩選（2026-10 設計畫布「我的清單」）：''＝所有專案、NONE＝記的時候沒選專案的
-  const [proj, setProj] = useState('');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
+  const setProj = onProj;
   const icon = (name: string) => categories.find((c) => c.name === name)?.icon ?? 'tag';
 
   if (!items.length) return <Empty title="還沒有任何紀錄" hint="到「記一筆」記第一筆，或把收據拍照私訊給群記。" />;
@@ -44,7 +50,30 @@ export function ListView({
   const sorted = [...shown].sort((a, b) => itemTime(b) - itemTime(a));
   const groups = new Map<string, ExpenseItem[]>();
   for (const e of sorted) groups.set(e.project || '沒選專案', [...(groups.get(e.project || '沒選專案') ?? []), e]);
-  const owed = shown.filter((e) => !e.reimbursed);
+  const draft = shown.filter((e) => !e.submitted); // 還沒申請：可以勾
+  const owed = shown.filter((e) => e.submitted && !e.reimbursed); // 已申請、等公司
+  const pickedRows = draft.filter((e) => picked.has(e.id)); // 只算看得到的：換專案籤後不會偷送別的專案
+  const sum = (rows: ExpenseItem[]) => fmtMoney(rows.reduce((a, r) => a + r.amount, 0));
+  const toggle = (id: string) =>
+    setPicked((p) => {
+      const n = new Set(p);
+      if (!n.delete(id)) n.add(id);
+      return n;
+    });
+  const submit = async () => {
+    const fd = new FormData();
+    fd.set('action', 'submit');
+    pickedRows.forEach((r) => fd.append('id', r.id));
+    setSending(true);
+    const r = await fetch('/api/liff/expense/mine', { method: 'POST', body: fd })
+      .then((x) => x.json())
+      .catch(() => ({ ok: false, error: '沒有網路' }));
+    setSending(false);
+    if (!r.ok) return onToast(`✗ ${r.error ?? '送出失敗'}`);
+    onToast(`✓ 已申請核銷 ${r.n} 筆`);
+    setPicked(new Set());
+    onChanged();
+  };
   const chips = [{ v: '', label: '所有專案' }, ...names.map((n) => ({ v: n, label: n })), ...(hasNone ? [{ v: NONE, label: '沒選專案' }] : [])];
 
   return (
@@ -67,15 +96,28 @@ export function ListView({
           ))}
         </div>
       )}
-      <p className="text-sm text-gray-600">
-        {owed.length ? (
-          <>
-            已申請、等公司核銷 <b className="text-gray-900 tabular-nums">${fmtMoney(owed.reduce((a, r) => a + r.amount, 0))}</b>・{owed.length} 筆
-          </>
-        ) : (
-          '都核銷了'
+      <div className="card space-y-1.5 text-sm text-gray-600">
+        {draft.length > 0 && (
+          <p className="flex items-center gap-2">
+            <span className="flex-1">
+              還沒申請 <b className="text-gray-900 tabular-nums">${sum(draft)}</b>・{draft.length} 筆
+            </span>
+            <button type="button" className="btn btn-sm" onClick={() => setPicked(pickedRows.length === draft.length ? new Set() : new Set(draft.map((e) => e.id)))}>
+              {pickedRows.length === draft.length ? '全不勾' : '全勾'}
+            </button>
+          </p>
         )}
-      </p>
+        {owed.length > 0 && (
+          <p>
+            已申請、等公司核銷 <b className="text-gray-900 tabular-nums">${sum(owed)}</b>・{owed.length} 筆
+          </p>
+        )}
+        {!draft.length && !owed.length && <p>都核銷了</p>}
+        {/* 帶著上面選的專案去「分析」分頁（同一個 ExpenseApp，專案狀態共用） */}
+        <a href="/a/expense?tab=analytics" className="inline-flex min-h-11 items-center font-bold text-emerald-800">
+          看花費分析 →
+        </a>
+      </div>
       {[...groups].map(([name, rows]) => (
         <section key={name}>
           <p className="mb-1.5 flex items-baseline text-sm font-medium text-gray-600">
@@ -92,8 +134,20 @@ export function ListView({
                   tabIndex={0}
                   onClick={() => setEditing(r)}
                   onKeyDown={(e) => e.key === 'Enter' && setEditing(r)}
-                  className={`card flex cursor-pointer items-center gap-3 ${r.reimbursed ? 'opacity-60' : ''}`}
+                  className={`card flex cursor-pointer items-center gap-3 ${r.reimbursed ? 'opacity-60' : ''} ${picked.has(r.id) && !r.submitted ? 'ring-2 ring-emerald-600' : ''}`}
                 >
+                  {/* 還沒申請的才能勾；勾框自成 44px 點擊區，點它不會打開編輯 */}
+                  {!r.submitted && (
+                    <label className="-my-2 -ml-2 grid h-11 w-11 flex-none cursor-pointer place-items-center" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 accent-emerald-700"
+                        checked={picked.has(r.id)}
+                        onChange={() => toggle(r.id)}
+                        aria-label={`勾選 ${r.category} ${fmtMoney(r.amount)}`}
+                      />
+                    </label>
+                  )}
                   <span className="grid h-10 w-10 flex-none place-items-center rounded-lg bg-gray-100 text-gray-700">
                     <Icon name={icon(r.category)} size={20} />
                   </span>
@@ -123,7 +177,13 @@ export function ListView({
                   </span>
                   <span className="flex flex-none flex-col items-end gap-1">
                     <span className="text-lg font-semibold tabular-nums">{fmtMoney(r.amount)}</span>
-                    {r.reimbursed ? <Badge tone="ok">{r.pay_method === '代墊' ? '錢已發還' : '公司已核銷'}</Badge> : <Badge tone="neutral">已申請</Badge>}
+                    {r.reimbursed ? (
+                      <Badge tone="ok">{r.pay_method === '代墊' ? '錢已發還' : '公司已核銷'}</Badge>
+                    ) : r.submitted ? (
+                      <Badge tone="neutral">已申請</Badge>
+                    ) : (
+                      <Badge tone="warn">還沒申請</Badge>
+                    )}
                   </span>
                 </div>
               </li>
@@ -145,6 +205,18 @@ export function ListView({
         />
       )}
       {photo && <Lightbox url={photo} onClose={() => setPhoto(null)} />}
+      {/* 勾了才浮出；浮在底部膠囊上面（同後台收據的「標成已核銷」） */}
+      {pickedRows.length > 0 && (
+        <div className="fixed inset-x-3 bottom-24 z-40 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-gray-200 bg-white py-2.5 pr-2.5 pl-4 shadow-lg">
+          <span className="flex-1 text-sm">
+            <b>已勾 {pickedRows.length} 筆</b>
+            <span className="block text-xs text-gray-500 tabular-nums">${sum(pickedRows)}</span>
+          </span>
+          <button type="button" className="btn-primary" onClick={submit} disabled={sending}>
+            {sending ? '送出中…' : '申請核銷'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

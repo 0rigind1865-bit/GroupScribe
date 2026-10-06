@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { isSubmitted } from './items';
 
 // 報帳清單的篩選（清單頁、報帳頁、CSV 匯出共用同一套，三處才不會對不上）
 export type ExpenseFilter = { status?: string; who?: string; project?: string; month?: string };
@@ -25,6 +26,7 @@ export type ExpenseRow = {
   lng?: number | null;
   place_name?: string;
   spent_at?: string | null; // v3（migration 027）
+  submitted_at?: string | null; // migration 030
 };
 
 export const isMonth = (m?: string): m is string => !!m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
@@ -34,8 +36,9 @@ export function nextMonth(m: string): string {
   return mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, '0')}`;
 }
 
-/** 回 { data, error }；error 多半是 migration 022 還沒跑 */
-export function expenseQuery(db: SupabaseClient, orgId: string, f: ExpenseFilter) {
+/** 回 { data, error }；error 多半是 migration 022 還沒跑。
+ *  「還沒核銷」只算員工按過「申請核銷」的（migration 030）；還沒申請的只在「全部」看得到 */
+export async function expenseQuery(db: SupabaseClient, orgId: string, f: ExpenseFilter) {
   let q = db
     .from('expenses')
     // * 而非列欄位名：v2 欄位（migration 023）還沒建時查詢也不會失敗
@@ -47,7 +50,9 @@ export function expenseQuery(db: SupabaseClient, orgId: string, f: ExpenseFilter
   if (f.project) q = q.eq('project', f.project);
   if (isMonth(f.month)) q = q.gte('spent_on', `${f.month}-01`).lt('spent_on', `${nextMonth(f.month)}-01`);
   // ponytail: 單頁上限 1000 筆；一家公司一個月超過再做分頁
-  return q.order('spent_on', { ascending: false }).order('created_at', { ascending: false }).limit(1000);
+  const r = await q.order('spent_on', { ascending: false }).order('created_at', { ascending: false }).limit(1000);
+  // ponytail: 在這裡濾而不是 SQL 濾——沒貼 030 時 submitted_at 不存在，SQL 會整個查詢失敗
+  return f.status !== 'done' && f.status !== 'all' ? { ...r, data: r.data?.filter(isSubmitted) ?? null } : r;
 }
 
 /** 依 key 加總（報帳頁用）：[[key, 金額合計, 筆數]]，金額大的先 */
