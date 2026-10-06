@@ -6,7 +6,8 @@ import { isGroupMember, liffUser } from '@/core/liff';
 // LIFF v2 成員寫入（計劃 B.3）：權限規則只有一條——A 群成員只能動 A 群資料。
 // 三重保護：(1) 有效的 LIFF session（LINE ID token 換來的）(2) 該 userId 確實是該群成員
 // (3) 目標項目必須屬於同一個 group_id（查詢時就綁死，跨群 id 一律找不到）。
-// 刪除群組資料與跨群聚合永遠 admin-only，此端點只做 confirm / ignore / save。
+// 刪除群組資料與跨群聚合永遠 admin-only，此端點只做 confirm / done / reopen / ignore / save，
+// 以及待辦的 mine / notmine（「是你的嗎？」的回答，只寫自己的 task_claims）。
 const TABLE = { event: 'events', task: 'tasks', note: 'notes' } as const;
 
 export async function POST(req: NextRequest) {
@@ -29,6 +30,13 @@ export async function POST(req: NextRequest) {
   // group_id 綁進查詢：別群的 id 在這裡就找不到，不必額外比對
   const { data: item } = await db.from(table).select('id').eq('id', id).eq('group_id', groupId).maybeSingle();
   if (!item) return NextResponse.json({ error: '找不到項目' }, { status: 404 });
+
+  // 「AI 猜這是你的，對嗎？」的回答：只記在自己名下（migration 034），不改待辦——負責人欄位是全群共用的
+  if (kind === 'task' && (action === 'mine' || action === 'notmine')) {
+    const { error } = await db.from('task_claims').upsert({ task_id: id, line_user_id: uid, mine: action === 'mine' });
+    if (error) console.error('LIFF 認領寫入失敗（migration 034 跑了嗎？）', error);
+    return redirectTo(error ? `${back}${back.includes('?') ? '&' : '?'}error=1` : back);
+  }
 
   const now = new Date().toISOString();
   const patch: Record<string, unknown> = { updated_at: now, edited_by: uid };
@@ -58,6 +66,8 @@ export async function POST(req: NextRequest) {
       patch.assignee = String(form.get('assignee') ?? '').trim() || null;
       const due = String(form.get('due') ?? '');
       patch.due_at = /^\d{4}-\d{2}-\d{2}$/.test(due) ? due : null;
+      // 備註欄是詳情抽屜才有的（同管理端）；沒帶這欄的舊表單不該把備註清掉
+      if (form.has('note')) patch.note = String(form.get('note') ?? '').trim() || null;
     } else {
       patch.body = String(form.get('body') ?? '').trim() || null;
     }

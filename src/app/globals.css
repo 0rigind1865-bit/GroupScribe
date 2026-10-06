@@ -1104,3 +1104,7 @@ form:has([data-ack]:not(:checked)) [data-requires-ack] { opacity: 0.5; pointer-e
   .side-groups .side-link[aria-current] { background: #e8edea; color: #1c2420; }
   .side-more--foot { border-top-color: #2a332f; }
 }
+
+/* 成員群組頁頂欄（src/app/g/[groupId]/page.tsx，2026-10 設計畫布「成員端」）：左邊「‹ 群組名」、右邊角色開關。
+   掛 .id-bar--light 是為了借角色開關的深色配色；這裡把它調回高 60、上下置中（底線與底色由頁面 utility 給） */
+.id-bar.g-head { min-height: 60px; padding: 0 12px 0 6px; }
