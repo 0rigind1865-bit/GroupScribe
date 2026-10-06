@@ -73,7 +73,7 @@
   "REQ_REJECTED": "Bị từ chối",
   "NOT_ACTIVE": "Tài khoản chưa được kích hoạt.",
   "DB_NOT_CONFIGURED": "Cơ sở dữ liệu chưa được cấu hình.",
-  "TAB_DASHBOARD": "Hôm nay",
+  "TAB_DASHBOARD": "Chấm công",
   "TAB_RECORDS": "Lịch",
   "TAB_REQUESTS": "Yêu cầu của tôi",
   "IN_RANGE": "Trong khu vực \"{name}\"",

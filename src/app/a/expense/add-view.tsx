@@ -95,7 +95,8 @@ export function AddView({
 
   const amount = evaluate(expr);
   const hasOp = OPS.some((o) => expr.includes(o));
-  const canSave = amount > 0 && !!category && !!project && !saving;
+  // 專案可以不選（2026-10 設計畫布「記一筆」）：現場先存起來最重要，專案之後在清單或管理端補
+  const canSave = amount > 0 && !!category && !saving;
   const picked = categories.find((c) => c.name === category);
 
   const setRememberPref = (on: boolean) => {
@@ -344,11 +345,7 @@ export function AddView({
         <label className="flex flex-col gap-1">
           <span className="text-xs text-gray-500">{L.project}</span>
           <select className="input" value={project} onChange={(e) => onProject(e.target.value)}>
-            {!project && (
-              <option value="" disabled>
-                請選擇專案…
-              </option>
-            )}
+            <option value="">（不選，之後再補）</option>
             {projects.map((p) => (
               <option key={p}>{p}</option>
             ))}
@@ -423,7 +420,7 @@ export function AddView({
       </button>
       {!canSave && !saving && (
         <p className="text-center text-xs text-gray-500">
-          {amount <= 0 ? '先輸入金額' : !category ? '再選一個分類' : !project ? '再選一個專案' : ''}
+          {amount <= 0 ? '先輸入金額' : !category ? '再選一個分類' : ''}
         </p>
       )}
       <label className="flex items-center gap-2 text-sm text-gray-600">

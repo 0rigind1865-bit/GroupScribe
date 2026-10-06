@@ -73,7 +73,7 @@
   "REQ_REJECTED": "Ditolak",
   "NOT_ACTIVE": "Akun belum diaktifkan.",
   "DB_NOT_CONFIGURED": "Basis data belum dikonfigurasi.",
-  "TAB_DASHBOARD": "Hari ini",
+  "TAB_DASHBOARD": "Absen",
   "TAB_RECORDS": "Kalender",
   "TAB_REQUESTS": "Permintaan Saya",
   "IN_RANGE": "Di dalam \"{name}\"",

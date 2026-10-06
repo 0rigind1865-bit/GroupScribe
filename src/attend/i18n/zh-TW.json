@@ -73,7 +73,7 @@
   "REQ_REJECTED": "已拒絕",
   "NOT_ACTIVE": "帳號尚未啟用。",
   "DB_NOT_CONFIGURED": "系統尚未設定資料庫。",
-  "TAB_DASHBOARD": "今天",
+  "TAB_DASHBOARD": "打卡",
   "TAB_RECORDS": "月曆",
   "TAB_REQUESTS": "我的申請",
   "IN_RANGE": "在「{name}」範圍內",

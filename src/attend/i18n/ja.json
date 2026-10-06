@@ -73,7 +73,7 @@
   "REQ_REJECTED": "却下",
   "NOT_ACTIVE": "アカウントはまだ有効化されていません。",
   "DB_NOT_CONFIGURED": "データベースが未設定です。",
-  "TAB_DASHBOARD": "今日",
+  "TAB_DASHBOARD": "打刻",
   "TAB_RECORDS": "カレンダー",
   "TAB_REQUESTS": "申請履歴",
   "IN_RANGE": "「{name}」の範囲内",

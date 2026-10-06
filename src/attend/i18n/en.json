@@ -73,7 +73,7 @@
   "REQ_REJECTED": "Rejected",
   "NOT_ACTIVE": "Account not activated yet.",
   "DB_NOT_CONFIGURED": "Database is not configured yet.",
-  "TAB_DASHBOARD": "Today",
+  "TAB_DASHBOARD": "Clock in",
   "TAB_RECORDS": "Calendar",
   "TAB_REQUESTS": "My Requests",
   "IN_RANGE": "Inside \"{name}\"",
