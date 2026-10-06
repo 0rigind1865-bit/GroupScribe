@@ -19,7 +19,7 @@ async function main() {
   const { data: org } = await db.from('orgs').select('id').eq('slug', slug).maybeSingle();
   if (!org) throw new Error(`找不到 org：${slug}（先跑 migration 012）`);
 
-  const json = JSON.parse(readFileSync(join(__dirname, 'holidays-tw.json'), 'utf8'));
+  const json = JSON.parse(readFileSync(join(__dirname, '..', 'src', 'attend', 'holidays-tw.json'), 'utf8'));
   const rows: { org_id: string; day: string; kind: string; name: string }[] = [];
   for (const year of Object.keys(json)) {
     if (year.startsWith('_')) continue;

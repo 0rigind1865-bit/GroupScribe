@@ -6,7 +6,8 @@ import { liffUser } from '@/core/liff';
 import { currentRuleSet, parseRules } from '@/attend/rules-store';
 import { runDayScript } from '@/attend/sandbox';
 import { DEFAULT_RULES } from '@/attend/rules-default';
-import TW_HOLIDAYS from '../../../../../scripts/holidays-tw.json';
+// 放在 src/：Docker 建置會忽略 scripts/（.dockerignore），放那裡正式站 build 會失敗
+import TW_HOLIDAYS from '@/attend/holidays-tw.json';
 
 // 薪資規則管理：存新版本（append-only）＋ 假日增刪。
 // 存檔前先用沙箱對一筆樣本資料試跑腳本——爛腳本在存檔當下就被擋下，
