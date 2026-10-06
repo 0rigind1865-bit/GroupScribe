@@ -3,8 +3,8 @@
 //   背景（只在起飛前）：暗暗的小調和弦鋪底＋一片模糊的嘈雜（群組裡的雜訊）＋零星的小提示音
 //   飛行時：張翅那刻起，背景（含殘響）0.2 秒內收掉，只剩樹枝「啪」、張翅和滑翔的風聲，直到扣住
 //   貓頭鷹：眼睛左右看、眨眼是很輕的「喀」；風聲只在飛行時，收翅沒有聲音
-//   瞄準：鎖定時一聲輕輕往上的「叮」；扣住：低沉的重擊 → 波紋的「嗡」＋閃光音 → 波紋掃完才完全無聲，直到訊號音開始
-//   安靜之後只剩特效、沒有背景也沒有風聲：訊息往右飛、放大時一串越來越密的「嗶」訊號音；抵達變成標題：一聲清亮的鈴＋四個鈴音往上
+//   瞄準：鎖定時一聲輕輕往上的「叮」；扣住：低沉的重擊 → 波紋柔和的「嗡」往兩邊散開 → 波紋掃完才完全無聲，直到訊號音開始
+//   安靜之後只剩特效、沒有背景也沒有風聲：訊息往右飛、放大時四聲柔和的「叮」訊號；抵達變成標題：一聲清亮的鈴＋四個鈴音往上
 // 用法：被 scripts/intro-video.mjs 呼叫（renderIntroAudio）；只想試聽聲音：node scripts/intro-video.mjs --wav 試聽.wav
 import { writeFileSync } from 'node:fs';
 
@@ -95,21 +95,23 @@ export const renderIntroAudio = (T, dur) => {
     put(T.GRAB, 1.6, (t) => { ph += (2 * Math.PI * (40 + 55 * Math.exp(-t * 9))) / SR; return Math.sin(ph) * env(t, 0.004, 0.45); }, { gain: 0.3, send: 0.15 });
     put(T.GRAB, 0.05, (t) => (r2() * 2 - 1) * env(t, 0.0005, 0.008), { gain: 0.22 });
     [[2150, 0.55], [3410, 0.4], [5230, 0.3], [6870, 0.2]].forEach(([f, a], k) =>
-      put(T.GRAB + 0.01, 1.2, (t) => Math.sin(2 * Math.PI * f * t) * env(t, 0.002, 0.22 - 0.03 * k) * a, { gain: 0.07, pan: k % 2 ? 0.2 : -0.2, send: 0.5 })); }
+      put(T.GRAB + 0.01, 0.6, (t) => Math.sin(2 * Math.PI * f * t) * env(t, 0.002, 0.1 - 0.015 * k) * a, { gain: 0.07, pan: k % 2 ? 0.2 : -0.2, send: 0.25 })); } // 短短的就好，別一路響進無聲
 
-  // ── 波紋：從訊息往外擴散一圈：一聲往下沉的「嗡」（純音，不是風聲）＋往兩邊散開的閃光音，在 S0 前收完
-  { const r2 = makeRand(21); let ph = 0;
-    put(T.HIT, S0 - T.HIT + 0.1, (t) => { ph += (2 * Math.PI * hz(53) * (1 + Math.exp(-t * 12))) / SR; return (Math.sin(ph) + 0.5 * Math.sin(2 * ph) + 0.25 * Math.sin(3 * ph)) * env(t, 0.01, 0.18); }, { gain: 0.12, send: 0.4, fx: true });
-    for (let k = 0; k < 14; k++) { const st = T.HIT + 0.03 + k * 0.03 + r2() * 0.02, f = 2600 + r2() * 4200, p = (k % 2 ? 1 : -1) * (0.2 + 0.06 * k);
-      put(st, 0.4, (t) => Math.sin(2 * Math.PI * f * t) * env(t, 0.002, 0.08), { gain: 0.025, pan: Math.max(-1, Math.min(1, p)), send: 0.6, fx: true }); } }
+  // ── 波紋：一聲柔和的「嗡」（F、C、A 三個音疊在一起的純音，軟軟地起音、微微往下沉），
+  //    左右兩半從中間往兩邊散開＝跟著波紋往外擴；不加閃光音（太碎、太搶），比重擊小聲，在 S0 前自然收完
+  [-1, 1].forEach((side) => { let ph = 0;
+    put(T.HIT, S0 - T.HIT + 0.1, (t) => {
+      ph += (2 * Math.PI * hz(65) * (1 + 0.03 * Math.exp(-t * 10) + 0.004 * side)) / SR; // 左右差一點點音高＝比較寬、比較柔
+      return (Math.sin(ph) + 0.5 * Math.sin(1.5 * ph) + 0.15 * Math.sin(2.5 * ph)) * env(t, 0.025, 0.16);
+    }, { gain: 0.04, pan: (t) => side * 0.7 * smooth(Math.min(1, t / 0.4)), send: 0.45, fx: true }); });
 
-  // ── 訊息往右飛、越飛越大：一串短短的「嗶」訊號音（像資料在傳送），越來越密、越來越大聲，每一聲的位置跟著訊息往右；
-  //    音高在 F 大調五聲音階的高音裡跳（跟標題的鈴同調）；收翅沒有聲音（風聲只在飛行時）
-  { const len = T.ARRIVE - T.REL, r2 = makeRand(31), notes = [84, 86, 89, 91, 93];
-    for (let t = S1 - T.REL; t < len - 0.08;) {
-      const k = smooth(t / len), f = hz(notes[Math.floor(r2() * notes.length)]);
-      put(T.REL + t, 0.12, (tt) => (Math.sin(2 * Math.PI * f * tt) + 0.25 * Math.sin(4 * Math.PI * f * tt)) * env(tt, 0.002, 0.03), { gain: 0.03 + 0.06 * k, pan: 0.85 * k, send: 0.35, fx: true });
-      t += 0.12 - 0.075 * k; // 越來越密
+  // ── 訊息往右飛、越飛越大：四聲柔和的「叮」訊號（像雷達一下一下送出去），間隔慢慢變短、慢慢變大聲、位置跟著訊息往右；
+  //    都是同一個音 C6，接到標題那聲 F 的鈴＝聽起來是「送到了」；收翅沒有聲音（風聲只在飛行時）
+  { const len = T.ARRIVE - T.REL, f = hz(84);
+    for (let t = S1 - T.REL; t < len - 0.18;) {
+      const k = smooth(t / len);
+      put(T.REL + t, 0.6, (tt) => (Math.sin(2 * Math.PI * f * tt) + 0.12 * Math.sin(4 * Math.PI * f * tt)) * env(tt, 0.006, 0.12), { gain: 0.035 + 0.035 * k, pan: 0.8 * k, send: 0.5, fx: true });
+      t += 0.2 - 0.07 * k;
     } }
 
   // ── 抵達、變成標題：一聲清亮的鈴（敲擊金屬的泛音）＋四個音的琶音
