@@ -170,8 +170,8 @@ const bubbleD = mapPath(`M${bx + br} ${by}L${bx + bw - br} ${by}Q${bx + bw} ${by
 const lines = [[bx + 12, by + 11, bx + bw - 12], [bx + 12, by + 18, bx + bw - 24]].map(([x1, y, x2]) => [dive.place(x1, y), dive.place(x2, y)]);
 const bubC = dive.place(BUB.cx, BUB.top + BUB.h / 2);
 const BUB_IN = [2.3, 0.7], REACH = 10, CLOSE = [3.35, 0.22], PULL = [3.45, 0.45]; // 訊息框先停在低一點的地方，爪子伸下去抓、合起來、再往上拉回定位
-// 畫訊息框：tf＝把「靜止時的訊息框」每個點搬到哪裡、s＝縮放（字的粗細跟著縮放）
-export const bubbleSvg = (tf, s = 1, fill = IVORY) => `<path d="${mapPath(bubbleD, tf)}" fill="${fill}" stroke="${BG}" stroke-width="${f2(dive.gap * 2 * Z * s)}" paint-order="stroke" stroke-linejoin="round"/>`
+// 畫訊息框：tf＝把「靜止時的訊息框」每個點搬到哪裡、s＝縮放（字的粗細跟著縮放）、haloS＝外圈切縫的粗細用多少縮放（放很大時不要跟著變粗）
+export const bubbleSvg = (tf, s = 1, fill = IVORY, haloS = s) => `<path d="${mapPath(bubbleD, tf)}" fill="${fill}" stroke="${BG}" stroke-width="${f2(dive.gap * 2 * Z * haloS)}" paint-order="stroke" stroke-linejoin="round"/>`
   + lines.map(([a, b]) => { const p = tf(...a), q = tf(...b); return `<path d="M${f2(p[0])} ${f2(p[1])}L${f2(q[0])} ${f2(q[1])}" stroke="${BG}" stroke-width="${f2(3.6 * Z * s)}" stroke-linecap="round"/>`; }).join('');
 export const BUBBLE_C = bubC; // 訊息框靜止時的中心（512 畫布座標）
 const bubble = (t, from = BUB_IN[0], fill = IVORY) => {
@@ -210,10 +210,11 @@ const LIFT = 9; // 抓到訊息時整隻往上提一點（加上訊息框之後�
 // 整隻貓頭鷹在 t 秒的樣子（512 畫布座標、不含底色）。給開場動畫用的選項：
 //   ivory：白色部分改用的顏色（暗處由暗變亮）；bubbleFrom：從幾秒起才畫自己的訊息框（之前由外面畫）；lift：抓到時要不要往上提
 //   另外可以單獨指定（0～1）：ext 爪子伸出、close 爪子合起、pull 往上拉、tuck 尾巴收起、bubble {s, dy} 爪子上的訊息框大小與位移
-export const owlLayer = (t, { ivory = IVORY, bubbleFrom, lift: doLift = true, ext, close, pull, tuck, bubble: bub } = {}) => {
+//   look：眼睛往左（負）往右（正）看多少（只移動金色眼睛）；blink：眼睛睜開多少（1＝全開、0＝閉上）
+export const owlLayer = (t, { ivory = IVORY, bubbleFrom, lift: doLift = true, ext, close, pull, tuck, bubble: bub, look = 0, blink = 1 } = {}) => {
   OV = { ext, close, pull, tuck, bubble: bub };
   const col = (c) => (c === IVORY ? ivory : c);
-  const draw = (tr) => { const { pts, halo } = tr.draw(t); return `<path d="${pathOf(pts)}" fill="${col(tr.fill)}"${halo > 0.05 ? ` stroke="${BG}" stroke-width="${f2(halo * 2)}" paint-order="stroke" stroke-linejoin="round"` : ''}/>`; };
+  const draw = (tr) => { const { pts: p0, halo } = tr.draw(t), cy = /^eye/.test(tr.id) ? centroid(p0)[1] : 0, pts = /^eye/.test(tr.id) ? p0.map(([x, y]) => [x + look, cy + (y - cy) * blink]) : p0; return `<path d="${pathOf(pts)}" fill="${col(tr.fill)}"${halo > 0.05 ? ` stroke="${BG}" stroke-width="${f2(halo * 2)}" paint-order="stroke" stroke-linejoin="round"` : ''}/>`; };
   const chestAt = tracks.findIndex((tr) => tr.id === 'chest');
   const before = tracks.slice(0, chestAt + 1).map(draw).join(''), after = tracks.slice(chestAt + 1).map(draw).join('');
   const lift = doLift ? -LIFT * inOutCubic(prog(t, 2.3, 1.4)) : 0;
@@ -222,8 +223,13 @@ export const owlLayer = (t, { ivory = IVORY, bubbleFrom, lift: doLift = true, ex
   const camT = `translate(${f2(cc[0])} ${f2(cc[1])}) scale(${+cs.toFixed(5)}) translate(${f2(-R1[0])} ${f2(-R1[1])})`;
   return `<g transform="translate(0 ${f2(lift)}) ${camT}">${before}${bubble(t, bubbleFrom, ivory)}${feet(t)}${after}</g>`;
 };
+// 兩隻眼睛在 t 秒的中心（512 畫布座標，含鏡頭）與看起來的大小（原本 logo 的眼睛＝1）——開場動畫用來畫眼睛的光
+export const eyesAt = (t, look = 0) => {
+  const e = inOutCubic(prog(t, ...CAM)), cs = lerp(1, K_CAM, e) / K_CAM, cc = [lerp(R0[0], R1[0], e), lerp(R0[1], R1[1], e)];
+  return { pts: ['eye0', 'eye1'].map((id) => { const [x, y] = centroid(tracks.find((tr) => tr.id === id).draw(t).pts); return [cc[0] + cs * (x + look - R1[0]), cc[1] + cs * (y - R1[1])]; }), k: lerp(1, K_CAM, e) };
+};
 // 給開場動畫對時間用
-export const TIMES = { CAM, RAISE, BUB_IN, EXT, CLOSE, PULL, TILT, REACH: REACH * Z, DUR };
+export const TIMES = { CAM, RAISE, BUB_IN, EXT, CLOSE, PULL, TILT, REACH: REACH * Z, DUR, K_CAM };
 export const EYES_AT_START = [-45.5, 45.5].map((x) => [256 + 0.994 * x, 256 + 0.994 * (186 - 252.5)]); // 原本 logo 的兩隻眼睛（鏡頭還沒動時）
 const frame = (t) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${SIZE}" height="${SIZE}"><rect width="512" height="512" fill="${BG}"/>${owlLayer(t)}</svg>`;
 
