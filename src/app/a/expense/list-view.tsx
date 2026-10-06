@@ -11,6 +11,7 @@ import { Lightbox, Sheet } from '@/app/ui/expense/sheet';
 
 // 我的清單（從 Snaptab ListView／EditExpenseModal 搬來）：依專案分組＋小計，組照最新一筆排、組內新到舊。
 // 點一列開編輯；已被管理者標「已報帳」的鎖定（多人共用下，改了會讓會計對不上帳）。
+const NONE = '\u0000none'; // 「沒選專案」籤的值：不會跟真的專案名撞
 const PAY_TONE: Record<string, string> = { 代墊: 'bg-amber-100 text-amber-900', 公司卡: 'bg-sky-100 text-sky-900', 現金: 'bg-emerald-100 text-emerald-900' };
 
 export function ListView({
@@ -28,16 +29,52 @@ export function ListView({
 }) {
   const [editing, setEditing] = useState<ExpenseItem | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
+  // 專案篩選（2026-10 設計畫布「我的清單」）：''＝所有專案、NONE＝記的時候沒選專案的
+  const [proj, setProj] = useState('');
   const icon = (name: string) => categories.find((c) => c.name === name)?.icon ?? 'tag';
 
   if (!items.length) return <Empty title="還沒有任何紀錄" hint="到「記一筆」記第一筆，或把收據拍照私訊給群記。" />;
 
-  const sorted = [...items].sort((a, b) => itemTime(b) - itemTime(a));
+  const names = [...new Set(items.map((e) => e.project).filter(Boolean))].sort();
+  const hasNone = items.some((e) => !e.project);
+  // 選的專案被改名或刪光了（編輯後）就回到「所有專案」，不會卡在空清單
+  const sel = proj === NONE ? (hasNone ? NONE : '') : names.includes(proj) ? proj : '';
+  const shown = items.filter((e) => !sel || (sel === NONE ? !e.project : e.project === sel));
+  const sorted = [...shown].sort((a, b) => itemTime(b) - itemTime(a));
   const groups = new Map<string, ExpenseItem[]>();
-  for (const e of sorted) groups.set(e.project || '未分類', [...(groups.get(e.project || '未分類') ?? []), e]);
+  for (const e of sorted) groups.set(e.project || '沒選專案', [...(groups.get(e.project || '沒選專案') ?? []), e]);
+  const owed = shown.filter((e) => !e.reimbursed);
+  const chips = [{ v: '', label: '所有專案' }, ...names.map((n) => ({ v: n, label: n })), ...(hasNone ? [{ v: NONE, label: '沒選專案' }] : [])];
 
   return (
     <div className="space-y-4">
+      {chips.length > 2 && (
+        // data-no-swipe：這排要能橫捲，不能被底部膠囊當成換分頁
+        <div role="group" aria-label="專案" data-no-swipe="" className="-mx-4 flex gap-2 overflow-x-auto px-4">
+          {chips.map((c) => (
+            <button
+              key={c.v || 'all'}
+              type="button"
+              aria-pressed={sel === c.v}
+              onClick={() => setProj(c.v)}
+              className={`flex min-h-10 max-w-[13rem] flex-none items-center truncate rounded-full border px-3.5 text-[13px] font-bold ${
+                sel === c.v ? 'border-transparent bg-gray-900 text-white' : 'border-gray-300 bg-white text-gray-700'
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <p className="text-sm text-gray-600">
+        {owed.length ? (
+          <>
+            還沒報 <b className="text-gray-900 tabular-nums">${fmtMoney(owed.reduce((a, r) => a + r.amount, 0))}</b>・{owed.length} 筆
+          </>
+        ) : (
+          '都報完了'
+        )}
+      </p>
       {[...groups].map(([name, rows]) => (
         <section key={name}>
           <p className="mb-1.5 flex items-baseline text-sm font-medium text-gray-600">
