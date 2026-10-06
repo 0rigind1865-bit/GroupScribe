@@ -4,7 +4,7 @@
 //   飛行時：張翅那刻起，背景（含殘響）0.2 秒內收掉，只剩樹枝「啪」、張翅和滑翔的風聲，直到扣住
 //   貓頭鷹：眼睛左右看、眨眼是很輕的「喀」；風聲只在飛行時，收翅沒有聲音
 //   瞄準：鎖定時一聲輕輕往上的「叮」；扣住：低沉的重擊一下 → 接著完全無聲，直到訊息開始往右飛
-//   安靜之後只剩特效、沒有背景也沒有風聲：訊息往右飛、放大時一聲往上滑的亮音；抵達變成標題：一聲清亮的鈴＋四個鈴音往上
+//   安靜之後只剩特效、沒有背景也沒有風聲：訊息往右飛、放大時一串越來越密的「嗶」訊號音；抵達變成標題：一聲清亮的鈴＋四個鈴音往上
 // 用法：被 scripts/intro-video.mjs 呼叫（renderIntroAudio）；只想試聽聲音：node scripts/intro-video.mjs --wav 試聽.wav
 import { writeFileSync } from 'node:fs';
 
@@ -96,15 +96,14 @@ export const renderIntroAudio = (T, dur) => {
       put(T.GRAB + 0.01, 1.2, (t) => Math.sin(2 * Math.PI * f * t) * env(t, 0.002, 0.22 - 0.03 * k) * a, { gain: 0.07, pan: k % 2 ? 0.2 : -0.2, send: 0.5 })); }
   // ponytail: 波紋（T.HIT）落在完全無聲那段裡、本來就聽不到，所以沒有做聲音
 
-  // ── 訊息往右飛、越飛越大：一聲往上滑的亮亮合成音（純音、不是風聲），跟著訊息往右、越來越大聲，
-  //    兩個八度從 F3 滑到 F5＝剛好接上標題那聲鈴的音高；收翅沒有聲音（風聲只在飛行時）
-  { const len = T.ARRIVE - T.REL; let ph = 0;
-    put(T.REL, len, (t) => {
-      const k = smooth(t / len);
-      ph += (2 * Math.PI * hz(53) * 2 ** (2 * k)) / SR;
-      const shimmer = 1 + 0.3 * Math.sin(2 * Math.PI * (5 + 15 * k) * t); // 越飛越快的閃爍
-      return (Math.sin(ph) + 0.4 * Math.sin(2 * ph) + 0.2 * Math.sin(3 * ph)) * shimmer * k ** 1.5 * Math.min(1, (len - t) / 0.06);
-    }, { gain: 0.08, pan: (t) => 0.85 * smooth(t / len), send: 0.4, fx: true }); }
+  // ── 訊息往右飛、越飛越大：一串短短的「嗶」訊號音（像資料在傳送），越來越密、越來越大聲，每一聲的位置跟著訊息往右；
+  //    音高在 F 大調五聲音階的高音裡跳（跟標題的鈴同調）；收翅沒有聲音（風聲只在飛行時）
+  { const len = T.ARRIVE - T.REL, r2 = makeRand(31), notes = [84, 86, 89, 91, 93];
+    for (let t = 0.3; t < len - 0.08;) {
+      const k = smooth(t / len), f = hz(notes[Math.floor(r2() * notes.length)]);
+      put(T.REL + t, 0.12, (tt) => (Math.sin(2 * Math.PI * f * tt) + 0.25 * Math.sin(4 * Math.PI * f * tt)) * env(tt, 0.002, 0.03), { gain: 0.03 + 0.06 * k, pan: 0.85 * k, send: 0.35, fx: true });
+      t += 0.12 - 0.075 * k; // 越來越密
+    } }
 
   // ── 抵達、變成標題：一聲清亮的鈴（敲擊金屬的泛音）＋四個音的琶音
   const bell = (at, n, g, p = 0) => [[1, 1], [2.0, 0.5], [2.76, 0.32], [5.4, 0.16], [8.93, 0.08]].forEach(([r, a]) =>
