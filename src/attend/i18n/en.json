@@ -125,7 +125,7 @@
   "EXP_CATEGORY": "Category",
   "EXP_PROJECT": "Project",
   "EXP_PAY": "Payment",
-  "EXP_SAVE": "+ Save",
+  "EXP_SAVE": "Save",
   "ORG_PLACEHOLDER": "Code from your manager",
   "OUT_OF_RANGE_NEAR": "{m} m from “{name}”",
   "MISS_ANY": "Missing punch",

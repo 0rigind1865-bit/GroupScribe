@@ -13,13 +13,17 @@ import { blobToDataUrl, compressImage } from '@/expense/compress';
 import { ZH_LABELS, type ExpenseLabels } from './labels';
 import { enqueue } from '@/expense/outbox';
 import { Sheet } from '@/app/ui/expense/sheet';
+import { Badge } from '@/app/ui/badge';
 import dynamic from 'next/dynamic';
 
 // 掃描器（含 jsqr，約 40KB）要用才載入，平常打開記帳頁不用下載
 const QRScanner = dynamic(() => import('@/app/ui/expense/qr-scanner').then((m) => m.QRScanner), { ssr: false });
 
-// 記一筆（從 Snaptab AddView 搬來）：大字金額＋計算機鍵盤、分類圖示格＋AI 分類、專案（可新增／改名）、
-// 付款方式、備註（可語音）、發票號（可掃 QR）、拍照。存完金額歸零；「記住上次」開著才保留專案與分類。
+// 記一筆（從 Snaptab AddView 搬來；版面照 2026-10 設計畫布 StaffExpenseAdd）：收據照片＋大字金額＋計算機鍵盤、
+// 分類圖示格＋AI 分類、專案（可不選／新增／改名）、付款方式、備註（可語音）、發票號（可掃 QR）、
+// 「存起來」固定在拇指區並寫出金額。存完金額歸零；「記住上次」開著才保留專案與分類。
+// ponytail: 設計稿的「拍收據 → AI 讀金額 → 對嗎？」這頁還沒有——AI 讀收據只在 LINE 傳照片那條路（core/ingest），
+// 要接得另開 API；目前只有掃發票 QR 讀出的金額會掛「對嗎？」
 // 沒網路時先存在手機（outbox），恢復網路由外殼自動補送。
 export type Loc = { lat: number | null; lng: number | null; placeName: string };
 const NEW = '__new__';
@@ -63,6 +67,8 @@ export function AddView({
   const [interim, setInterim] = useState('');
   const [showPad, setShowPad] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showInv, setShowInv] = useState(false);
+  const [readAmt, setReadAmt] = useState<number | null>(null); // 掃發票讀出的金額（等人確認）
   const [remember, setRemember] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const dictRef = useRef<Dictation | null>(null);
@@ -159,7 +165,10 @@ export function AddView({
   };
   const onScan = (d: InvoiceData) => {
     setShowScanner(false);
-    if (d.total > 0) setExpr(String(d.total));
+    if (d.total > 0) {
+      setExpr(String(d.total));
+      setReadAmt(d.total);
+    }
     if (d.invoiceNo) setInvoiceNo(d.invoiceNo);
     if (d.items.length) setNote(d.items.join('、'));
     const detail = d.totalItemCount > 0 && !d.complete ? `・明細 ${d.itemCount}/${d.totalItemCount}` : '';
@@ -240,6 +249,7 @@ export function AddView({
     setExpr('');
     setNote('');
     setInvoiceNo('');
+    setShowInv(false);
     clearPhoto();
     setCatOpen(false);
     if (remember) {
@@ -255,44 +265,42 @@ export function AddView({
   };
 
   return (
-    <div className="space-y-3">
-      {/* 金額卡：點一下開計算機；右邊拍照 */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={() => setShowPad(true)}
-        onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && setShowPad(true)}
-        className="card flex cursor-pointer items-center gap-3"
-      >
-        <div className="min-w-0 flex-1">
-          <p className="text-xs text-gray-500">{L.amount}</p>
-          <p className={`truncate text-4xl font-semibold tabular-nums ${expr ? '' : 'text-gray-400'}`}>
-            <span className="mr-1 text-lg text-gray-500">$</span>
-            {expr ? fmtMoney(amount) : '0'}
-          </p>
-          {hasOp ? <p className="truncate text-sm text-gray-500 tabular-nums">{expr}</p> : !expr ? <p className="text-sm text-gray-500">點一下輸入金額</p> : null}
-        </div>
+    // pb-20：讓開固定在底部的「存起來」
+    <div className="space-y-3 pb-20">
+      {/* 金額卡（設計稿）：左邊收據照片、右邊大字金額，點金額開計算機。
+          機器讀出來的金額（目前只有發票 QR）掛「對嗎？」請人確認；一改金額就消失 */}
+      <section className="card flex items-center gap-3 p-3.5">
         <button
           type="button"
-          aria-label="拍收據"
-          onClick={(e) => {
-            e.stopPropagation();
-            fileRef.current?.click();
-          }}
-          className="grid h-16 w-16 flex-none place-items-center overflow-hidden rounded-xl border border-dashed border-gray-300 text-gray-500"
+          aria-label={preview ? '收據照片，點一下重拍' : L.photo}
+          onClick={() => fileRef.current?.click()}
+          className="flex h-24 w-[76px] flex-none flex-col items-center justify-center gap-1 overflow-hidden rounded-xl bg-gray-100 text-[11px] text-gray-600"
         >
           {preview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={preview} alt="收據預覽" className="h-full w-full object-cover" />
           ) : (
-            <span className="flex flex-col items-center text-xs">
-              <Icon name="camera" size={22} />
+            <>
+              <Icon name="receipt" size={24} />
               {L.photo}
-            </span>
+            </>
           )}
         </button>
-        <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} onClick={(e) => e.stopPropagation()} />
-      </div>
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
+        <button type="button" onClick={() => setShowPad(true)} className="flex min-h-24 min-w-0 flex-1 flex-col items-start justify-center gap-1 text-left">
+          <span className="label text-gray-600">{L.amount}</span>
+          <span className={`max-w-full truncate text-4xl font-black tabular-nums ${expr ? '' : 'text-gray-400'}`} style={{ fontFamily: 'var(--font-title)' }}>
+            NT$ {expr ? fmtMoney(amount) : '0'}
+          </span>
+          {hasOp ? (
+            <span className="max-w-full truncate text-sm text-gray-500 tabular-nums">{expr}</span>
+          ) : readAmt === amount && amount > 0 ? (
+            <Badge tone="warn">從發票讀出來的，對嗎？</Badge>
+          ) : !expr ? (
+            <span className="text-sm text-gray-500">點一下輸入金額</span>
+          ) : null}
+        </button>
+      </section>
       {preview && (
         <button type="button" className="text-xs text-gray-500 underline" onClick={clearPhoto}>
           拿掉照片
@@ -302,22 +310,23 @@ export function AddView({
       {/* 分類：選好收合成一行，點一下再展開 */}
       {catOpen || !category ? (
         <div>
-          <p className="mb-1.5 text-xs text-gray-500">{L.category}</p>
+          <h2 className="label mb-2">{L.category}</h2>
           <div className="grid grid-cols-4 gap-2">
             {categories.map((c) => (
               <button
                 type="button"
                 key={c.name}
+                aria-pressed={category === c.name}
                 onClick={() => pickCat(c.name)}
-                className={`flex flex-col items-center gap-1 rounded-xl border px-1 py-2 text-xs ${
-                  category === c.name ? 'border-emerald-600 bg-emerald-50 text-emerald-900' : 'border-gray-200'
+                className={`flex min-h-16 flex-col items-center justify-center gap-1 rounded-[14px] border px-1 text-[13px] font-bold ${
+                  category === c.name ? 'border-emerald-600 bg-emerald-100 text-emerald-700 ring-1 ring-emerald-600' : 'border-gray-200 bg-white text-gray-700'
                 }`}
               >
                 <Icon name={c.icon} size={22} />
                 <span className="w-full truncate text-center">{c.name}</span>
               </button>
             ))}
-            <button type="button" onClick={aiClassify} className="flex flex-col items-center gap-1 rounded-xl border border-gray-200 px-1 py-2 text-xs">
+            <button type="button" onClick={aiClassify} className="flex min-h-16 flex-col items-center justify-center gap-1 rounded-[14px] border border-gray-200 bg-white px-1 text-[13px] font-bold text-gray-700">
               <Icon name="sparkles" size={22} />
               AI 分類
             </button>
@@ -340,34 +349,29 @@ export function AddView({
         </button>
       )}
 
-      {/* 專案＋付款方式 */}
-      <div className="grid grid-cols-2 gap-2">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-gray-500">{L.project}</span>
-          <select className="input" value={project} onChange={(e) => onProject(e.target.value)}>
-            <option value="">（不選，之後再補）</option>
-            {projects.map((p) => (
-              <option key={p}>{p}</option>
-            ))}
-            {project && !projects.includes(project) && <option>{project}</option>}
-            {project && canManage && <option value={RENAME}>✎ 重新命名目前專案…</option>}
-            <option value={NEW}>＋ 新增專案…</option>
-          </select>
-        </label>
-        <div className="flex flex-col gap-1">
-          <span className="text-xs text-gray-500">{L.pay}</span>
-          <div className="flex rounded-lg border border-gray-200 p-0.5 text-sm">
-            {PAY_METHODS.map((p) => (
-              <button
-                type="button"
-                key={p}
-                onClick={() => setPay(p)}
-                className={`flex-1 rounded-md py-1.5 ${pay === p ? 'bg-emerald-600 text-white' : 'text-gray-600'}`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+      {/* 專案（可不選）＋付款方式：各佔一整列（設計稿） */}
+      <label className="flex flex-col gap-1.5">
+        <span className="label">
+          {L.project} <span className="font-normal text-gray-600">（可以不選，之後再補）</span>
+        </span>
+        <select className="input" value={project} onChange={(e) => onProject(e.target.value)}>
+          <option value="">（不選）</option>
+          {projects.map((p) => (
+            <option key={p}>{p}</option>
+          ))}
+          {project && !projects.includes(project) && <option>{project}</option>}
+          {project && canManage && <option value={RENAME}>✎ 重新命名目前專案…</option>}
+          <option value={NEW}>＋ 新增專案…</option>
+        </select>
+      </label>
+      <div className="flex flex-col gap-1.5">
+        <span className="label">{L.pay}</span>
+        <div role="group" aria-label={L.pay} className="segmented grid grid-cols-3">
+          {PAY_METHODS.map((p) => (
+            <button type="button" key={p} aria-pressed={pay === p} onClick={() => setPay(p)} className="min-h-10">
+              {p}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -402,22 +406,39 @@ export function AddView({
         </div>
       )}
 
-      {/* 發票號碼＋掃 QR */}
-      <div className="flex gap-2">
-        <input
-          className="input min-w-0 flex-1"
-          placeholder="發票號碼（選填）"
-          value={invoiceNo}
-          onChange={(e) => setInvoiceNo(e.target.value.toUpperCase())}
-        />
-        <button type="button" aria-label="掃描發票 QR" className="btn h-10 w-10 flex-none px-0" onClick={() => setShowScanner(true)}>
-          <Icon name="scan" size={20} />
+      {/* 發票號碼＋掃 QR：選填，平常收成一行字；點了直接開掃描器，關掉也能手打 */}
+      {showInv || invoiceNo ? (
+        <div className="flex gap-2">
+          <input
+            className="input min-w-0 flex-1"
+            placeholder="發票號碼（選填）"
+            value={invoiceNo}
+            onChange={(e) => setInvoiceNo(e.target.value.toUpperCase())}
+          />
+          <button type="button" aria-label="掃描發票 QR" className="btn h-10 w-10 flex-none px-0" onClick={() => setShowScanner(true)}>
+            <Icon name="scan" size={20} />
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="min-h-10 text-sm font-bold text-emerald-700"
+          onClick={() => {
+            setShowInv(true);
+            setShowScanner(true);
+          }}
+        >
+          ＋ 發票號碼（掃 QR 碼）
+        </button>
+      )}
+
+      {/* 存起來：固定在拇指區（底部膠囊正上方），按鈕上直接寫金額（設計稿）。寬度對齊膠囊；
+          墊一層頁面底色，還不能存（半透明）時才不會透出底下捲過的內容 */}
+      <div className="fixed inset-x-4 bottom-[calc(5rem+env(safe-area-inset-bottom))] z-10 mx-auto max-w-[26rem] rounded-2xl bg-gray-50">
+        <button type="button" className="btn-primary h-14 w-full rounded-2xl text-[17px] shadow-lg" disabled={!canSave} onClick={save}>
+          {saving ? '儲存中…' : amount > 0 ? `${L.save} · NT$ ${fmtMoney(amount)}` : L.save}
         </button>
       </div>
-
-      <button type="button" className="btn-primary h-12 w-full text-base" disabled={!canSave} onClick={save}>
-        {saving ? '儲存中…' : L.save}
-      </button>
       {!canSave && !saving && (
         <p className="text-center text-xs text-gray-500">
           {amount <= 0 ? '先輸入金額' : !category ? '再選一個分類' : ''}
