@@ -45,7 +45,8 @@ export default async function AttendLayout({
           slug={slug}
           moduleId="attend"
           counts={counts}
-          context={<EmployeeSwitcher employees={(emps ?? []) as never} />}
+          // 手機頂欄只留工具按鈕與個人／管理（同群組助理）：換人改從「薪資」總表或「員工」清單點
+          context={<div className="hidden md:block"><EmployeeSwitcher employees={(emps ?? []) as never} /></div>}
         />
       </Suspense>
       <div className="nav-gap md:!pb-0">{children}</div>

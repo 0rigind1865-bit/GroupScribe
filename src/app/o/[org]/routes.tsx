@@ -110,6 +110,13 @@ export const I = {
       <path d="M12 8c-1.5-3-5-3.5-5-1.25S9.5 8 12 8zM12 8c1.5-3 5-3.5 5-1.25S14.5 8 12 8z" />
     </>
   ),
+  money: (
+    <>
+      <rect x="2" y="6" width="20" height="12" rx="2" />
+      <circle cx="12" cy="12" r="2.5" />
+      <path d="M6 9v.01M18 15v.01" />
+    </>
+  ),
   chart: (
     <>
       <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" />
@@ -190,10 +197,11 @@ export const ATTEND_MODULE: ModuleDef = {
   base: (slug) => `/o/${slug}/attend`,
   ctxParam: 'emp',
   items: [
-    { key: 'overview', path: '', label: '總覽', desc: '待處理事項與本月異常', icon: I.clock, primary: true },
-    { key: 'employees', path: '/employees', label: '員工', desc: '啟用、月薪、部門與管理權', icon: I.people, primary: true, badge: 'pendingEmps' },
+    // 2026-10 設計畫布：今天／審核／員工／薪資。「薪資」先看全公司，再點進個人的月曆與明細
+    { key: 'overview', path: '', label: '今天', desc: '誰在班、等你處理的事、本月異常', icon: I.clock, primary: true },
     { key: 'reviews', path: '/reviews', label: '審核', desc: '員工送出的補卡申請', icon: I.check, primary: true, badge: 'reviews' },
-    { key: 'report', path: '/report', label: '報表', desc: '月曆、工時與薪資明細', icon: I.chart, primary: true },
+    { key: 'employees', path: '/employees', label: '員工', desc: '啟用、月薪、部門與管理權', icon: I.people, primary: true, badge: 'pendingEmps' },
+    { key: 'report', path: '/report', label: '薪資', desc: '全公司這個月的薪資，一次結算、匯出', icon: I.money, primary: true },
     { key: 'locations', path: '/locations', label: '打卡地點', desc: 'GPS 座標與允許半徑', icon: I.pin },
     { key: 'rules', path: '/rules', label: '薪資規則', desc: '倍率、休息時段與假日表', icon: I.rules },
   ],

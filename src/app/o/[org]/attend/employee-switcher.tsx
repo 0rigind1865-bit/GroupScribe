@@ -15,9 +15,10 @@ import { oh } from '@/org/href';
 // 但群組膠囊早就因為 LINE 內建瀏覽器不一定叫得出 <select> 而改掉了（審查 F40）。
 export type EmpOption = { id: string; display_name: string; dept: string | null; status: string };
 
-// 跨員工的聚合視圖支援「全部」；報表這類單員工頁不支援。員工／打卡地點／薪資規則／更多頁不吃 ?emp，
-// 也算「全部」——否則膠囊一直催「選擇員工…」，選了卻什麼都沒變（審查 F28）
-const ALL_OK = [/\/attend$/, /\/attend\/(reviews|employees|locations|rules|more)/];
+// 跨員工的聚合視圖支援「全部」。員工／打卡地點／薪資規則／更多頁不吃 ?emp，也算「全部」——
+// 否則膠囊一直催「選擇員工…」，選了卻什麼都沒變（審查 F28）。
+// 薪資（/report）沒帶 ?emp＝全公司薪資總表（2026-10），也是「全部」
+const ALL_OK = [/\/attend$/, /\/attend\/(reviews|employees|locations|rules|more|report)/];
 
 export function EmployeeSwitcher({ employees }: { employees: EmpOption[] }) {
   const pathname = usePathname();

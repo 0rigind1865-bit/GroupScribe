@@ -4,8 +4,21 @@ import { requireModule } from '@/org/orgs';
 import { currentRuleSet } from '@/attend/rules-store';
 import { workDate } from '@/attend/util';
 import { Banner } from '@/app/ui/banner';
+import type { Frac, Tier } from '@/attend/salary';
 
 export const dynamic = 'force-dynamic';
+
+// 白話摘要（2026-10 設計畫布「薪資規則」）：平常看到的是「幾點休息、加班怎麼算」，JSON 與腳本收進「進階」
+const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
+const x = (f: Frac) => `×${(f.num / f.den).toFixed(2).replace(/\.?0+$/, '')}`;
+const tiers = (ts: Tier[]) =>
+  ts
+    .map((t, i) => {
+      const from = i === 0 ? 0 : (ts[i - 1].upToHours ?? 0);
+      const span = t.upToHours == null ? (i === 0 ? '全部' : `第 ${from + 1} 小時起`) : i === 0 ? `前 ${t.upToHours} 小時` : `第 ${from + 1}–${t.upToHours} 小時`;
+      return `${span} ${x(t.rate)}`;
+    })
+    .join('、');
 
 // 薪資規則（兩層引擎的管理入口）：
 //   第一層＝結構化規則 JSON（預設勞基法模板；表單即 JSON 編輯器＋伺服端 parseRules 驗證）
@@ -48,14 +61,39 @@ export default async function RulesPage({
   return (
     <main className="page">
       <h1 className="mb-2">薪資規則</h1>
-      <p className="mb-4 text-sm text-gray-500">
-        目前版本：v{ruleSet.version}
-        {ruleSet.version === 0 && '（預設勞基法模板，尚未自訂）'}｜每次存檔會建立新版本；已結算月份不受影響。
+      <p className="mb-4 text-sm text-gray-600">
+        {ruleSet.version === 0 ? '照勞基法的預設，還沒改過' : `第 ${ruleSet.version} 版`}。改了會存成新的一版；已經結算的月份不會變。
       </p>
-      {sp.ok && <Banner>已存為 v{ruleSet.version} ✓</Banner>}
+      {sp.ok === 'holidays' && <Banner>台灣國定假日已匯入 ✓（原本就有的日子沒動）</Banner>}
+      {sp.ok && sp.ok !== 'holidays' && <Banner>已存為第 {ruleSet.version} 版 ✓</Banner>}
+
+      <section className="card mb-4 text-sm">
+        <h2 className="card-title mb-2">現在怎麼算</h2>
+        <dl className="divide-y divide-gray-100">
+          {[
+            ['時薪', `月薪 ÷ ${ruleSet.rules.baseDivisor}`],
+            ['一天正常工時', `${ruleSet.rules.normalDailyHours} 小時`],
+            ['休息時段（不算工時）', ruleSet.rules.breaks.map((b) => `${b.start}–${b.end}`).join('、') || '沒有'],
+            ['休息日／例假日', `週${WEEKDAY[ruleSet.rules.weeklyRestDay]}／週${WEEKDAY[ruleSet.rules.weeklyRegularOff]}`],
+            ['平日加班', tiers(ruleSet.rules.weekday.tiers)],
+            ['休息日上班', tiers(ruleSet.rules.restDay.tiers)],
+            ['國定假日上班', `給一天工資（${ruleSet.rules.holiday.guaranteedHours} 小時），再加班：${tiers(ruleSet.rules.holiday.otTiers)}`],
+            ['例假日上班', `給一天工資，超過 ${ruleSet.rules.regularOff.guaranteedHours} 小時 ${x(ruleSet.rules.regularOff.over8Rate)}`],
+          ].map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-4 py-2">
+              <dt className="flex-none text-gray-600">{k}</dt>
+              <dd className="text-right">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        {ruleSet.scriptEnabled && <p className="mt-2 text-xs font-bold text-amber-800">另外有啟用自訂計算方式（見下方「進階」）。</p>}
+      </section>
       {sp.err && <Banner tone="err">{ERR[sp.err] ?? sp.err}</Banner>}
 
-      <form action="/api/attend/rules" method="post" className="space-y-4">
+      {/* 進階：直接改規則原文。HR 或老闆平常不用打開；會寫程式的人才需要 */}
+      <details className="card mb-4" open={!!sp.err && sp.err !== 'ERR_HOLIDAY_PARAMS'}>
+        <summary className="card-title flex min-h-11 cursor-pointer items-center">進階：直接改規則（給會寫程式的人）</summary>
+      <form action="/api/attend/rules" method="post" className="mt-3 space-y-4">
         <input type="hidden" name="org" value={slug} />
 
         <section className="card">
@@ -93,14 +131,20 @@ export default async function RulesPage({
           </label>
         </section>
 
-        <button className="btn-primary" name="action" value="save">存為新版本 v{ruleSet.version + 1}</button>
+        <button className="btn-primary" name="action" value="save">存成第 {ruleSet.version + 1} 版</button>
       </form>
+      </details>
 
       <section className="card mt-6">
         <h2 className="mb-3 card-title">假日表（{thisYear} 年，{yearHolidays.length} 筆）</h2>
-        <p className="mb-2 text-xs text-gray-500">
-          國定假日＝出勤加給；補班日＝強制按平日計。初始資料可用 <code>npx tsx scripts/seed-holidays.ts {slug}</code> 匯入台灣假日。
-        </p>
+        <p className="mb-2 text-xs text-gray-600">國定假日上班有加給；補班日照平日算。</p>
+        <form action="/api/attend/rules" method="post" className="mb-3">
+          <input type="hidden" name="org" value={slug} />
+          <button className="btn btn-sm" name="action" value="holiday_seed">
+            匯入台灣國定假日
+          </button>
+          <span className="ml-2 text-xs text-gray-600">已經有的日子不會被蓋掉；請對照人事行政總處公告</span>
+        </form>
         <form action="/api/attend/rules" method="post" className="mb-3 flex flex-wrap items-end gap-2 text-sm">
           <input type="hidden" name="org" value={slug} />
           <input type="hidden" name="action" value="holiday_add" />

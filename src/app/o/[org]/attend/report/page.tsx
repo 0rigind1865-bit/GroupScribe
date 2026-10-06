@@ -1,12 +1,10 @@
 import { getDb } from '@/db';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import { requireModule } from '@/org/orgs';
-import { monthData } from '@/attend/data';
-import { dayInOut } from '@/attend/abnormal';
 import { isYm, shiftMonth, workDate } from '@/attend/util';
-import { currentRuleSet, holidayKinds } from '@/attend/rules-store';
-import { computeMonthHybrid, type HybridResult } from '@/attend/sandbox';
-import type { MonthDayInput } from '@/attend/salary';
+import { currentRuleSet } from '@/attend/rules-store';
+import { PayrollTable } from './payroll-table';
+import { monthPay } from '@/attend/payroll';
 import { MonthGrid } from '@/app/ui/month-grid';
 import { PageHeader } from '@/app/ui/page-header';
 import { StatGrid } from '@/app/ui/stat';
@@ -33,7 +31,7 @@ export default async function AttendCalendar({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ emp?: string; month?: string; err?: string; ok?: string }>;
+  searchParams: Promise<{ emp?: string; month?: string; err?: string; ok?: string; n?: string; skip?: string }>;
 }) {
   const { org: slug } = await params;
   const { org } = await requireModule(slug, 'attend');
@@ -48,52 +46,28 @@ export default async function AttendCalendar({
     .neq('status', 'pending')
     .order('display_name');
   const employees = (emps ?? []) as Employee[];
-  const emp = employees.find((e) => e.id === sp.emp) ?? employees[0];
+  const emp = employees.find((e) => e.id === sp.emp);
 
   const today = workDate(new Date());
   const month = sp.month && isYm(sp.month) ? sp.month : today.slice(0, 7);
-  // 沒帶 ?emp（從底部「報表」點進來）：頁面其實在算第一位員工，網址也要說清楚——
-  // 否則頂端膠囊寫「選擇員工…」、頁面卻是某人的薪資，匯出或結算前得停下來想「這是誰的」（審查 F28）
-  if (emp && sp.emp !== emp.id) redirect(oh(slug, '/attend/report', { emp: emp.id, month }));
+  const ruleSet = await currentRuleSet(org.id);
 
-  if (!emp) {
-    return (
-      <main className="page">
-        <h1 className="mb-5">月曆與薪資</h1>
-        <p className="text-gray-500">還沒有已啟用的員工。</p>
-      </main>
-    );
-  }
+  // 沒帶 ?emp（從底部「薪資」點進來）：全公司這個月的薪資總表，點一個人再看他的月曆與明細（2026-10 設計畫布「薪資」）。
+  // 原本會直接跳到第一位員工，月底發薪得一個人一個人點、一個人一個人結算與匯出
+  if (!emp) return <PayrollTable slug={slug} orgId={org.id} employees={employees.filter((e) => e.status === 'active')} month={month} ruleSet={ruleSet} sp={sp} />;
 
   // 月資料 → 成對上下班 → 薪資（快照優先）
-  const [{ days }, hk, ruleSet, { data: snap }] = await Promise.all([
-    monthData(org.id, emp.id, month),
-    holidayKinds(org.id, month),
-    currentRuleSet(org.id),
-    db
-      .from('payroll_snapshots')
-      .select('id, result, monthly_salary, finalized_at, rule_set_id')
-      .eq('org_id', org.id)
-      .eq('employee_id', emp.id)
-      .eq('month', `${month}-01`)
-      .maybeSingle(),
-  ]);
-
-  const inputs: MonthDayInput[] = days.map((d) => {
-    const { inTime, outTime } = dayInOut(d);
-    return { date: d.date, inTime, outTime, holidayKind: hk.get(d.date) };
-  });
-
+  const { days, hk, snap, result } = await monthPay(org.id, emp, month, ruleSet);
   const finalized = !!snap;
-  const result: HybridResult = snap
-    ? (snap.result as HybridResult)
-    : await computeMonthHybrid(inputs, emp.monthly_salary, ruleSet.rules, ruleSet.scriptEnabled ? ruleSet.script : null);
 
   const byDate = new Map(days.map((d) => [d.date, d]));
   const [y, m] = month.split('-').map(Number);
 
   return (
     <main className="page">
+      <a className="mb-2 inline-flex min-h-11 items-center text-sm font-bold text-gray-600" href={oh(slug, '/attend/report', { month })}>
+        ‹ 全公司薪資
+      </a>
       <PageHeader
         title={`${emp.display_name}｜${y} 年 ${m} 月`}
         desc={emp.dept ?? undefined}
@@ -217,7 +191,7 @@ export default async function AttendCalendar({
             {finalized ? (
               <>
                 <button className="btn w-full" name="action" value="unfinalize">解除結算（回到即時計算）</button>
-                <p className="mt-1 text-xs text-gray-400">結算於 {new Date((snap as { finalized_at: string }).finalized_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false })}</p>
+                <p className="mt-1 text-xs text-gray-400">結算於 {new Date(snap!.finalized_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei', hour12: false })}</p>
               </>
             ) : (
               <>

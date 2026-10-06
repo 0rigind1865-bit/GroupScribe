@@ -44,6 +44,7 @@ export default async function EmployeesPage({
   // 待啟用排最前：從總覽「待啟用員工」點進來的人，要找的就是這些（原本照 active < disabled < pending 排在最底，審查 F29）
   const RANK: Record<string, number> = { pending: 0, active: 1, disabled: 2 };
   const employees = ((emps ?? []) as Employee[]).sort((a, b) => (RANK[a.status] ?? 9) - (RANK[b.status] ?? 9));
+  const pendingEmps = employees.filter((e) => e.status === 'pending');
   const orgMods = enabledModuleIds(settings.modules);
   const adminSet = new Map((admins ?? []).map((a) => [a.line_user_id, a.role]));
   // 這一頁的「管理員」＝能管考勤的人（migration 028：管理權依模組授權）
@@ -56,13 +57,16 @@ export default async function EmployeesPage({
 
   return (
     <main className="page">
-      <h1 className="mb-5">員工管理</h1>
+      <h1 className="mb-5">員工</h1>
       {err && <Banner tone="err">操作失敗，請重試。</Banner>}
 
       {/* 加入邀請：員工端的打卡入口只對「已是員工」的人顯示（見 src/app/g/page.tsx 檔頭），
           所以這條連結是新員工唯一的入口——發連結這個動作本身就是授權。 */}
-      <section className="card mb-5">
-        <h2 className="mb-2 card-title">邀請員工加入</h2>
+      {/* 邀請收成一顆可展開的按鈕（2026-10 設計畫布「員工」）：原本永遠佔住頁面最上面；
+          還沒有員工、或還沒產生加入碼時預設打開 */}
+      <details className="card mb-5" open={!employees.length || !joinCode}>
+        <summary className="card-title flex min-h-11 cursor-pointer items-center gap-2">＋ 邀請員工加入</summary>
+        <div className="mt-2">
         {joinCode ? (
           <>
             <p className="mb-2 text-xs text-gray-500">
@@ -99,7 +103,36 @@ export default async function EmployeesPage({
             {joinCode ? '重設加入碼（舊碼與舊連結立即失效）' : '產生加入碼'}
           </button>
         </form>
-      </section>
+        </div>
+      </details>
+
+      {/* 等你啟用：一鍵啟用，月薪之後再到下面清單補（不必先展開、找按鈕） */}
+      {pendingEmps.length > 0 && (
+        <section className="mb-5 space-y-2 rounded-2xl border border-amber-300 bg-amber-50 p-3">
+          <h2 className="section-title text-amber-700">等你啟用</h2>
+          {pendingEmps.map((e) => (
+            <div key={e.id} className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-3">
+              <span className="min-w-0 flex-1">
+                <span className="block font-bold">{e.display_name}</span>
+                <span className="block text-xs text-gray-600">
+                  {e.dept ? `填了「${e.dept}」· ` : ''}
+                  {new Date(e.created_at).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei', month: 'numeric', day: 'numeric' })} 用加入碼申請
+                </span>
+              </span>
+              <form action="/api/attend/employee" method="post" className="flex gap-2">
+                <input type="hidden" name="org" value={slug} />
+                <input type="hidden" name="id" value={e.id} />
+                <button className="btn btn-sm" name="action" value="disable">
+                  不認識
+                </button>
+                <button className="btn-confirm btn-sm" name="action" value="activate">
+                  啟用
+                </button>
+              </form>
+            </div>
+          ))}
+        </section>
+      )}
 
       <section className="space-y-3">
         {employees.map((e) => {
@@ -149,7 +182,7 @@ export default async function EmployeesPage({
                     ) : (
                       <button className="btn px-3 py-1.5" name="action" value="admin_on">設為考勤管理員</button>
                     ))}
-                  <a className="btn ml-auto px-3 py-1.5" href={`/o/${slug}/attend/report?emp=${e.id}`}>月曆與薪資 →</a>
+                  <a className="btn ml-auto px-3 py-1.5" href={`/o/${slug}/attend/report?emp=${e.id}`}>月曆與薪資明細 →</a>
                 </form>
                 <p className="text-xs text-gray-400">
                   LINE ID：{e.line_user_id.slice(0, 12)}…｜加入於 {new Date(e.created_at).toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })}
