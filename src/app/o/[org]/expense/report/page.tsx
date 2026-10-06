@@ -87,8 +87,8 @@ export default async function ExpenseReport({
           <span className="text-xs text-gray-500">狀態</span>
           <select className="input h-9" name="status" defaultValue={f.status}>
             <option value="all">全部</option>
-            <option value="open">還沒報</option>
-            <option value="done">已報帳</option>
+            <option value="open">還沒核銷</option>
+            <option value="done">已核銷</option>
           </select>
         </label>
         <button className="btn">加總</button>
@@ -105,7 +105,7 @@ export default async function ExpenseReport({
             cols={3}
             items={[
               { n: money(total), label: '合計' },
-              { n: money(open), label: '還沒報', tone: open > 0 ? 'warn' : 'neutral' },
+              { n: money(open), label: '還沒核銷', tone: open > 0 ? 'warn' : 'neutral' },
               { n: rows.length, label: '筆數' },
             ]}
           />

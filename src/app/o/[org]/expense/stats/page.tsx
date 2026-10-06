@@ -74,7 +74,7 @@ export default async function ExpenseStats({ params }: { params: Promise<{ org: 
   return (
     <main className="page">
       <h1 className="mb-1">報帳統計</h1>
-      <p className="mb-4 text-sm text-gray-500">全公司的報帳，含已報帳與還沒報的。</p>
+      <p className="mb-4 text-sm text-gray-500">全公司的報帳，含已核銷與還沒核銷的。</p>
       {!items.length ? (
         <Empty title="還沒有報帳" />
       ) : (

@@ -10,7 +10,8 @@ import { Badge } from '@/app/ui/badge';
 import { Lightbox, Sheet } from '@/app/ui/expense/sheet';
 
 // 我的清單（從 Snaptab ListView／EditExpenseModal 搬來）：依專案分組＋小計，組照最新一筆排、組內新到舊。
-// 點一列開編輯；已被管理者標「已報帳」的鎖定（多人共用下，改了會讓會計對不上帳）。
+// 點一列開編輯；公司已核銷的鎖定（多人共用下，改了會讓會計對不上帳）。
+// 用詞（2026-10）：員工這邊記好＝「已申請」；公司處理好＝代墊「錢已發還」、公司卡／現金「公司已核銷」。
 const NONE = '\u0000none'; // 「沒選專案」籤的值：不會跟真的專案名撞
 const PAY_TONE: Record<string, string> = { 代墊: 'bg-amber-100 text-amber-900', 公司卡: 'bg-sky-100 text-sky-900', 現金: 'bg-emerald-100 text-emerald-900' };
 
@@ -69,10 +70,10 @@ export function ListView({
       <p className="text-sm text-gray-600">
         {owed.length ? (
           <>
-            還沒報 <b className="text-gray-900 tabular-nums">${fmtMoney(owed.reduce((a, r) => a + r.amount, 0))}</b>・{owed.length} 筆
+            已申請、等公司核銷 <b className="text-gray-900 tabular-nums">${fmtMoney(owed.reduce((a, r) => a + r.amount, 0))}</b>・{owed.length} 筆
           </>
         ) : (
-          '都報完了'
+          '都核銷了'
         )}
       </p>
       {[...groups].map(([name, rows]) => (
@@ -122,7 +123,7 @@ export function ListView({
                   </span>
                   <span className="flex flex-none flex-col items-end gap-1">
                     <span className="text-lg font-semibold tabular-nums">{fmtMoney(r.amount)}</span>
-                    {r.reimbursed && <Badge tone="ok">已報帳</Badge>}
+                    {r.reimbursed ? <Badge tone="ok">{r.pay_method === '代墊' ? '錢已發還' : '公司已核銷'}</Badge> : <Badge tone="neutral">已申請</Badge>}
                   </span>
                 </div>
               </li>
@@ -215,8 +216,8 @@ function EditSheet({
 
   const label = 'mt-3 mb-1 block text-xs text-gray-500';
   return (
-    <Sheet title={locked ? '已報帳的紀錄' : '編輯紀錄'} onClose={onClose} action={<button type="button" className="btn btn-sm" onClick={onClose}>取消</button>}>
-      {locked && <p className="mb-2 rounded-lg bg-emerald-50 p-2 text-sm text-emerald-900">管理者已標記「已報帳」，不能再修改。有問題請找管理者。</p>}
+    <Sheet title={locked ? '已核銷的紀錄' : '編輯紀錄'} onClose={onClose} action={<button type="button" className="btn btn-sm" onClick={onClose}>取消</button>}>
+      {locked && <p className="mb-2 rounded-lg bg-emerald-50 p-2 text-sm text-emerald-900">公司已經核銷這筆{item.pay_method === '代墊' ? '（錢已發還）' : ''}，不能再修改。有問題請找管理者。</p>}
       <fieldset disabled={locked || busy}>
         <label className={label}>金額</label>
         <input className="input w-full tabular-nums" inputMode="numeric" value={amount} onChange={(e) => setAmount(e.target.value)} />

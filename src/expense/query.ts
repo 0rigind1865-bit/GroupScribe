@@ -42,7 +42,7 @@ export function expenseQuery(db: SupabaseClient, orgId: string, f: ExpenseFilter
     .select('*, media_assets(storage_path)')
     .eq('org_id', orgId);
   if (f.status === 'done') q = q.not('reimbursed_at', 'is', null);
-  else if (f.status !== 'all') q = q.is('reimbursed_at', null); // 預設：還沒報的
+  else if (f.status !== 'all') q = q.is('reimbursed_at', null); // 預設：還沒核銷的
   if (f.who) q = q.eq('line_user_id', f.who);
   if (f.project) q = q.eq('project', f.project);
   if (isMonth(f.month)) q = q.gte('spent_on', `${f.month}-01`).lt('spent_on', `${nextMonth(f.month)}-01`);

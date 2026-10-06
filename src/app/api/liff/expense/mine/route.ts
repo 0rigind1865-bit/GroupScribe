@@ -4,8 +4,8 @@ import { myExpenseIdentity, parseExpenseForm } from '@/expense/mine';
 import { orgCategories } from '@/expense/categories';
 import { withV2Fallback } from '@/expense/store';
 
-// 改／刪自己的報帳（Snaptab 編輯視窗）：只動「自己的、同公司的、還沒被標已報帳」那筆——
-// 已報帳的鎖定，改了會讓會計對不上帳。回 JSON。
+// 改／刪自己的報帳（Snaptab 編輯視窗）：只動「自己的、同公司的、還沒被公司核銷」那筆——
+// 已核銷的鎖定，改了會讓會計對不上帳。回 JSON。
 export async function POST(req: NextRequest) {
   const me = await myExpenseIdentity();
   if (!me) return NextResponse.json({ ok: false, error: '沒有權限' }, { status: 403 });

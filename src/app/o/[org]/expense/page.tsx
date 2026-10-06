@@ -14,7 +14,7 @@ import { SetupNotice } from '../(admin)/setup-notice';
 export const dynamic = 'force-dynamic';
 
 // 報帳清單（X1）：員工私訊群記的收據照，AI 讀出金額後自動記一筆。
-// 管理者在這裡補專案、改讀錯的金額、標「已報帳」。寫入全走 /api/expense/update（moduleAccess＋綁 org_id）。
+// 管理者在這裡補專案、改讀錯的金額、標「已核銷」（2026-10 起不叫「已報帳」：員工端的「報帳」是送出申請，公司這邊是核銷）。寫入全走 /api/expense/update（moduleAccess＋綁 org_id）。
 
 const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
 const money = (n: number) => `$${n.toLocaleString('en-US')}`;
@@ -82,7 +82,7 @@ export default async function ExpenseList({
         sp={sp}
         dict={{
           saved: { tone: 'ok', text: '已儲存' },
-          reimbursed: { tone: 'ok', text: `已把 ${sp.n ?? ''} 筆標成已報帳` },
+          reimbursed: { tone: 'ok', text: `已把 ${sp.n ?? ''} 筆標成已核銷` },
           deleted: { tone: 'ok', text: '已刪除' },
           bad: { tone: 'err', text: '資料不正確，沒有儲存' },
           confirm: { tone: 'err', text: '要先勾「刪了救不回來」才能刪' },
@@ -93,8 +93,8 @@ export default async function ExpenseList({
       <nav className="segmented mb-3" aria-label="狀態">
         {(
           [
-            ['open', '還沒報'],
-            ['done', '已報帳'],
+            ['open', '還沒核銷'],
+            ['done', '已核銷'],
             ['all', '全部'],
           ] as const
         ).map(([v, label]) => (
@@ -140,7 +140,7 @@ export default async function ExpenseList({
           <StatGrid cols={2} items={[{ n: rows.length, label: '筆數' }, { n: money(total), label: '合計' }]} />
         </div>
       )}
-      {/* 月底對帳：先用人／月份篩好，一次把這頁全部標成已報帳 */}
+      {/* 月底對帳：先用人／月份篩好，一次把這頁全部標成已核銷 */}
       {rows.filter((r) => !r.reimbursed_at).length > 1 && (
         <form action="/api/expense/update" method="post" className="mb-4">
           <input type="hidden" name="org" value={slug} />
@@ -149,7 +149,7 @@ export default async function ExpenseList({
             <input key={r.id} type="hidden" name="id" value={r.id} />
           ))}
           <button className="btn w-full" name="action" value="reimburse">
-            這頁還沒報的 {rows.filter((r) => !r.reimbursed_at).length} 筆，全部標成已報帳
+            這頁還沒核銷的 {rows.filter((r) => !r.reimbursed_at).length} 筆，全部標成已核銷
           </button>
         </form>
       )}
@@ -171,7 +171,7 @@ export default async function ExpenseList({
             return (
               <li key={r.id} className="card">
                 <div className="flex items-start gap-3">
-                  {/* 還沒報的列前面可勾：勾了底部浮出「標成已報帳」（一列只留一個動作，原本每列都有一顆按鈕） */}
+                  {/* 還沒核銷的列前面可勾：勾了底部浮出「標成已核銷」（一列只留一個動作，原本每列都有一顆按鈕） */}
                   {!r.reimbursed_at && (
                     <input type="checkbox" name="id" value={r.id} form="reimburse-batch" className="exp-pick mt-1 h-5 w-5 flex-none accent-emerald-700" aria-label={`勾選 ${money(r.amount)} ${r.category}`} />
                   )}
@@ -188,7 +188,7 @@ export default async function ExpenseList({
                       <span className="text-lg font-semibold tabular-nums">{money(r.amount)}</span>
                       <span className="text-sm text-gray-600">{r.category}</span>
                       {r.pay_method && r.pay_method !== '代墊' && <span className="text-xs text-gray-500">{r.pay_method}</span>}
-                      {r.reimbursed_at ? <Badge tone="ok">已報帳</Badge> : <Badge tone="warn">還沒報</Badge>}
+                      {r.reimbursed_at ? <Badge tone="ok">已核銷</Badge> : <Badge tone="warn">還沒核銷</Badge>}
                     </div>
                     <p className="truncate text-sm text-gray-600">
                       {md(r.spent_on)}
@@ -205,7 +205,7 @@ export default async function ExpenseList({
                       <input type="hidden" name="id" value={r.id} />
                       <input type="hidden" name="back" value={back} />
                       <button className="btn btn-sm" name="action" value="unreimburse">
-                        改回未報
+                        改回未核銷
                       </button>
                     </form>
                   )}
@@ -295,7 +295,7 @@ export default async function ExpenseList({
           已勾 <span className="exp-n" /> 筆
         </span>
         <button className="btn-primary" name="action" value="reimburse">
-          標成已報帳
+          標成已核銷
         </button>
       </form>
       <datalist id="expense-projects">

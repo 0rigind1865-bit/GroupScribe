@@ -303,7 +303,7 @@ test('toCsv：新到舊、含時間與付款方式、表尾小計只列 >0 的�
     { includePerson: true },
   );
   const lines = csv.replace('﻿', '').split('\r\n');
-  assert.equal(lines[0], '日期,時間,分類,店家,用途,金額,付款方式,發票號碼,案場,地點,報帳狀態,人');
+  assert.equal(lines[0], '日期,時間,分類,店家,用途,金額,付款方式,發票號碼,案場,地點,核銷狀態,人'); // 2026-10：「已報帳」改叫「已核銷」（員工端的報帳＝送出申請）
   assert.match(lines[1], /^2026\/09\/26,,交通/); // 新的在前
   assert.match(lines[2], /^2026\/09\/25,12:30,餐飲,,"便當, 飲料",100,代墊/);
   assert.ok(lines.includes('合計,,,,,150'));

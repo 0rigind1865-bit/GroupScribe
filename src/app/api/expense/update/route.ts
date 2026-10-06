@@ -7,7 +7,7 @@ import { PAY_METHODS, parseAmount, parseDate } from '@/expense/receipt';
 import { withV2Fallback } from '@/expense/store';
 import { orgCategories } from '@/expense/categories';
 
-// 報帳寫入（X1）：改欄位、標已報帳／改回、刪除。
+// 報帳寫入（X1）：改欄位、標已核銷／改回、刪除。
 // 把關：moduleAccess(表單 org) → 每個查詢都 .eq('org_id')，拿到別家的 id 也改不到。
 export async function POST(req: NextRequest) {
   const form = await req.formData();
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   const now = new Date().toISOString();
 
-  // 標已報帳／改回可一次多筆（2026-10 設計畫布「收據」：月底勾一批一次標，不用一筆一筆按）
+  // 標已核銷／改回可一次多筆（2026-10 設計畫布「收據」：月底勾一批一次標，不用一筆一筆按）
   if (action === 'reimburse' || action === 'unreimburse') {
     const ids = form.getAll('id').map(String).filter(Boolean);
     if (!ids.length) return go('err=bad');
