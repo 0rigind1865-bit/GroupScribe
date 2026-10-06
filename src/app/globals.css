@@ -849,6 +849,15 @@ details[open] > .ctx-pill::before { content: ''; position: fixed; inset: 0; z-in
   html:has(.review-full) body {
     overflow: hidden;
   }
+  /* 底色只在手機蓋滿時要（電腦版是右欄、透明）：不用 bg-gray-50，它的深色 remap 會連電腦版一起蓋上 */
+  .review-full {
+    background: #f6f4ee; /* = gray-50 */
+  }
+}
+@media (max-width: 767px) and (prefers-color-scheme: dark) {
+  .review-full {
+    background: #111613;
+  }
 }
 .review-undo {
   color: #f5c451;

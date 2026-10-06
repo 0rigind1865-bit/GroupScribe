@@ -240,8 +240,12 @@ export default async function InboxPage({
           {list.length > 0 && <p className="text-[13px] text-gray-600">處理完的會自動從這裡消失。</p>}
         </section>
 
-        {/* ── 這一則：手機蓋滿畫面（review-full 鎖背景捲動，globals.css），電腦版回到右欄 ── */}
-        <div className="review-full fixed inset-0 z-50 flex flex-col overflow-y-auto bg-gray-50 md:static md:z-auto md:overflow-visible md:bg-transparent">
+        {/* ── 這一則：手機蓋滿畫面（review-full 鎖背景捲動，globals.css），電腦版回到右欄。
+            data-no-swipe：蓋著底部膠囊時，在這裡橫滑不該換分頁（同 DetailSheet） ── */}
+        <div
+          data-no-swipe=""
+          className="review-full fixed inset-0 z-50 flex flex-col overflow-y-auto md:static md:z-auto md:overflow-visible"
+        >
           <header className="flex h-14 flex-none items-center justify-between px-2 md:hidden">
             <a href={today} aria-label="關閉，回今天" className="grid h-11 w-11 place-items-center rounded-xl">
               <svg viewBox="0 0 24 24" className="h-[22px] w-[22px]" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
