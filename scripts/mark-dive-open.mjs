@@ -2,8 +2,8 @@
 //   1. 原本 logo 停一下
 //   2. 鏡頭往後退、升高往下拍：整隻一起縮小，頭到最後的位置；因為是從上往下看，同時眉毛看起來壓低、眼神變銳利、嘴變短，
 //      胸口看起來變寬短、尾巴從胸口後面露出來
-//   3. 張開翅膀（跟 2 同時）：原本兩側那片翅膀以上端（肩膀）為轉軸往外、往上抬起來；上半部變成短羽毛、下面尖端拉長成最上面那根長羽毛，
-//      其他長羽毛一開始疊在那片翅膀裡一起轉，轉到自己的位置就被留下來 → 轉的過程中由下往上一根一根依序出現
+//   3. 張開翅膀（跟 2 同時）：以兩側翅膀的上端（肩膀）為轉軸往外、往上抬起來；原本上面那片翅膀變成兩片短羽毛，
+//      原本下面那塊翅膀帶著一疊長羽毛轉上去、變成最上面那根長羽毛，其他長羽毛在轉的途中由下往上一根一根被留下來
 //   4. 一個訊息框從下面浮上來 → 尾巴收回、金色爪子從胸口下面往下伸、張開 → 一把扣住、把訊息往上拉（整隻微微往上一提）
 // 用法：node scripts/mark-dive-open.mjs → public/brand/dive-open.mp4（加 --still 2.9 只輸出那一秒的靜態圖）
 import sharp from 'sharp';
@@ -95,8 +95,7 @@ const morph = (id, srcD, side, time, haloFrom) => {
   morphs[id] = { m, time, poseAt: (t) => m.pose(inOutCubic(prog(t, time[0], time[1]))) };
   tracks.push({ ...l, draw: (t) => { const raw = prog(t, time[0], time[1]); return { pts: m(inOutCubic(raw)), halo: lerp(haloFrom ?? l.halo, l.halo, inOutCubic(raw)) }; } });
 };
-// 張開翅膀：原本 logo 兩側那片翅膀以「上端＝肩膀」為轉軸，往外、往上抬起來（像舉手）；
-// 抬的同時，它的上半部變成肩上那片短羽毛、下面尖的那端拉長變成最上面那根長羽毛；其他長羽毛等翅膀張開後才從腋下長出來
+// 張開翅膀：以兩側翅膀的上端（肩膀）為轉軸，往外、往上抬起來（像舉手）
 const wrap = (x) => { while (x > Math.PI) x -= 2 * Math.PI; while (x < -Math.PI) x += 2 * Math.PI; return x; };
 const pivotOf = (side) => (side < 0 ? dive.place(...dive.pivot) : dive.place(512 - dive.pivot[0], dive.pivot[1])); // 長羽毛的放射中心（畫布座標）
 const shoulderOf = (side) => { // 定稿裡的肩膀：短羽毛靠近頭的那一頭
@@ -104,20 +103,22 @@ const shoulderOf = (side) => { // 定稿裡的肩膀：短羽毛靠近頭的那�
   return dive.place(side < 0 ? x : 512 - x, y);
 };
 const RAISE = [0.75, 1.15]; // 跟鏡頭上升、往下拍同時進行
-const raise = {}; // 每邊翅膀抬起來的資料：肩膀起點 S0、終點 S1、要轉幾度 D
+const raise = {}; // 每邊翅膀抬起來的肩膀：起點 S0（原本上面那片翅膀的上端）、終點 S1
 for (const side of [-1, 1]) {
-  const wing = resample(side < 0 ? SRC.wingL : SRC.wingR), S0 = wing.reduce((b, p) => (p[1] < b[1] ? p : b)), B = wing.reduce((b, p) => (p[1] > b[1] ? p : b));
-  const C1 = pivotOf(side), L0 = resample(byId[side < 0 ? 'long0' : 'long4'].d), tip = L0.reduce((b, p) => (Math.hypot(p[0] - C1[0], p[1] - C1[1]) > Math.hypot(b[0] - C1[0], b[1] - C1[1]) ? p : b));
-  raise[side] = { S0, S1: shoulderOf(side), D: wrap(Math.atan2(tip[1] - C1[1], tip[0] - C1[0]) - Math.atan2(B[1] - S0[1], B[0] - S0[0])), wing: side < 0 ? SRC.wingL : SRC.wingR };
+  const wing = resample(side < 0 ? SRC.wingL : SRC.wingR);
+  raise[side] = { S0: wing.reduce((b, p) => (p[1] < b[1] ? p : b)), S1: shoulderOf(side) };
 }
-// 鉸鏈：形狀放在「掛著的那一刻」的座標裡變形，整片繞著（會移動的）肩膀轉 D 度
-const hinge = (id, side, time, srcD) => {
-  const l = byId[id], { S0, S1 } = raise[side], wing = raise[side].wing;
-  // 這一片要轉幾度才到定位：長羽毛＝從掛著（往下）轉到它自己的方向；轉到了就停（被留下來），其他片繼續往上轉 → 一根一根依序出現
-  const B = resample(wing).reduce((b, p) => (p[1] > b[1] ? p : b)), C1 = pivotOf(side), F = resample(l.d);
-  const tipK = F.reduce((b, p) => (Math.hypot(p[0] - C1[0], p[1] - C1[1]) > Math.hypot(b[0] - C1[0], b[1] - C1[1]) ? p : b));
-  const D = wrap(Math.atan2(tipK[1] - C1[1], tipK[0] - C1[0]) - Math.atan2(B[1] - S0[1], B[0] - S0[0])), Dmax = raise[side].D; // 每一片（長羽毛、短羽毛）都轉到自己的方向就停
-  const Sl = resample(srcD ?? wing).map(([x, y]) => [x - S0[0], y - S0[1]]); // 一開始的形狀：原本那片翅膀（下面那片短羽毛用原本的下翅）
+// 這一片要轉幾度才到定位：從「掛著」的方向（肩膀 → 來源那片離肩膀最遠的點）轉到它自己的方向（放射中心 → 它的尖端）
+const turnOf = (id, side, srcD) => {
+  const { S0 } = raise[side], C1 = pivotOf(side), F = resample(byId[id].d), src = resample(srcD);
+  const far = (pts, o) => pts.reduce((b, p) => (Math.hypot(p[0] - o[0], p[1] - o[1]) > Math.hypot(b[0] - o[0], b[1] - o[1]) ? p : b));
+  const tip = far(F, C1), hang = far(src, S0);
+  return wrap(Math.atan2(tip[1] - C1[1], tip[0] - C1[0]) - Math.atan2(hang[1] - S0[1], hang[0] - S0[0]));
+};
+// 鉸鏈：一疊羽毛從同一片來源（srcD）一起繞肩膀轉，轉的速度照這疊裡轉最多的那片（Dmax）；每片轉到自己的方向就停（被留下來）
+const hinge = (id, side, time, srcD, Dmax) => {
+  const l = byId[id], { S0, S1 } = raise[side], D = turnOf(id, side, srcD);
+  const Sl = resample(srcD).map(([x, y]) => [x - S0[0], y - S0[1]]);
   const Tl = resample(l.d).map(([x, y]) => rot([x - S1[0], y - S1[1]], -D));
   let best = 0, bestE = Infinity;
   for (let o = 0; o < N_PTS; o++) { let e = 0; for (let i = 0; i < N_PTS; i += 3) { const p = Sl[i], q = Tl[(i + o) % N_PTS]; e += (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2; } if (e < bestE) { bestE = e; best = o; } }
@@ -128,17 +129,23 @@ const hinge = (id, side, time, srcD) => {
     return { pts: Sl.map((p, i) => { const q = rot([lerp(p[0], Ta[i][0], m), lerp(p[1], Ta[i][1], m)], a); return [P0[0] + q[0], P0[1] + q[1]]; }), halo: l.halo };
   } });
 };
-// 頭（0.55 秒起）、胸口、肩上的短羽毛（covert0／2＝下面那片從原本下翅變、covert1／3＝上面那片從原本收著的翅膀變）
+// 頭、胸口（跟著鏡頭往下拍一起變）
 const HEAD_T = [0.65, 1.1]; // 鏡頭升高、往下拍：同時看起來眉毛壓低、眼神變銳利、嘴變短（頭跟著鏡頭到定位後就不動）
 const headSrc = { mask0: SRC.brow, mask1: SRC.faceL, mask2: SRC.faceR, mask3: SRC.eyeL, mask4: SRC.eyeR, mask5: SRC.beak,
   eye0: SRC.eyeL, eye1: SRC.eyeR, face0: SRC.faceL, face1: SRC.faceR, brow: SRC.brow, beak: SRC.beak };
 for (const [id, src] of Object.entries(headSrc)) morph(id, src, 0, HEAD_T, id === 'brow' ? 0 : undefined);
 morph('mask6', mapPath(byId.mask6.d, (x, y) => [R1[0] + (x - R1[0]) * 0.01, R1[1] + (y - R1[1]) * 0.01]), 0, HEAD_T); // 臉中間挖縫用的橢圓：一開始縮成一點
 morph('chest', SRC.chest, 0, [0.7, 1.05]); // 鏡頭往下拍：胸口看起來變寬短（尾巴同時從後面露出來，見下面）
-hinge('covert0', -1, RAISE, SRC.lowL); hinge('covert2', 1, RAISE, SRC.lowR); // 原本的下翅 → 下面那片短羽毛：也繞同一個肩膀轉，轉到自己的位置就停
-// 原本那片翅膀：上半部 → 上面那片短羽毛、下面尖端 → 最上面那根長羽毛（兩片一起繞肩膀抬起來，短羽毛蓋在上面）
-hinge('long0', -1, RAISE); hinge('long4', 1, RAISE); hinge('covert1', -1, RAISE); hinge('covert3', 1, RAISE);
-for (let j = 1; j < 4; j++) { hinge(`long${j}`, -1, RAISE); hinge(`long${j + 4}`, 1, RAISE); } // 其他長羽毛：疊在翅膀裡一起轉，轉到自己的位置就留下來
+
+// 原本 logo 下面那塊翅膀 → 一疊 4 根長羽毛：一起繞肩膀轉上去，最後它變成最上面那根長羽毛；其他 3 根在轉的途中由下往上依序被留下來
+// 原本 logo 上面那片翅膀 → 兩片短羽毛：同樣繞肩膀轉，下面那片先停、上面那片後停（短羽毛蓋在長羽毛上面）
+for (const side of [-1, 1]) {
+  const o = side < 0 ? 0 : 4, low = side < 0 ? SRC.lowL : SRC.lowR, up = side < 0 ? SRC.wingL : SRC.wingR;
+  const longIds = [0, 1, 2, 3].map((j) => `long${j + o}`), covIds = side < 0 ? ['covert0', 'covert1'] : ['covert2', 'covert3'];
+  const DL = turnOf(longIds[0], side, low), DC = turnOf(covIds[1], side, up);
+  longIds.forEach((id) => hinge(id, side, RAISE, low, DL));
+  covIds.forEach((id) => hinge(id, side, RAISE, up, DC));
+}
 
 // ── 尾巴：身體往前傾（胸口看起來變短）的同時，尾巴從胸口後面張開露出來；爪子往前伸的時候再收回胸口後面（爪子版沒有尾巴）
 const TILT = [0.85, 1.05], TUCK = [2.6, 0.6];
