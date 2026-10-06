@@ -856,6 +856,10 @@ details[open] > .ctx-pill::before { content: ''; position: fixed; inset: 0; z-in
 body:has(.exp-pick:checked) .exp-bar {
   display: flex;
 }
+/* 浮出列蓋在最後幾列上：勾選時底部多留一段，捲到底看得到最後一筆 */
+body:has(.exp-pick:checked) .exp-list {
+  padding-bottom: 7rem;
+}
 /* 勾起來的那一列淡綠底（設計畫布「報帳 · 收據」） */
 .exp-row:has(.exp-pick:checked) {
   background: #f3f8f5;
