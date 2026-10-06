@@ -38,7 +38,7 @@ export type IdentityBarProps = {
   tt: Tt;
   /** 角色開關的字（個人／管理）用的語系；預設＝tt。管理端的工具名仍是中文，但開關要與員工在打卡頁看到的同一種語言（T10 第 3 輪） */
   roleTt?: Tt;
-  /** 電腦版頂欄的分頁（管理側）；手機不顯示 */
+  /** 電腦版的導覽（管理側；rail 時是左側欄內容）；手機不顯示 */
   navSlot?: ReactNode;
   /** 情境膠囊（群組／員工） */
   contextSlot?: ReactNode;
@@ -56,12 +56,15 @@ export type IdentityBarProps = {
   /** 工具選單最下面多一段（管理側：這個工具沒進分頁的頁面，取代原本的「更多」分頁）。
    *  有它就一定有選單——只管一個工具的人也要點得到設定、匯入 */
   menuExtra?: ReactNode;
+  /** 電腦版整條變成淺色左側欄（/o 管理殼，2026-10 設計畫布 DesktopToday）：工具鈕第二行固定寫「公司 · 管理」——
+   *  不再有深色帶說「在管公司」。樣式全在 md 以上，手機照舊 */
+  rail?: boolean;
 };
 
 /** 身分列會不會出現（個人側單一工具時整列不渲染，語言地球要改放姓名列——審查 F3） */
 export const identityBarShown = (g: Grouped, side: Side) => !(side === 'me' && barState(g, side) === 'c');
 
-export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot, contextSlot, rightSlot, dot, brand, closeHref, menuExtra }: IdentityBarProps) {
+export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot, contextSlot, rightSlot, dot, brand, closeHref, menuExtra, rail }: IdentityBarProps) {
   if (!identityBarShown(groups, side)) return null;
   const items = itemsOf(groups, side);
   // 目前這頁不在清單裡（非員工的老闆開 /a、不在群裡的人開 /g）：按鈕照實寫這一頁的工具，
@@ -87,12 +90,13 @@ export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot
       <span className="id-tool-text">
         <span className="id-tool-name">{toolName(curId, tt)}</span>
         {orgLine && <span className="id-tool-org">{orgLine}</span>}
+        {rail && <span className="id-tool-rail">{[orgLine ?? cur.orgName, tt('ROLE_ADMIN')].filter(Boolean).join(' · ')}</span>}
       </span>
     </>
   );
 
   return (
-    <div className={`id-bar ${dark ? 'id-bar--dark' : 'id-bar--light'}`}>
+    <div className={`id-bar ${dark ? 'id-bar--dark' : 'id-bar--light'}${rail ? ' id-bar--rail' : ''}`}>
       {brand && (
         <span className="id-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}

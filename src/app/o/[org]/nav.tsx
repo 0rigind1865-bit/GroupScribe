@@ -2,10 +2,10 @@
 
 import { usePathname, useSearchParams } from 'next/navigation';
 import { FloatingNav } from '@/app/ui/floating-nav';
-import { bottomItems, moduleById, moduleOf, type BadgeKey, type ModuleDef, type ModuleId } from './routes';
+import { bottomItems, moduleById, moduleOf, moreItems, type BadgeKey, type ModuleDef, type ModuleId, type NavItem } from './routes';
 
-// 導覽：手機底部膠囊＋桌面頂部 nav，同一份路由表（routes.tsx）、皆帶 active 標記。
-// 只放 primary 項目；其餘收在頂欄工具選單（shell-header.tsx）。
+// 導覽：手機底部膠囊＋電腦左側欄，同一份路由表（routes.tsx）、皆帶 active 標記。
+// 底部膠囊只放 primary 項目，其餘收在頂欄工具選單（shell-header.tsx）；左側欄全部列出。
 // 換頁保留該模組的 context 參數（群組助理＝?group、考勤＝?emp）——原本會掉，
 // 是「不直覺」的主因之一。
 
@@ -55,33 +55,41 @@ export function BottomNav({ moduleId, counts = {} }: { moduleId: ModuleId; count
   );
 }
 
-export function TopNav({ moduleId, counts = {} }: { moduleId: ModuleId; counts?: Counts }) {
+/** 電腦版左側欄的導覽（2026-10 設計畫布 DesktopToday／AttendDesktop／ExpenseDesktop）。
+ *  放在身分列的 navSlot：手機 .id-nav 不顯示；md 以上身分列整條變成左側欄（globals.css「電腦版左側欄」）。
+ *  主要導覽＝底部分頁＋帶徽章的頁（群組助理的「把關」）；其餘頁面列在下面。scope＝範圍篩選（群組清單） */
+export function SideNav({ moduleId, counts = {}, scope }: { moduleId: ModuleId; counts?: Counts; scope?: React.ReactNode }) {
   const module = modOf(moduleId);
   const { href, isActive } = useNav(module);
+  const badged = moreItems(module).filter((i) => i.badge);
+  const rest = moreItems(module).filter((i) => !i.badge);
+  // 手機「今天」的徽章是替收在選單裡的「把關」掛的；側欄直接看得到「把關」，徽章只掛在它身上
+  const count = (i: NavItem) => (i.badge && !(i.primary && badged.some((j) => j.badge === i.badge)) ? (counts[i.badge] ?? 0) : 0);
+  const link = (i: NavItem, icon: boolean) => {
+    const n = count(i);
+    return (
+      <a key={i.key} href={href(i.path)} aria-current={isActive(i.path) ? 'page' : undefined} className="side-link">
+        {icon && <Icon>{i.icon}</Icon>}
+        <span className="flex-1">{i.label}</span>
+        {n > 0 && <span className="id-count">{n > 99 ? '99+' : n}</span>}
+      </a>
+    );
+  };
+  const gs = moduleId === 'gs';
   return (
-    <nav className="hidden gap-0.5 text-sm md:flex" aria-label={`${module.label}分頁`}>
-      {bottomItems(module).map((i) => {
-        const n = i.badge ? (counts[i.badge] ?? 0) : 0;
-        const on = isActive(i.path);
-        return (
-          <a
-            key={i.key}
-            href={href(i.path)}
-            aria-current={on ? 'page' : undefined}
-            className={`flex items-center gap-1.5 rounded-[10px] px-3 py-2 whitespace-nowrap ${
-              on ? 'bg-[#2e3a34] font-bold text-white' : 'text-[#b8c2bc] hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            {i.label}
-            {n > 0 && (
-              <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e0a43a] px-1 text-[11px] font-bold text-[#1c2420]">
-                {n > 99 ? '99+' : n}
-              </span>
-            )}
-          </a>
-        );
-      })}
-    </nav>
+    <>
+      <nav aria-label="主要" className="side-nav">
+        {[...bottomItems(module), ...badged].map((i) => link(i, true))}
+      </nav>
+      {scope}
+      {rest.length > 0 && (
+        // 群組助理：中間是群組清單，其餘頁面壓到最底；考勤／報帳緊接導覽、標「設定」（同畫布）
+        <div className={gs ? 'side-more side-more--foot' : 'side-more'}>
+          {!gs && <p className="side-sec">設定</p>}
+          {rest.map((i) => link(i, false))}
+        </div>
+      )}
+    </>
   );
 }
 
