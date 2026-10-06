@@ -1,8 +1,9 @@
 // 產生「原本 logo 張開翅膀、調整姿勢變成俯衝版（甲），再伸出金色爪子抓住訊息」的動畫（1080×1080、60fps、無聲）
 //   1. 原本 logo 停一下
-//   2. 鏡頭往後退：整隻一起縮小，頭直接到最後的位置；之後頭不再移動，只換表情（眉毛壓低、眼神變銳利、嘴變短）
-//      胸口變寬短、尾巴從胸口後面張開露出來
-//   3. 張開翅膀＝折扇：原本 logo 兩側那片翅膀就是收起來的扇子，4 根長羽毛疊在裡面，一起往兩側照比例打開
+//   2. 鏡頭往後退、升高往下拍：整隻一起縮小，頭到最後的位置；因為是從上往下看，同時眉毛看起來壓低、眼神變銳利、嘴變短，
+//      胸口看起來變寬短、尾巴從胸口後面露出來
+//   3. 張開翅膀：原本兩側那片翅膀以上端（肩膀）為轉軸往外、往上抬起來；上半部變成短羽毛、下面尖端拉長成最上面那根長羽毛，
+//      其他長羽毛等翅膀張開後，像扇子一樣從腋下長出來、轉出來、展開
 //   4. 一個訊息框從下面浮上來 → 尾巴收回、金色爪子從胸口下面往下伸、張開 → 一把扣住、把訊息往上拉（整隻微微往上一提）
 // 用法：node scripts/mark-dive-open.mjs → public/brand/dive-open.mp4（加 --still 2.9 只輸出那一秒的靜態圖）
 import sharp from 'sharp';
@@ -12,7 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildDive, flatten, mapPath, P, ORIG_BEAK, BG, IVORY } from './mark-dive.mjs';
 
-const SIZE = 1080, FPS = 60, DUR = 8.4, N_PTS = 180;
+const SIZE = 1080, FPS = 60, DUR = 8.9, N_PTS = 180;
 const OUT = 'public/brand/dive-open.mp4';
 
 const clamp = (x) => Math.min(1, Math.max(0, x));
@@ -29,7 +30,7 @@ const orig = (d) => mapPath(d, (x, y) => [256 + 0.994 * x, 256 + 0.994 * (y - 25
 const circle = (cx, cy, r) => `M${Array.from({ length: 48 }, (_, k) => `${cx + r * Math.cos((k / 48) * 2 * Math.PI)} ${cy + r * Math.sin((k / 48) * 2 * Math.PI)}`).join('L')}Z`;
 // 鏡頭：一開始先把整隻原本的 logo 一起縮小、移過去（像鏡頭往後退），讓頭直接到甲的頭的位置和大小；之後頭就不再移動
 const dive = buildDive({ claws: true });
-const Z = dive.zoom, R0 = [256, 256 + 0.994 * (168 - 252.5)], R1 = dive.place(256, 300), K_CAM = (0.55 * Z) / 0.994, CAM = [0.6, 0.9];
+const Z = dive.zoom, R0 = [256, 256 + 0.994 * (168 - 252.5)], R1 = dive.place(256, 300), K_CAM = (0.55 * Z) / 0.994, CAM = [0.6, 1.1];
 const cam = (d) => mapPath(d, (x, y) => [R1[0] + K_CAM * (x - R0[0]), R1[1] + K_CAM * (y - R0[1])]);
 const SRC = Object.fromEntries(Object.entries({
   brow: orig(P[0]), faceL: orig(P[1]), faceR: orig(P[2]), eyeL: orig(circle(-45.5, 186, 18)), eyeR: orig(circle(45.5, 186, 18)), beak: orig(ORIG_BEAK),
@@ -94,38 +95,61 @@ const morph = (id, srcD, side, time, haloFrom) => {
   morphs[id] = { m, time, poseAt: (t) => m.pose(inOutCubic(prog(t, time[0], time[1]))) };
   tracks.push({ ...l, draw: (t) => { const raw = prog(t, time[0], time[1]); return { pts: m(inOutCubic(raw)), halo: lerp(haloFrom ?? l.halo, l.halo, inOutCubic(raw)) }; } });
 };
-// 張開翅膀的長羽毛＝折扇：原本 logo 兩側那片翅膀就是收起來的扇子——每邊 4 根長羽毛一開始縮小、疊成一束藏在它裡面，
-// 扇軸在它的下端；打開時 4 根一起繞扇軸往外（往兩側）照比例張開、一邊變大，扇軸同時滑到胸口後面的放射中心
-const FAN = [2.0, 1.9];
-const fanRib = (id, k, side) => {
-  const l = byId[id], C1 = side < 0 ? dive.place(...dive.pivot) : dive.place(512 - dive.pivot[0], dive.pivot[1]);
-  const wing = resample(side < 0 ? SRC.wingL : SRC.wingR), bot = wing.reduce((b, p) => (p[1] > b[1] ? p : b)), top = wing.reduce((b, p) => (p[1] < b[1] ? p : b));
-  const closed = Math.atan2(top[1] - bot[1], top[0] - bot[0]); // 收起來的方向＝原本那片翅膀的方向（往上）
-  const pts = resample(l.d).map(([x, y]) => [x - C1[0], y - C1[1]]);
-  const ribs = dive.filter((x) => x.id.startsWith('long')).map((x) => Math.max(...resample(x.d).map(([X, Y]) => Math.hypot(X - C1[0], Y - C1[1]))));
-  const s0 = (0.95 * Math.hypot(top[0] - bot[0], top[1] - bot[1])) / Math.max(...ribs.slice(side < 0 ? 0 : 4, side < 0 ? 4 : 8)); // 最長那根剛好塞進原本那片翅膀
-  const mid = (dive.angles[k] + dive.angles[k + 1]) / 2, final = Math.atan2(-Math.sin(rad(mid)), (side < 0 ? -1 : 1) * Math.cos(rad(mid)));
-  let d0 = closed - final; while (d0 > Math.PI) d0 -= 2 * Math.PI; while (d0 < -Math.PI) d0 += 2 * Math.PI;
+// 張開翅膀：原本 logo 兩側那片翅膀以「上端＝肩膀」為轉軸，往外、往上抬起來（像舉手）；
+// 抬的同時，它的上半部變成肩上那片短羽毛、下面尖的那端拉長變成最上面那根長羽毛；其他長羽毛等翅膀張開後才從腋下長出來
+const wrap = (x) => { while (x > Math.PI) x -= 2 * Math.PI; while (x < -Math.PI) x += 2 * Math.PI; return x; };
+const pivotOf = (side) => (side < 0 ? dive.place(...dive.pivot) : dive.place(512 - dive.pivot[0], dive.pivot[1])); // 長羽毛的放射中心（畫布座標）
+const shoulderOf = (side) => { // 定稿裡的肩膀：短羽毛靠近頭的那一頭
+  const a = rad(dive.angles[1]), x = dive.pivot[0] - 72 * Math.cos(a), y = dive.pivot[1] - 72 * Math.sin(a);
+  return dive.place(side < 0 ? x : 512 - x, y);
+};
+const RAISE = [1.9, 1.5];
+const raise = {}; // 每邊翅膀抬起來的資料：肩膀起點 S0、終點 S1、要轉幾度 D
+for (const side of [-1, 1]) {
+  const wing = resample(side < 0 ? SRC.wingL : SRC.wingR), S0 = wing.reduce((b, p) => (p[1] < b[1] ? p : b)), B = wing.reduce((b, p) => (p[1] > b[1] ? p : b));
+  const C1 = pivotOf(side), L0 = resample(byId[side < 0 ? 'long0' : 'long4'].d), tip = L0.reduce((b, p) => (Math.hypot(p[0] - C1[0], p[1] - C1[1]) > Math.hypot(b[0] - C1[0], b[1] - C1[1]) ? p : b));
+  raise[side] = { S0, S1: shoulderOf(side), D: wrap(Math.atan2(tip[1] - C1[1], tip[0] - C1[0]) - Math.atan2(B[1] - S0[1], B[0] - S0[0])), wing: side < 0 ? SRC.wingL : SRC.wingR };
+}
+// 鉸鏈：形狀放在「掛著的那一刻」的座標裡變形，整片繞著（會移動的）肩膀轉 D 度
+const hinge = (id, side, time) => {
+  const l = byId[id], { S0, S1, D, wing } = raise[side];
+  const Sl = resample(wing).map(([x, y]) => [x - S0[0], y - S0[1]]);
+  const Tl = resample(l.d).map(([x, y]) => rot([x - S1[0], y - S1[1]], -D));
+  let best = 0, bestE = Infinity;
+  for (let o = 0; o < N_PTS; o++) { let e = 0; for (let i = 0; i < N_PTS; i += 3) { const p = Sl[i], q = Tl[(i + o) % N_PTS]; e += (p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2; } if (e < bestE) { bestE = e; best = o; } }
+  const Ta = Tl.map((_, i) => Tl[(i + best) % N_PTS]);
   tracks.push({ ...l, draw: (t) => {
-    const x_ = prog(t, ...FAN), w = inOutCubic(x_), u = w + 0.06 * Math.sin(Math.PI * x_) ** 2 * (x_ > 0.5 ? 1 : 0); // 轉開和變大一起走，最後微微多張一點再回來
-    const r = d0 * (1 - u), sc = lerp(s0, 1, w), c = Math.cos(r), sn = Math.sin(r);
-    const P0 = [lerp(bot[0], C1[0], w), lerp(bot[1], C1[1], w)];
-    return { pts: pts.map(([x, y]) => [P0[0] + sc * (x * c - y * sn), P0[1] + sc * (x * sn + y * c)]), halo: l.halo };
+    const x_ = prog(t, ...time), m = inOutCubic(x_), u = m + 0.05 * Math.sin(Math.PI * x_) ** 2 * (x_ > 0.5 ? 1 : 0);
+    const P0 = [lerp(S0[0], S1[0], m), lerp(S0[1], S1[1], m)], a = D * u;
+    return { pts: Sl.map((p, i) => { const q = rot([lerp(p[0], Ta[i][0], m), lerp(p[1], Ta[i][1], m)], a); return [P0[0] + q[0], P0[1] + q[1]]; }), halo: l.halo };
+  } });
+};
+// 從腋下長出來的長羽毛（像扇子）：先疊在最上面那根長羽毛後面、從腋下慢慢長出來（每根比上一根多斜一點點，邊緣看得到在長），
+// 再三根一起繞放射中心照比例轉開、展開到定位
+const GROW = [3.3, 0.7], FANOUT = [3.9, 1.2], PEEK = 4;
+const sprout = (id, k, side) => {
+  const l = byId[id], C1 = pivotOf(side), pts = resample(l.d).map(([x, y]) => [x - C1[0], y - C1[1]]);
+  const mid = (a) => (dive.angles[a] + dive.angles[a + 1]) / 2, sgn = side < 0 ? 1 : -1;
+  const dTop = rad(mid(1) - mid(k)) * sgn, dPeek = rad(-PEEK * (k - 1)) * sgn; // 疊在最上面那根後面時，比它多往下斜一點
+  tracks.push({ ...l, draw: (t) => {
+    const g = inOutCubic(prog(t, ...GROW)), u = outBack(prog(t, ...FANOUT)), r = (dTop + dPeek) * (1 - u), sc = lerp(0.2, 1, g), c = Math.cos(r), sn = Math.sin(r);
+    return { pts: pts.map(([x, y]) => [C1[0] + sc * (x * c - y * sn), C1[1] + sc * (x * sn + y * c)]), halo: l.halo };
   } });
 };
 // 頭（0.55 秒起）、胸口、肩上的短羽毛（covert0／2＝下面那片從原本下翅變、covert1／3＝上面那片從原本收著的翅膀變）
-const HEAD_T = [1.6, 0.8]; // 頭只換表情（眉毛壓低、眼神變銳利、嘴變短），位置不動
+const HEAD_T = [0.7, 1.0]; // 鏡頭升高、往下拍：同時看起來眉毛壓低、眼神變銳利、嘴變短（頭跟著鏡頭到定位後就不動）
 const headSrc = { mask0: SRC.brow, mask1: SRC.faceL, mask2: SRC.faceR, mask3: SRC.eyeL, mask4: SRC.eyeR, mask5: SRC.beak,
   eye0: SRC.eyeL, eye1: SRC.eyeR, face0: SRC.faceL, face1: SRC.faceR, brow: SRC.brow, beak: SRC.beak };
 for (const [id, src] of Object.entries(headSrc)) morph(id, src, 0, HEAD_T, id === 'brow' ? 0 : undefined);
 morph('mask6', mapPath(byId.mask6.d, (x, y) => [R1[0] + (x - R1[0]) * 0.01, R1[1] + (y - R1[1]) * 0.01]), 0, HEAD_T); // 臉中間挖縫用的橢圓：一開始縮成一點
-morph('chest', SRC.chest, 0, [1.7, 0.9]); // 胸口變寬短（尾巴同時從後面張開，見下面）
-morph('covert0', SRC.lowL, -1, [1.9, 1.4]); morph('covert2', SRC.lowR, 1, [1.9, 1.4]);
-morph('covert1', SRC.wingL, -1, [2.0, 1.5]); morph('covert3', SRC.wingR, 1, [2.0, 1.5]); // 扇子最前面那根（原本那片翅膀）跟著扇子一起轉到肩上
-for (let j = 0; j < 4; j++) { fanRib(`long${j}`, j + 1, -1); fanRib(`long${j + 4}`, j + 1, 1); }
+morph('chest', SRC.chest, 0, [0.75, 0.95]); // 鏡頭往下拍：胸口看起來變寬短（尾巴同時從後面露出來，見下面）
+morph('covert0', SRC.lowL, -1, [2.3, 1.2]); morph('covert2', SRC.lowR, 1, [2.3, 1.2]); // 原本的下翅 → 下面那片短羽毛
+// 原本那片翅膀：上半部 → 上面那片短羽毛、下面尖端 → 最上面那根長羽毛（兩片一起繞肩膀抬起來，短羽毛蓋在上面）
+hinge('long0', -1, RAISE); hinge('long4', 1, RAISE); hinge('covert1', -1, RAISE); hinge('covert3', 1, RAISE);
+for (let j = 1; j < 4; j++) { sprout(`long${j}`, j + 1, -1); sprout(`long${j + 4}`, j + 1, 1); }
 
 // ── 尾巴：身體往前傾（胸口看起來變短）的同時，尾巴從胸口後面張開露出來；爪子往前伸的時候再收回胸口後面（爪子版沒有尾巴）
-const TILT = [1.8, 1.1], TUCK = [5.1, 0.6];
+const TILT = [0.9, 1.0], TUCK = [5.6, 0.6];
 {
   const [px, py] = dive.place(...dive.tailPivot), A = dive.tailAngles;
   dive.tail.forEach((d, j) => {
@@ -143,7 +167,7 @@ const bx = BUB.cx - BUB.w / 2, by = BUB.top, bw = BUB.w, bh = BUB.h, br = BUB.r;
 const bubbleD = mapPath(`M${bx + br} ${by}L${bx + bw - br} ${by}Q${bx + bw} ${by} ${bx + bw} ${by + br}L${bx + bw} ${by + bh - br}Q${bx + bw} ${by + bh} ${bx + bw - br} ${by + bh}L${bx + 21} ${by + bh}L${bx + 10} ${by + bh + 9}L${bx + 12} ${by + bh}L${bx + br} ${by + bh}Q${bx} ${by + bh} ${bx} ${by + bh - br}L${bx} ${by + br}Q${bx} ${by} ${bx + br} ${by}Z`, dive.place);
 const lines = [[bx + 12, by + 11, bx + bw - 12], [bx + 12, by + 18, bx + bw - 24]].map(([x1, y, x2]) => [dive.place(x1, y), dive.place(x2, y)]);
 const bubC = dive.place(BUB.cx, BUB.top + BUB.h / 2);
-const BUB_IN = [4.8, 0.7], REACH = 10, CLOSE = [5.85, 0.22], PULL = [5.95, 0.45]; // 訊息框先停在低一點的地方，爪子伸下去抓、合起來、再往上拉回定位
+const BUB_IN = [5.3, 0.7], REACH = 10, CLOSE = [6.35, 0.22], PULL = [6.45, 0.45]; // 訊息框先停在低一點的地方，爪子伸下去抓、合起來、再往上拉回定位
 const bubble = (t) => {
   const u = outBack(prog(t, ...BUB_IN)), s = lerp(0.2, 1, u), dy = (lerp(30, REACH, u) - REACH * outBack(prog(t, ...PULL))) * Z;
   const tf = (x, y) => [bubC[0] + s * (x - bubC[0]), bubC[1] + s * (y - bubC[1]) + dy];
@@ -155,7 +179,7 @@ const bubble = (t) => {
 // ── 爪子：從胸口下面伸出來（往下、變大），一邊伸一邊張開，碰到訊息框時一把扣起來
 const toes = dive.filter((l) => l.id.startsWith('toe'));
 const OPEN = [52, 24, -36]; // 左腳三根爪張開的角度（右腳相反）：張得很開，抓的時候才看得出來
-const EXT = [5.1, 0.7];
+const EXT = [5.6, 0.7];
 const toeTracks = toes.map((l, i) => {
   const pts = resample(l.d), base = pts.reduce((b, p) => (p[1] < b[1] ? p : b)), side = i < 3 ? -1 : 1, open = rad(OPEN[i % 3]) * (side < 0 ? 1 : -1);
   return (t) => {
@@ -173,7 +197,9 @@ const feet = (t) => {
 };
 
 // 照定稿的前後順序畫；訊息框和爪子插在胸口後面、頭前面（爪子要蓋在胸口上面）
-const order = (id) => (id.startsWith('tail') ? dive.findIndex((l) => l.id === 'chest') - 0.5 : dive.findIndex((l) => l.id === id)); // 尾巴畫在胸口後面
+const order = (id) => (id.startsWith('tail') ? dive.findIndex((l) => l.id === 'chest') - 0.5
+  : id === 'long0' || id === 'long4' ? dive.findIndex((l) => l.id === 'long7') + 0.5 // 最上面那根長羽毛蓋在腋下長出來的那幾根上面
+  : dive.findIndex((l) => l.id === id)); // 尾巴畫在胸口後面
 tracks.sort((a, b) => order(a.id) - order(b.id));
 const LIFT = 9; // 抓到訊息時整隻往上提一點（加上訊息框之後還是置中）
 const frame = (t) => {
@@ -181,7 +207,7 @@ const frame = (t) => {
   const chestAt = tracks.findIndex((tr) => tr.id === 'chest');
   const shown = () => true;
   const before = tracks.slice(0, chestAt + 1).filter(shown).map(draw).join(''), after = tracks.slice(chestAt + 1).filter(shown).map(draw).join('');
-  const lift = -LIFT * inOutCubic(prog(t, 4.8, 1.4));
+  const lift = -LIFT * inOutCubic(prog(t, 5.3, 1.4));
   // 鏡頭：CAM 之前整個畫面用「縮放前」的樣子（原本 logo 原大），CAM 期間一起縮到定位
   const e = inOutCubic(prog(t, ...CAM)), cs = lerp(1, K_CAM, e) / K_CAM, cc = [lerp(R0[0], R1[0], e), lerp(R0[1], R1[1], e)];
   const camT = `translate(${f2(cc[0])} ${f2(cc[1])}) scale(${+cs.toFixed(5)}) translate(${f2(-R1[0])} ${f2(-R1[1])})`;
