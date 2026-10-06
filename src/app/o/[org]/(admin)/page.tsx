@@ -119,6 +119,7 @@ export default async function Today({
     { n: unassigned.count ?? 0, label: '沒有負責人', href: oh(slug, '/tasks'), hint: '沒指定人就不會有人做' },
     { n: media.count ?? 0, label: '檔案未解析', href: oh(slug, '/settings'), hint: 'AI 讀不到內容，也進不了抽取' },
   ].filter((a) => a.n > 0);
+  const side = pendingCount > 0 || attention.length > 0; // 右欄沒東西就不分欄，日期軌吃滿寬
   const nameOf = new Map((groups ?? []).map((g: any) => [g.group_id, g.name ?? g.group_id]));
 
   // 事件與待辦混排進同一條日期軌（逾期待辦歸到今天，最上方）
@@ -192,10 +193,11 @@ export default async function Today({
           <OnboardingCard slug={slug} botBasicId={process.env.LINE_BOT_BASIC_ID} hasGroups messageCount={messageCount} />
           {/* 「需要你處理」：管理者的主畫面該回答「有什麼要我介入」，而不是再列一次清單。
               四項全部是例外——正常運作時都是 0，整區消失，版面讓給日期軌。 */}
-          {/* 手機：「需要你處理」在上、兩欄小卡；桌機：右欄固定，左欄是日期軌 */}
-          <div className="md:grid md:grid-cols-[minmax(0,1fr)_300px] md:gap-10">
-          {(pendingCount > 0 || attention.length > 0) && (
-            <section className="mb-5 space-y-5 md:order-2 md:mb-0">
+          {/* 手機：「需要你處理」在上、兩欄小卡；電腦（2026-10 設計畫布 DesktopToday）：右邊多一欄「等你把關」，
+              捲日期軌時黏著不走、不用切頁。從 lg 才分兩欄：md 起左邊多了 232px 側欄，平板寬分兩欄日期軌會擠成一條 */}
+          <div className={side ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6' : undefined}>
+          {side && (
+            <section className="mb-5 space-y-5 lg:sticky lg:top-8 lg:order-2 lg:mb-0 lg:self-start">
               {/* 等你把關（2026-10 設計畫布，取代收件匣分頁）：一句原話預覽＋一顆進把關頁的大按鈕 */}
               {pendingCount > 0 && (
                 <div className="space-y-3 rounded-2xl border border-amber-300 bg-amber-50 p-4">
@@ -254,7 +256,7 @@ export default async function Today({
           )}
 
           {/* 日期大字軌：事件與待辦混排 */}
-          <section className="md:order-1">
+          <section className="lg:order-1">
           <h2 className="mb-3 section-title">未來 7 天</h2>
           {days.length ? (
             <div className="space-y-3">
