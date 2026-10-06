@@ -1,8 +1,8 @@
-// 全站唯一的路由表（取代原本散在五處的定義：BottomNav / TopNav / MORE_PATHS /
+// 全站唯一的路由表（取代原本散在五處的定義：BottomNav / 頂部分頁 / MORE_PATHS /
 // more 頁的 ENTRIES / attend layout 的 tabs）。
 //
 // docs/plan.md:118 的紀律：「nav 連結做成陣列常數，未來加頁＝加一行」——
-// 五份表意味著加一頁要改五處，遲早會漏。現在三個消費者（TopNav / BottomNav / more 頁）
+// 五份表意味著加一頁要改五處，遲早會漏。現在的消費者（電腦版 SideNav / 手機 BottomNav / 工具選單）
 // 全部從這裡推導。
 //
 // path 一律是模組內相對路徑，由 module.base(slug) 或 oh() 補上 /o/<slug>。
@@ -178,10 +178,11 @@ export const GS_MODULE: ModuleDef = {
     // 2026-10 設計畫布「群記 介面重新設計」：底部 4 格＝今天／待辦／行程／找。
     // 收件匣不再是分頁：「今天」頂端的「等你把關」卡進去，徽章掛在「今天」；其餘收進工具選單（ShellHeader）
     { key: 'today', path: '', label: '今天', desc: '本週行程與到期待辦', icon: I.today, primary: true, badge: 'pending' },
+    // 排第二：電腦版側欄照設計稿「今天、把關、待辦…」；手機底部只取 primary，不受影響
+    { key: 'inbox', path: '/inbox', label: '把關', desc: 'AI 從對話整理的，等你點頭才算數', icon: I.inbox, badge: 'pending' },
     { key: 'tasks', path: '/tasks', label: '待辦', desc: '群組交辦的事情', icon: I.tasks, primary: true },
     { key: 'calendar', path: '/calendar', label: '行程', desc: '行程的清單、月、週、日檢視', icon: I.calendar, primary: true },
     { key: 'search', path: '/search', label: '找', desc: '對話、檔案、公告一起搜', icon: I.search, primary: true },
-    { key: 'inbox', path: '/inbox', label: '把關', desc: 'AI 從對話整理的，等你點頭才算數', icon: I.inbox, badge: 'pending' },
     { key: 'notes', path: '/notes', label: '公告 / 決議', desc: '群組裡拍板的規則與宣布', icon: I.notes },
     { key: 'files', path: '/files', label: '檔案', desc: '圖片與文件，依類型/專案分類', icon: I.files },
     { key: 'groups', path: '/groups', label: '群組', desc: '群組名稱、分類與資料管理', icon: I.groups },

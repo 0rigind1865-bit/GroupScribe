@@ -244,7 +244,7 @@ src/
     跳轉規則）→ `src/org/surface-meta.tsx`（名稱／說明／圖示，個人側五語系）
   - 沒有選擇就不渲染：只有一種身分一個工具的人，畫面上不存在切換器（權限即可見性）
   - `tests/surfaces.test.ts`、`tests/identity-bar.test.ts` 用七種角色守住以上規則
-- **加一頁＝在 `routes.tsx` 加一行** —— TopNav、底部膠囊、`/more` 頁、active 判定全部由此推導
+- **加一頁＝在 `routes.tsx` 加一行** —— 電腦版側欄（SideNav）、底部膠囊、工具選單、active 判定全部由此推導
 - **context 參數跟著換頁走**：群組助理帶 `?group=`、考勤帶 `?emp=`（用 URL 不用 cookie —— 可分享、狀態看得見）
 - **共用元件在 `src/app/ui/`**：Banner / Badge / MonthGrid / Empty / StatGrid / PageHeader，
   以及狀態語意色 `tone.ts`（ok/warn/err/neutral 四個，跨模組不衝突）
@@ -264,7 +264,7 @@ src/
   | `.segmented`（月曆視圖／議程範圍／補卡類型／花費分析期間） | Segmented control（Toggle button group） | 換網址的用連結＋`aria-current=page`；頁內切換用 `button[aria-pressed]`；表單版是 label 包 radio（`:has(:checked)`） |
   | `IdentityBar`（角色開關＋工具選單） | Segmented control ＋ Menu（Drawer） | 沒有選擇就不渲染；選單 `<details>` 零 JS，手機底部抽屜、電腦下拉 |
   | `FloatingNav` / BottomNav | Navigation（Tabs） | 五格、badge、拖曳與整頁滑動換頁 |
-  | `GroupSwitcher` / `EmployeeSwitcher`（`.ctx-pill`） | Select | `<details>` 清單（LINE 內建瀏覽器不一定叫得出原生 select）；切換時只保留 view 參數、丟棄 entity 參數 |
+  | `GroupChips`（手機）／`GroupList`（電腦版側欄） | Select | `<details>` 清單（LINE 內建瀏覽器不一定叫得出原生 select）；切換時只保留 view 參數、丟棄 entity 參數 |
   | `BatchBar` ＋ `BatchBox` | Toolbar（Button group）＋ Checkbox | 勾選後才浮出；全選在列內 |
   | `Loading` / `.spinner` | Spinner（Loader） | `role=status`；表單送出時按鈕內縮小版 |
   | `Sheet` / `Lightbox`（`src/app/ui/expense/sheet.tsx`；`.sheet-backdrop`／`.sheet-panel`） | Drawer（Bottom sheet）／Modal（Lightbox） | 點遮罩或 Esc 關；Esc 只關最上層、看得見的那層（注音組字中不關）；開著時鎖背景捲動（藏在 `hidden` 分頁裡的不算）；`data-no-swipe` 不讓整頁橫滑換分頁；沒標題的抽屜要給 `label` |
