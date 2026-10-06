@@ -26,15 +26,18 @@ export async function POST(req: NextRequest) {
   const now = new Date().toISOString();
 
   // 標已核銷／改回可一次多筆（2026-10 設計畫布「收據」：月底勾一批一次標，不用一筆一筆按）
+  // Set：手機清單與電腦表格各有一份勾選框，同一筆可能送兩次
   if (action === 'reimburse' || action === 'unreimburse') {
-    const ids = form.getAll('id').map(String).filter(Boolean);
+    const ids = [...new Set(form.getAll('id').map(String).filter(Boolean))];
     if (!ids.length) return go('err=bad');
     await db
       .from('expenses')
       .update({ reimbursed_at: action === 'reimburse' ? now : null, updated_at: now })
       .in('id', ids)
       .eq('org_id', access.org.id);
-    return go(ids.length > 1 ? `ok=reimbursed&n=${ids.length}` : 'ok=saved');
+    if (action === 'unreimburse') return go(`ok=unreimbursed&n=${ids.length}`);
+    // 按錯有「復原」：剛標的 id 帶回頁面（同把關頁的 ?undo=）。ponytail: 超過 100 筆網址太長，不給復原
+    return go(`ok=reimbursed&n=${ids.length}${ids.length <= 100 ? `&undo=${ids.join(',')}` : ''}`);
   }
   // 刪了救不回來：表單要勾「刪了救不回來」才送得出來（globals.css 的 data-ack），沒勾硬送的這裡擋
   if (action === 'delete') {

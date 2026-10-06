@@ -1,8 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isSubmitted } from './items';
 
-// 報帳清單的篩選（清單頁、報帳頁、CSV 匯出共用同一套，三處才不會對不上）
-export type ExpenseFilter = { status?: string; who?: string; project?: string; month?: string };
+// 報帳清單的篩選（清單頁、統計頁、CSV 匯出共用同一套，三處才不會對不上）
+// year：統計頁的「今年」（YYYY）；month 有給時以 month 為準
+export type ExpenseFilter = { status?: string; who?: string; project?: string; month?: string; year?: string };
 
 export type ExpenseRow = {
   id: string;
@@ -17,6 +18,7 @@ export type ExpenseRow = {
   project: string;
   invoice_no: string;
   reimbursed_at: string | null;
+  created_at: string;
   media_assets: { storage_path: string } | null;
   // v2（migration 023）；還沒跑時不存在
   pay_method?: string;
@@ -49,13 +51,14 @@ export async function expenseQuery(db: SupabaseClient, orgId: string, f: Expense
   if (f.who) q = q.eq('line_user_id', f.who);
   if (f.project) q = q.eq('project', f.project);
   if (isMonth(f.month)) q = q.gte('spent_on', `${f.month}-01`).lt('spent_on', `${nextMonth(f.month)}-01`);
+  else if (f.year && /^\d{4}$/.test(f.year)) q = q.gte('spent_on', `${f.year}-01-01`).lt('spent_on', `${Number(f.year) + 1}-01-01`);
   // ponytail: 單頁上限 1000 筆；一家公司一個月超過再做分頁
   const r = await q.order('spent_on', { ascending: false }).order('created_at', { ascending: false }).limit(1000);
   // ponytail: 在這裡濾而不是 SQL 濾——沒貼 030 時 submitted_at 不存在，SQL 會整個查詢失敗
   return f.status !== 'done' && f.status !== 'all' ? { ...r, data: r.data?.filter(isSubmitted) ?? null } : r;
 }
 
-/** 依 key 加總（報帳頁用）：[[key, 金額合計, 筆數]]，金額大的先 */
+/** 依 key 加總（統計頁用）：[[key, 金額合計, 筆數]]，金額大的先 */
 export function sumBy(rows: Pick<ExpenseRow, 'amount'>[], key: (r: any) => string): [string, number, number][] {
   const m = new Map<string, [number, number]>();
   for (const r of rows) {

@@ -16,11 +16,12 @@ export async function GET(req: NextRequest) {
     who: sp.get('who') ?? undefined,
     project: sp.get('project') ?? undefined,
     month: sp.get('month') ?? undefined,
+    year: sp.get('year') ?? undefined,
   };
   const { data, error } = await expenseQuery(getDb(), access.org.id, f);
   if (error) return NextResponse.json({ error: '報帳資料表還沒建立（migration 022）' }, { status: 500 });
   const csv = toCsv(((data ?? []) as Record<string, unknown>[]).map((r) => rowToItem(r)), { includePerson: true });
-  const name = `報帳${f.project ? `-${f.project}` : ''}${f.month ? `-${f.month}` : ''}.csv`;
+  const name = `報帳${f.project ? `-${f.project}` : ''}${f.month ? `-${f.month}` : f.year ? `-${f.year}` : ''}.csv`;
   return new NextResponse(csv, {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
