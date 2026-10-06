@@ -148,6 +148,8 @@ for (const side of [-1, 1]) {
   covIds.forEach((id) => hinge(id, side, RAISE, up, DC));
 }
 
+// 開場動畫可以單獨控制各部分（見 owlLayer 的選項）；沒給就照這支動畫自己的時間走
+let OV = {};
 // ── 尾巴：身體往前傾（胸口看起來變短）的同時，尾巴從胸口後面張開露出來；爪子往前伸的時候再收回胸口後面（爪子版沒有尾巴）
 const TILT = [0.85, 1.05], TUCK = [2.6, 0.6];
 {
@@ -155,7 +157,7 @@ const TILT = [0.85, 1.05], TUCK = [2.6, 0.6];
   dive.tail.forEach((d, j) => {
     const pts = resample(d).map(([x, y]) => [x - px, y - py]), mid = rad((A[j] + A[j + 1]) / 2);
     tracks.push({ id: `tail${j}`, fill: IVORY, draw: (t) => {
-      const u = outBack(prog(t, ...TILT)) * (1 - inOutCubic(prog(t, ...TUCK))), r = mid * (1 - u), sc = lerp(0.3, 1, u), c = Math.cos(r), sn = Math.sin(r);
+      const u = outBack(prog(t, ...TILT)) * (1 - (OV.tuck ?? inOutCubic(prog(t, ...TUCK)))), r = mid * (1 - u), sc = lerp(0.3, 1, u), c = Math.cos(r), sn = Math.sin(r);
       return { pts: pts.map(([x, y]) => [px + sc * (x * c - y * sn), py + sc * (x * sn + y * c)]), halo: 0 };
     } });
   });
@@ -173,6 +175,7 @@ export const bubbleSvg = (tf, s = 1, fill = IVORY) => `<path d="${mapPath(bubble
   + lines.map(([a, b]) => { const p = tf(...a), q = tf(...b); return `<path d="M${f2(p[0])} ${f2(p[1])}L${f2(q[0])} ${f2(q[1])}" stroke="${BG}" stroke-width="${f2(3.6 * Z * s)}" stroke-linecap="round"/>`; }).join('');
 export const BUBBLE_C = bubC; // 訊息框靜止時的中心（512 畫布座標）
 const bubble = (t, from = BUB_IN[0], fill = IVORY) => {
+  if (OV.bubble) { const { s, dy } = OV.bubble; return s > 0.01 ? bubbleSvg((x, y) => [bubC[0] + s * (x - bubC[0]), bubC[1] + s * (y - bubC[1]) + dy], s, fill) : ''; }
   const u = outBack(prog(t, ...BUB_IN)), s = lerp(0.2, 1, u), dy = (lerp(30, REACH, u) - REACH * outBack(prog(t, ...PULL))) * Z;
   if (prog(t, ...BUB_IN) <= 0 || t < from) return '';
   return bubbleSvg((x, y) => [bubC[0] + s * (x - bubC[0]), bubC[1] + s * (y - bubC[1]) + dy], s, fill);
@@ -186,14 +189,14 @@ const toeTracks = toes.map((l, i) => {
   const pts = resample(l.d), base = pts.reduce((b, p) => (p[1] < b[1] ? p : b)), side = i < 3 ? -1 : 1, open = rad(OPEN[i % 3]) * (side < 0 ? 1 : -1);
   return (t) => {
     // 伸：從胸口後面往下伸到訊息框（比定位低 REACH），一邊變大、一邊張開；扣：爪子一口氣合起來；拉：連訊息框一起拉回定位
-    const e = inOutCubic(prog(t, ...EXT)), g = outBack(prog(t, ...CLOSE)), pull = outBack(prog(t, ...PULL));
+    const e = OV.ext ?? inOutCubic(prog(t, ...EXT)), g = OV.close ?? outBack(prog(t, ...CLOSE)), pull = OV.pull ?? outBack(prog(t, ...PULL));
     const a = open * e * (1 - g), s = lerp(0.35, 1.12, e) - 0.12 * pull, dy = (lerp(-16, REACH, e) - REACH * pull) * Z;
     const c = Math.cos(a), sn = Math.sin(a);
     return pts.map(([x, y]) => { const X = x - base[0], Y = y - base[1]; return [base[0] + s * (X * c - Y * sn), base[1] + dy + s * (X * sn + Y * c)]; });
   };
 });
 const feet = (t) => {
-  if (prog(t, ...EXT) <= 0) return '';
+  if ((OV.ext ?? prog(t, ...EXT)) <= 0) return '';
   const all = toeTracks.map((fn) => pathOf(fn(t)));
   return `<g fill="${BG}" stroke="${BG}" stroke-width="${f2(dive.gap * 2 * Z)}" stroke-linejoin="round">${all.map((d) => `<path d="${d}"/>`).join('')}</g><g fill="${byId.toe0.fill}">${all.map((d) => `<path d="${d}"/>`).join('')}</g>`;
 };
@@ -206,7 +209,9 @@ tracks.sort((a, b) => order(a.id) - order(b.id));
 const LIFT = 9; // 抓到訊息時整隻往上提一點（加上訊息框之後還是置中）
 // 整隻貓頭鷹在 t 秒的樣子（512 畫布座標、不含底色）。給開場動畫用的選項：
 //   ivory：白色部分改用的顏色（暗處由暗變亮）；bubbleFrom：從幾秒起才畫自己的訊息框（之前由外面畫）；lift：抓到時要不要往上提
-export const owlLayer = (t, { ivory = IVORY, bubbleFrom, lift: doLift = true } = {}) => {
+//   另外可以單獨指定（0～1）：ext 爪子伸出、close 爪子合起、pull 往上拉、tuck 尾巴收起、bubble {s, dy} 爪子上的訊息框大小與位移
+export const owlLayer = (t, { ivory = IVORY, bubbleFrom, lift: doLift = true, ext, close, pull, tuck, bubble: bub } = {}) => {
+  OV = { ext, close, pull, tuck, bubble: bub };
   const col = (c) => (c === IVORY ? ivory : c);
   const draw = (tr) => { const { pts, halo } = tr.draw(t); return `<path d="${pathOf(pts)}" fill="${col(tr.fill)}"${halo > 0.05 ? ` stroke="${BG}" stroke-width="${f2(halo * 2)}" paint-order="stroke" stroke-linejoin="round"` : ''}/>`; };
   const chestAt = tracks.findIndex((tr) => tr.id === 'chest');
@@ -218,7 +223,7 @@ export const owlLayer = (t, { ivory = IVORY, bubbleFrom, lift: doLift = true } =
   return `<g transform="translate(0 ${f2(lift)}) ${camT}">${before}${bubble(t, bubbleFrom, ivory)}${feet(t)}${after}</g>`;
 };
 // 給開場動畫對時間用
-export const TIMES = { CAM, RAISE, BUB_IN, EXT, CLOSE, PULL, REACH: REACH * Z, DUR };
+export const TIMES = { CAM, RAISE, BUB_IN, EXT, CLOSE, PULL, TILT, REACH: REACH * Z, DUR };
 export const EYES_AT_START = [-45.5, 45.5].map((x) => [256 + 0.994 * x, 256 + 0.994 * (186 - 252.5)]); // 原本 logo 的兩隻眼睛（鏡頭還沒動時）
 const frame = (t) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${SIZE}" height="${SIZE}"><rect width="512" height="512" fill="${BG}"/>${owlLayer(t)}</svg>`;
 
