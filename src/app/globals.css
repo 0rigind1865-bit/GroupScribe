@@ -840,7 +840,7 @@ details[open] > .ctx-pill::before { content: ''; position: fixed; inset: 0; z-in
   pointer-events: none;
 }
 
-/* ── 報帳收據（expense/page.tsx）：勾了才浮出「已勾 N 筆 · 標成已報帳」，N 用 CSS 計數器 ── */
+/* ── 報帳收據（expense/page.tsx）：勾了才浮出「已選 N 筆 · 標成已核銷」，N 用 CSS 計數器 ── */
 .exp-list {
   counter-reset: exp;
 }
@@ -855,6 +855,13 @@ details[open] > .ctx-pill::before { content: ''; position: fixed; inset: 0; z-in
 }
 body:has(.exp-pick:checked) .exp-bar {
   display: flex;
+}
+/* 勾起來的那一列淡綠底（設計畫布「報帳 · 收據」） */
+.exp-row:has(.exp-pick:checked) {
+  background: #f3f8f5;
+}
+@media (prefers-color-scheme: dark) {
+  .exp-row:has(.exp-pick:checked) { background: #12312a; }
 }
 
 /* ── 批次操作列：勾選後才浮出（principles.md 希克定律）──
