@@ -77,7 +77,7 @@ export function ListView({
   const chips = [{ v: '', label: '所有專案' }, ...names.map((n) => ({ v: n, label: n })), ...(hasNone ? [{ v: NONE, label: '沒選專案' }] : [])];
 
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${pickedRows.length ? 'pb-20' : ''}`}>
       {chips.length > 2 && (
         // data-no-swipe：這排要能橫捲，不能被底部膠囊當成換分頁
         <div role="group" aria-label="專案" data-no-swipe="" className="-mx-4 flex gap-2 overflow-x-auto px-4">
