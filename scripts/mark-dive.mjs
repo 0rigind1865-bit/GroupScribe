@@ -133,7 +133,9 @@ export const buildDive = ({ claws = false } = {}) => {
   const ys = raw.filter((l) => l.fill !== BG).flatMap((l) => flatten(l.d).map((p) => p[1]));
   const dy = 256 - (Math.min(...ys) + Math.max(...ys)) / 2;
   const place = (x, y) => [256 + ZOOM * (x - 256), 256 + ZOOM * (y - 256 + dy)];
-  return raw.map((l) => ({ ...l, d: mapPath(l.d, place), halo: l.halo ? l.halo * ZOOM : 0 }));
+  const layers = raw.map((l) => ({ ...l, d: mapPath(l.d, place), halo: l.halo ? l.halo * ZOOM : 0 }));
+  // 給動畫用：換座標的函式、縮放、長羽毛的軸心與角度、爪子的位置（都是縮放前的座標，用 place 換到畫布）
+  return Object.assign(layers, { place, zoom: ZOOM, pivot: C, angles: D, feet: FEET, gap: G });
 };
 
 // 圖層 → SVG（爪子那幾片是一隻腳連成一塊：先全部描底色，再一起填色，腳裡面才不會有縫）
