@@ -11,23 +11,24 @@ import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
 import { DetailSheet, SourceQuotes, safeFrom } from '@/app/ui/detail-sheet';
 import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
+import { TimeChip, realAssignee } from '@/app/ui/item-marker';
+import { Badge } from '@/app/ui/badge';
+import { I } from '../../routes';
 import { oh } from '@/org/href';
 
 export const dynamic = 'force-dynamic';
 
 const pad = (n: number) => String(n).padStart(2, '0');
-const VIEWS = [
-  ['month', '月'],
-  ['week', '週'],
-  ['day', '日'],
-  ['agenda', '議程'],
-] as const;
-type View = (typeof VIEWS)[number][0];
+// 2026-10 設計畫布「行程」：清單（一排週曆＋只列有行程的日子）是主畫面，月格是右上角一顆小切換。
+// 週／日檢視不在切換鈕上了，月格（手機）點某天仍會進日檢視；舊書籤的 ?view=week 照樣能開
+const VIEWS = ['month', 'week', 'day', 'agenda'] as const;
+type View = (typeof VIEWS)[number];
+// 清單範圍：預設 90 天，底部「往後看 →」一次放寬一階（取代原本那排範圍切換鈕）
 const RANGES = [
-  ['30d', '未來 30 天'],
-  ['90d', '未來 90 天'],
-  ['1y', '未來 1 年'],
-  ['all', '全部'],
+  ['30d', '接下來 30 天'],
+  ['90d', '接下來 90 天'],
+  ['1y', '接下來一年'],
+  ['all', '今天以後'],
 ] as const;
 const AGENDA_LIMIT = 200; // 「全部」防爆量
 
@@ -40,7 +41,15 @@ function zhMonth(ym: string) {
   return `${y} 年 ${Number(m)} 月`;
 }
 
-type Ev = { id: string; title: string; starts_at: string; start_time: string | null; needs_confirmation: boolean };
+type Ev = { id: string; title: string; starts_at: string; start_time: string | null; needs_confirmation: boolean; location?: string | null };
+type Due = { id: string; title: string; assignee: string | null; due_at: string; needs_confirmation: boolean };
+const EV_COLS = 'id, title, starts_at, start_time, needs_confirmation, location';
+
+const Icon = ({ d, className = 'h-[18px] w-[18px]' }: { d: React.ReactNode; className?: string }) => (
+  <svg viewBox="0 0 24 24" className={`flex-none ${className}`} fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+    {d}
+  </svg>
+);
 
 function EventChip({ e, href }: { e: Ev; href: string }) {
   return (
@@ -59,7 +68,7 @@ function EventChip({ e, href }: { e: Ev; href: string }) {
   );
 }
 
-// 議程渲染原語：一天的標頭＋事件列表（agenda / day / week 共用）；selectable = 議程視圖的批次多選
+// 一天的標頭＋事件列表（手機週檢視用）
 function DayCard({
   iso,
   events,
@@ -67,7 +76,6 @@ function DayCard({
   todayIso,
   card = true,
   emptyText,
-  selectable = false,
 }: {
   iso: string;
   events: Ev[];
@@ -75,7 +83,6 @@ function DayCard({
   todayIso: string;
   card?: boolean;
   emptyText?: string;
-  selectable?: boolean;
 }) {
   return (
     <div className={card ? 'card p-3.5' : 'p-1'}>
@@ -84,18 +91,7 @@ function DayCard({
         {iso === todayIso && <span className="ml-2 rounded-full bg-emerald-600 px-2 py-0.5 text-[11px] font-bold text-white">今天</span>}
       </div>
       {events.length ? (
-        events.map((e) =>
-          selectable ? (
-            <div key={e.id} className="flex items-center gap-1.5">
-              <BatchBox id={e.id} />
-              <div className="min-w-0 flex-1">
-                <EventChip e={e} href={chipHref(e.id)} />
-              </div>
-            </div>
-          ) : (
-            <EventChip key={e.id} e={e} href={chipHref(e.id)} />
-          ),
-        )
+        events.map((e) => <EventChip key={e.id} e={e} href={chipHref(e.id)} />)
       ) : (
         <p className="text-xs text-gray-400">{emptyText ?? '無'}</p>
       )}
@@ -215,7 +211,7 @@ export default async function CalendarPage({
 
   // 預設「議程」而不是「月」：預設值就是產品的主張（principles.md），而月格線在事件密度低的
   // 群組打開是一片空白——講了一個資料不支持的故事。要看月份分佈的人自己點「月」。
-  const view: View = (VIEWS.find(([v]) => v === params.view)?.[0] ?? 'agenda') as View;
+  const view: View = VIEWS.find((v) => v === params.view) ?? 'agenda';
   // 已忽略的事件降到深一層視圖（principles.md 規則三，同待辦／公告的 ?view=ignored）：
   // 月／週／日／議程照舊排除 ignored，主畫面不查、不顯示、連筆數都不提，只留底部一個低調入口
   const archived = params.view === 'ignored';
@@ -248,7 +244,7 @@ export default async function CalendarPage({
       ((
         await db
           .from('events')
-          .select('id, title, starts_at, start_time, needs_confirmation')
+          .select(EV_COLS)
           .eq('group_id', group)
           .eq('status', 'ignored')
           .order('updated_at', { ascending: false })
@@ -257,7 +253,7 @@ export default async function CalendarPage({
   } else if (group) {
     let q = db
       .from('events')
-      .select('id, title, starts_at, start_time, needs_confirmation')
+      .select(EV_COLS)
       .eq('group_id', group)
       .neq('status', 'ignored')
       .gte('starts_at', rangeStart)
@@ -273,6 +269,21 @@ export default async function CalendarPage({
     list.push(e);
     byDay.set(e.starts_at, list);
   }
+  // 清單也列進行中待辦的期限（設計稿「待辦期限：…」）：哪天要交什麼，跟行程放一起看
+  let due: Due[] = [];
+  if (live && view === 'agenda') {
+    let q = db
+      .from('tasks')
+      .select('id, title, assignee, due_at, needs_confirmation')
+      .eq('group_id', group)
+      .eq('status', 'open')
+      .gte('due_at', rangeStart)
+      .order('due_at');
+    if (rangeEnd) q = q.lte('due_at', rangeEnd);
+    due = ((await q.limit(AGENDA_LIMIT)).data as Due[]) ?? [];
+  }
+  const dueByDay = new Map<string, Due[]>();
+  for (const t of due) dueByDay.set(t.due_at, [...(dueByDay.get(t.due_at) ?? []), t]);
 
   // 詳情卡（?event= 同頁展開；group_id 條件防跨群讀取）
   let detail: any = null;
@@ -297,7 +308,9 @@ export default async function CalendarPage({
 
   const base = `/o/${slug}/calendar?group=${encodeURIComponent(group ?? '')}`;
   // 詳情編輯後回跳到當前視圖與日期；已忽略視圖回到已忽略清單
-  const back = archived ? oh(slug, '/calendar', { group, view: 'ignored' }) : `${base}&view=${view}&date=${dateIso}`;
+  const back = archived
+    ? oh(slug, '/calendar', { group, view: 'ignored' })
+    : `${base}&view=${view}&date=${dateIso}${view === 'agenda' && range !== '90d' ? `&range=${range}` : ''}`;
   const chipHref = (id: string) => `${back}&event=${id}`;
   // 從把關頁「修改」進來：關閉、存檔都回把關頁
   const from = safeFrom(slug, params.from);
@@ -318,18 +331,12 @@ export default async function CalendarPage({
         : [`${prevYm}-01`, `${nextYm}-01`, `${year} 年 ${month} 月`];
 
   const weeks = monthGrid(year, month);
-  const agendaDays = [...byDay.keys()].sort();
-  // 議程按月分組（跨月/跨年 sticky 標頭）
-  const agendaGroups: { month: string; days: string[] }[] = [];
-  for (const dIso of agendaDays) {
-    const m = dIso.slice(0, 7);
-    const last = agendaGroups[agendaGroups.length - 1];
-    if (last && last.month === m) last.days.push(dIso);
-    else agendaGroups.push({ month: m, days: [dIso] });
-  }
-  const agendaLabel = rangeEnd
-    ? `${zhDate(rangeStart, { month: 'numeric', day: 'numeric' })} – ${zhDate(rangeEnd, { month: 'numeric', day: 'numeric' })}`
-    : `${zhDate(rangeStart, { month: 'numeric', day: 'numeric' })} 起`;
+  // 清單：只列有行程或期限的日子，今天一定列（沒有就寫「沒有行程」）
+  const agendaDays = [...new Set([todayIso, ...byDay.keys(), ...dueByDay.keys()])].sort();
+  // 一排週曆：今天起兩週，左右滑看下週
+  const strip = Array.from({ length: 14 }, (_, i) => addDays(todayIso, i));
+  const rangeLabel = RANGES.find(([r]) => r === range)![1];
+  const nextRange = ({ '30d': '90d', '90d': '1y', '1y': 'all' } as Record<string, string>)[range];
   const agendaTruncated = view === 'agenda' && range === 'all' && events.length === AGENDA_LIMIT;
 
   return (
@@ -338,14 +345,15 @@ export default async function CalendarPage({
         <h1>行程</h1>
         {archived && <span className="rounded bg-gray-100 px-2 py-0.5 text-sm text-gray-600">已忽略</span>}
         {group && <span className="text-gray-500">{groupName}</span>}
-        {/* 視圖切換器：手機四等分、桌機 inline（已忽略清單沒有日期軸，不畫） */}
+        {/* 清單／月：右上角一顆小切換（已忽略清單沒有日期軸，不畫） */}
         {!archived && (
-          <div className="segmented grid w-full grid-cols-4 md:ml-auto md:inline-flex md:w-auto">
-            {VIEWS.map(([v, zh]) => (
-              <a key={v} href={`${base}&view=${v}&date=${dateIso}`} aria-current={v === view ? 'page' : undefined}>
-                {zh}
-              </a>
-            ))}
+          <div className="segmented ml-auto" role="group" aria-label="檢視方式">
+            <a href={`${base}&view=agenda`} aria-current={view === 'agenda' ? 'page' : undefined} aria-label="清單" className="w-11">
+              <Icon d={<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />} />
+            </a>
+            <a href={`${base}&view=month&date=${dateIso}`} aria-current={view === 'month' ? 'page' : undefined} aria-label="月" className="w-11">
+              <Icon d={I.calendar} />
+            </a>
           </div>
         )}
         {archived && events.length > 0 && (
@@ -355,33 +363,18 @@ export default async function CalendarPage({
         )}
       </div>
 
-      {!archived && (
+      {!archived && view !== 'agenda' && (
         <div className="mb-4 flex flex-wrap items-center gap-2 text-sm">
-          {view === 'agenda' ? (
-            <>
-              <div className="segmented">
-                {RANGES.map(([r, zh]) => (
-                  <a key={r} href={`${base}&view=agenda&range=${r}`} aria-current={r === range ? 'page' : undefined}>
-                    {zh}
-                  </a>
-                ))}
-              </div>
-              <span className="text-gray-500">{agendaLabel}</span>
-            </>
-          ) : (
-            <>
-              <a className="btn" href={`${navBase}&date=${prevDate}`}>
-                ←
-              </a>
-              <strong className="min-w-32 text-center text-base">{label}</strong>
-              <a className="btn" href={`${navBase}&date=${nextDate}`}>
-                →
-              </a>
-              <a className="btn ml-2" href={`${navBase}&date=${todayIso}`}>
-                今天
-              </a>
-            </>
-          )}
+          <a className="btn" href={`${navBase}&date=${prevDate}`}>
+            ←
+          </a>
+          <strong className="min-w-32 text-center text-base">{label}</strong>
+          <a className="btn" href={`${navBase}&date=${nextDate}`}>
+            →
+          </a>
+          <a className="btn ml-2" href={`${navBase}&date=${todayIso}`}>
+            今天
+          </a>
         </div>
       )}
 
@@ -483,50 +476,120 @@ export default async function CalendarPage({
       {/* ── 日視圖：時間軸（單欄） ── */}
       {live && view === 'day' && <TimeGrid days={[dateIso]} byDay={byDay} chipHref={chipHref} todayIso={todayIso} />}
 
-      {/* ── 議程視圖：時間範圍內所有事件，按月分組；多選批次操作在此視圖 ── */}
+      {/* ── 清單：一排週曆＋只列有行程的日子（2026-10 設計畫布，取代議程的兩排切換鈕） ── */}
       {live && view === 'agenda' && (
-        <div className="space-y-3">
-          {agendaGroups.length > 0 && (
-            <>
-              <div className="mb-2 flex justify-end"><SelectMode /></div>
-              <BatchBar
-                kind="event"
-                back={`${base}&view=agenda&range=${range}`}
-                actions={[
-                  { action: 'confirm', label: '確認' },
-                  { action: 'ignore', label: '忽略', danger: true },
-                ]}
-              />
-            </>
-          )}
-          {agendaGroups.map((g) => (
-            <div key={g.month}>
-              <h2 className="sticky top-0 z-10 bg-gray-50 py-2 text-xl font-black text-gray-900" style={{ fontFamily: 'var(--font-title)' }}>
-                {zhMonth(g.month)}
-              </h2>
-              <div className="space-y-2">
-                {g.days.map((iso) => (
-                  <DayCard
-                    key={iso}
-                    iso={iso}
-                    events={byDay.get(iso)!}
-                    chipHref={chipHref}
-                    todayIso={todayIso}
-                    selectable
-                  />
-                ))}
-              </div>
+        <div className="space-y-4">
+          <div className="card px-1.5 py-2.5">
+            <div className="flex items-center justify-between px-2 pb-1.5">
+              <span className="text-sm font-bold">{zhMonth(todayIso.slice(0, 7))}</span>
+              <span className="text-xs text-gray-600">左右滑動看下週</span>
             </div>
-          ))}
-          {!agendaGroups.length && <p className="text-sm text-gray-400">這個範圍沒有行程。</p>}
-          {agendaTruncated && (
-            <p className="text-sm text-gray-400">已達顯示上限，僅顯示前 {AGENDA_LIMIT} 筆（可縮小範圍）。</p>
-          )}
+            {/* data-no-swipe：這排要能橫滑，不能被底部膠囊當成換分頁；有東西的日子點了跳到清單那天 */}
+            <div data-no-swipe="" className="flex snap-x snap-mandatory overflow-x-auto">
+              {strip.map((iso, i) => {
+                const evs = byDay.get(iso) ?? [];
+                const now = iso === todayIso;
+                const has = evs.length > 0 || dueByDay.has(iso);
+                const cls = `flex min-h-[60px] flex-none basis-[14.2857%] flex-col items-center justify-center gap-0.5 rounded-xl ${i % 7 ? '' : 'snap-start'} ${
+                  now ? 'bg-emerald-600 text-white' : 'text-gray-700'
+                }`;
+                const inner = (
+                  <>
+                    <span className={`text-[11px] ${now ? '' : 'text-gray-600'}`}>{zhDate(iso, { weekday: 'narrow' })}</span>
+                    <span className="text-[17px] font-bold">{Number(iso.slice(8))}</span>
+                    {now ? (
+                      <span className="text-[10px]">今天</span>
+                    ) : evs.length ? (
+                      // 圓點＝行程（琥珀＝還有待把關的）；方框＝只有待辦期限
+                      <span className={`h-1.5 w-1.5 rounded-full ${evs.some((e) => e.needs_confirmation) ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                    ) : has ? (
+                      <span className="h-1.5 w-1.5 rounded-sm border border-gray-400" />
+                    ) : (
+                      <span className="h-1.5" />
+                    )}
+                  </>
+                );
+                return has || now ? (
+                  <a key={iso} href={`#d-${iso}`} className={cls}>
+                    {inner}
+                  </a>
+                ) : (
+                  <span key={iso} className={cls}>
+                    {inner}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+
+          {agendaDays.map((iso) => {
+            const evs = byDay.get(iso) ?? [];
+            const tks = dueByDay.get(iso) ?? [];
+            return (
+              <section key={iso} id={`d-${iso}`} className="scroll-mt-24">
+                <h2 className={`mb-1.5 text-[13px] font-bold ${iso === todayIso ? 'text-emerald-700' : 'text-gray-700'}`}>
+                  {iso === todayIso && '今天 · '}
+                  {zhDate(iso, { month: 'numeric', day: 'numeric' })} {zhDate(iso, { weekday: 'short' })}
+                </h2>
+                {!evs.length && !tks.length && <p className="py-0.5 text-sm text-gray-600">沒有行程</p>}
+                {tks.map((t) => (
+                  <a
+                    key={t.id}
+                    href={oh(slug, '/tasks', { group, task: t.id, from: back })}
+                    className="flex min-h-11 items-center gap-2.5 px-1 text-sm text-gray-700 hover:opacity-70"
+                  >
+                    <span className="text-gray-600">
+                      <Icon d={I.tasks} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      待辦期限：{t.title}
+                      {realAssignee(t.assignee) && ` · ${t.assignee}`}
+                    </span>
+                    {t.needs_confirmation && <Badge tone="warn">待把關</Badge>}
+                  </a>
+                ))}
+                <div className="space-y-2">
+                  {evs.map((e) => (
+                    <a key={e.id} href={chipHref(e.id)} className="card flex min-h-[72px] items-center gap-3 px-3 py-2.5 hover:bg-gray-50">
+                      <TimeChip time={e.start_time ? String(e.start_time).slice(0, 5) : null} />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-base font-bold break-words">{e.title}</span>
+                        {e.location && (
+                          <span className="mt-0.5 flex items-center gap-1 text-[13px] text-gray-600">
+                            <Icon d={I.pin} className="h-3.5 w-3.5" />
+                            <span className="truncate">{e.location}</span>
+                          </span>
+                        )}
+                      </span>
+                      {e.needs_confirmation && <Badge tone="warn">待把關</Badge>}
+                    </a>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+
+          {/* 資料少時直接講出來（只有這 N 個），而不是讓一大片空白自己說；入口不帶筆數（principles.md 規則三） */}
+          <div className="border-t border-dashed border-gray-300 pt-3.5 text-sm leading-relaxed text-gray-600">
+            {rangeLabel}
+            {events.length ? (events.length <= 5 ? `只有這 ${events.length} 個行程。` : `共 ${events.length} 個行程。`) : '沒有行程。'}
+            {agendaTruncated && `（已達顯示上限，只列前 ${AGENDA_LIMIT} 個）`}
+            <div className="flex flex-wrap gap-x-4">
+              {nextRange && (
+                <a className="inline-flex min-h-11 items-center font-bold text-emerald-700" href={`${base}&view=agenda&range=${nextRange}`}>
+                  往後看 →
+                </a>
+              )}
+              <a className="inline-flex min-h-11 items-center font-bold text-gray-600" href={oh(slug, '/calendar', { group, view: 'ignored' })}>
+                已忽略的行程 →
+              </a>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* 入口不帶筆數：計數本身就是噪音（principles.md 規則三）。四種視圖共用一個 */}
-      {live && (
+      {/* 入口不帶筆數：計數本身就是噪音（principles.md 規則三）。月／週／日共用一個（清單的在上面那段） */}
+      {live && view !== 'agenda' && (
         <a
           className="mt-4 inline-flex min-h-11 items-center text-sm text-gray-500 underline"
           href={oh(slug, '/calendar', { group, view: 'ignored' })}
