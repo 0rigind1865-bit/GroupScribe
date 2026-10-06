@@ -84,11 +84,25 @@ export default async function SearchPage({
   return (
     <main className="page">
       <h1 className="mb-4">找</h1>
-      <form method="get" role="search" className="mb-3 flex gap-2">
+      {/* 一個大搜尋框（設計稿）：按 Enter／鍵盤的「搜尋」就送出，不另放按鈕；清除用 type=search 原生的 ✕ */}
+      <form method="get" role="search" className="mb-3">
         {group && <input type="hidden" name="group" value={group} />}
         {kind && <input type="hidden" name="kind" value={kind} />}
-        <input className="input min-w-0 flex-1" type="search" name="q" defaultValue={q} placeholder="搜尋對話、檔案、公告…" aria-label="搜尋對話、檔案、公告" />
-        <button className="btn-primary">搜尋</button>
+        <label className="input flex min-h-[52px] items-center gap-2.5 focus-within:border-emerald-600 focus-within:ring-[3px] focus-within:ring-emerald-500/30">
+          <svg viewBox="0 0 24 24" className="h-5 w-5 flex-none text-gray-500" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+            <circle cx="11" cy="11" r="7" />
+            <path d="M20 20l-4-4" />
+          </svg>
+          <input
+            className="min-w-0 flex-1 bg-transparent text-base outline-none"
+            type="search"
+            name="q"
+            defaultValue={q}
+            placeholder="搜尋對話、檔案、公告…"
+            aria-label="搜尋對話、檔案、公告"
+            enterKeyHint="search"
+          />
+        </label>
       </form>
       <nav className="mb-6 flex gap-2 overflow-x-auto" aria-label="種類">
         {KINDS.map((k) => (
@@ -196,6 +210,7 @@ export default async function SearchPage({
             </section>
           )}
           {[messages, files, notes].some((r) => r.length === LIMIT) && <p className="text-center text-sm text-gray-500">每一種最多列 {LIMIT} 筆，找不到的話把關鍵字打得更準一點。</p>}
+          <p className="rounded-[14px] bg-emerald-100 p-3.5 text-sm leading-relaxed text-emerald-900">找不到？在 LINE 群組裡 @群記 直接問，它會說是誰、哪天講的。</p>
         </div>
       )}
     </main>
