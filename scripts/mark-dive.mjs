@@ -135,7 +135,8 @@ export const buildDive = ({ claws = false } = {}) => {
   const place = (x, y) => [256 + ZOOM * (x - 256), 256 + ZOOM * (y - 256 + dy)];
   const layers = raw.map((l) => ({ ...l, d: mapPath(l.d, place), halo: l.halo ? l.halo * ZOOM : 0 }));
   // 給動畫用：換座標的函式、縮放、長羽毛的軸心與角度、爪子的位置（都是縮放前的座標，用 place 換到畫布）
-  return Object.assign(layers, { place, zoom: ZOOM, pivot: C, angles: D, feet: FEET, gap: G });
+  return Object.assign(layers, { place, zoom: ZOOM, pivot: C, angles: D, feet: FEET, gap: G,
+    tail: tail.map((d) => mapPath(d, place)), tailPivot: TAIL.C, tailAngles: TAIL.angs }); // 尾巴（爪子版也給，動畫裡會先張開再收起來）
 };
 
 // 圖層 → SVG（爪子那幾片是一隻腳連成一塊：先全部描底色，再一起填色，腳裡面才不會有縫）
