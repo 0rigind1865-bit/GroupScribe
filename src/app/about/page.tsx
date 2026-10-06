@@ -11,6 +11,7 @@ import {
   StepsSection,
   TrustSection,
 } from '@/app/ui/intro';
+import { IntroVideo } from '@/app/ui/intro-video';
 
 export const metadata = { title: '群裡講過的，都記得' };
 
@@ -21,8 +22,7 @@ export default function AboutPage() {
       <BrandBar right={<a className="btn btn-sm" href="/login">登入</a>} />
 
       <section className="px-5 pt-6 pb-8 text-center">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/brand/mark-512.png" alt="群記的貓頭鷹標誌" className="mx-auto h-28 w-28 rounded-3xl shadow-sm" />
+        <IntroVideo />
         <h1 className="mt-5 text-3xl font-semibold tracking-tight">群裡講過的，都記得。</h1>
         <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-gray-600">
           把群記邀進你的 LINE 工作群，它會安靜地把對話整理成行程、待辦和公告。不插嘴、不用換 App、不用教員工。

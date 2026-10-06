@@ -608,7 +608,8 @@ html {
 }
 .id-bar--light { color: #1c2420; padding-top: 14px; padding-bottom: 4px; }
 .id-bar--dark { background: #1c2420; color: #ffffff; }
-.id-brand { display: none; font-family: var(--font-title); font-weight: 900; font-size: 20px; white-space: nowrap; }
+.id-brand { display: none; align-items: center; gap: 8px; font-family: var(--font-title); font-weight: 900; font-size: 20px; white-space: nowrap; }
+.id-brand img { width: 30px; height: 30px; border-radius: 8px; }
 /* 角色開關：格 38＋外框 3×2＝44（觸控目標，審查 F49） */
 .id-toggle { display: flex; flex-shrink: 0; padding: 3px; border-radius: 12px; background: #e9e5da; }
 .id-bar--dark .id-toggle { background: #27312c; }
@@ -747,7 +748,7 @@ details[open] > .ctx-pill::before { content: ''; position: fixed; inset: 0; z-in
 @media (min-width: 768px) {
   .id-bar { padding: 0 40px; gap: 20px; }
   .id-bar--light { padding: 14px 16px 4px; }
-  .id-bar--dark .id-brand { display: block; }
+  .id-bar--dark .id-brand { display: flex; }
   .id-tool-name { max-width: none; }
   /* 電腦：公司名跟工具名同一行「考勤 · 公司A」 */
   .id-tool-text { flex-direction: row; align-items: baseline; gap: 6px; }

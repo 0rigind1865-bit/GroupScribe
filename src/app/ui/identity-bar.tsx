@@ -93,7 +93,13 @@ export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot
 
   return (
     <div className={`id-bar ${dark ? 'id-bar--dark' : 'id-bar--light'}`}>
-      {brand && <span className="id-brand">群記</span>}
+      {brand && (
+        <span className="id-brand">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/brand/mark-512.png" alt="" />
+          群記
+        </span>
+      )}
 
       {hasRoleToggle(groups) && (
         <>
