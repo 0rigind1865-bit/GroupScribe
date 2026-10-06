@@ -8,7 +8,7 @@ import { fmtDate } from '@/core/date';
 import { oh } from '@/org/href';
 import { GRACE_DAYS } from '@/org/plans';
 import { notFound } from 'next/navigation';
-import { GroupSwitcher, type GroupOption } from '@/app/ui/group-switcher';
+import { GroupChips, GroupSwitcher, type GroupOption } from '@/app/ui/group-switcher';
 import { ShellHeader } from '../shell-header';
 import { BottomNav } from '../nav';
 
@@ -65,10 +65,16 @@ export default async function AdminLayout({
           slug={slug}
           moduleId="gs"
           counts={counts}
-          context={slug === 'unclaimed' ? undefined : <GroupSwitcher groups={groups as GroupOption[]} />}
+          // 手機的群組範圍改成內容上方的一排籤（GroupChips），頂欄膠囊只留給電腦版
+          context={slug === 'unclaimed' ? undefined : <div className="hidden md:block"><GroupSwitcher groups={groups as GroupOption[]} /></div>}
         />
       </Suspense>
       <div className="nav-gap md:!pb-0">
+        {slug !== 'unclaimed' && (
+          <Suspense fallback={null}>
+            <GroupChips groups={groups as GroupOption[]} />
+          </Suspense>
+        )}
         {notice && <div className="mx-auto max-w-[944px] px-4 pt-4 md:px-8">{notice}</div>}
         {children}
       </div>
