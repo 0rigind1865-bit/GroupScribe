@@ -825,6 +825,23 @@ details[open] > .ctx-pill::before { content: ''; position: fixed; inset: 0; z-in
   pointer-events: none;
 }
 
+/* ── 報帳收據（expense/page.tsx）：勾了才浮出「已勾 N 筆 · 標成已報帳」，N 用 CSS 計數器 ── */
+.exp-list {
+  counter-reset: exp;
+}
+.exp-pick:checked {
+  counter-increment: exp;
+}
+.exp-n::before {
+  content: counter(exp);
+}
+.exp-bar {
+  display: none;
+}
+body:has(.exp-pick:checked) .exp-bar {
+  display: flex;
+}
+
 /* ── 批次操作列：勾選後才浮出（principles.md 希克定律）──
    沒勾選任何項目時這些按鈕一顆都按不了，卻天天佔著首屏最貴的位置（待辦/公告 28%、檔案更多）。
    純 CSS :has()，維持 MPA 零 client JS。未分層寫法以勝過 BatchBar 自帶的 .flex utility。

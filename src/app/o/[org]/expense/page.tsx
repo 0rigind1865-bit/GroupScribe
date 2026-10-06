@@ -28,7 +28,7 @@ export default async function ExpenseList({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<ExpenseFilter & { ok?: string; err?: string }>;
+  searchParams: Promise<ExpenseFilter & { ok?: string; err?: string; n?: string }>;
 }) {
   if (!dbConfigured()) return <SetupNotice />;
   const { org: slug } = await params;
@@ -47,7 +47,7 @@ export default async function ExpenseList({
   if (error)
     return (
       <main className="page">
-        <h1 className="mb-3">收據清單</h1>
+        <h1 className="mb-3">收據</h1>
         <Banner tone="warn">
           報帳資料表還沒建立：請在 Supabase SQL Editor 執行 <code>supabase/migrations/022_expenses.sql</code>。
         </Banner>
@@ -74,27 +74,38 @@ export default async function ExpenseList({
   const back = oh(slug, '/expense', { status: sp.status, who: sp.who, project: sp.project, month: sp.month });
 
   return (
-    <main className="page">
-      <h1 className="mb-1">收據清單</h1>
-      <p className="mb-3 text-sm text-gray-500">員工在 LINE 私訊群記一張收據照，就會自動記在這裡。</p>
+    // exp-list：globals.css 用 CSS 計數器數勾了幾筆，寫進底部浮出的「已勾 N 筆」
+    <main className="page exp-list">
+      <h1 className="mb-1">收據</h1>
+      <p className="mb-3 text-sm text-gray-600">員工在 LINE 私訊群記一張收據照，就會自動記在這裡。</p>
       <Flash
         sp={sp}
         dict={{
           saved: { tone: 'ok', text: '已儲存' },
+          reimbursed: { tone: 'ok', text: `已把 ${sp.n ?? ''} 筆標成已報帳` },
           deleted: { tone: 'ok', text: '已刪除' },
           bad: { tone: 'err', text: '資料不正確，沒有儲存' },
+          confirm: { tone: 'err', text: '要先勾「刪了救不回來」才能刪' },
         }}
       />
 
+      {/* 狀態用分段籤（點了就換，不必再按「篩選」）；人、專案、月份照舊是表單 */}
+      <nav className="segmented mb-3" aria-label="狀態">
+        {(
+          [
+            ['open', '還沒報'],
+            ['done', '已報帳'],
+            ['all', '全部'],
+          ] as const
+        ).map(([v, label]) => (
+          <a key={v} href={oh(slug, '/expense', { status: v === 'open' ? undefined : v, who: sp.who, project: sp.project, month: sp.month })} aria-current={f.status === v ? 'page' : undefined}>
+            {label}
+          </a>
+        ))}
+      </nav>
+
       <form className="mb-4 flex flex-wrap items-end gap-2 text-sm" method="get">
-        <label className="flex flex-col gap-1">
-          <span className="text-xs text-gray-500">狀態</span>
-          <select className="input h-9" name="status" defaultValue={f.status}>
-            <option value="open">還沒報</option>
-            <option value="done">已報帳</option>
-            <option value="all">全部</option>
-          </select>
-        </label>
+        {f.status !== 'open' && <input type="hidden" name="status" value={f.status} />}
         <label className="flex flex-col gap-1">
           <span className="text-xs text-gray-500">人</span>
           <select className="input h-9" name="who" defaultValue={f.who ?? ''}>
@@ -129,6 +140,19 @@ export default async function ExpenseList({
           <StatGrid cols={2} items={[{ n: rows.length, label: '筆數' }, { n: money(total), label: '合計' }]} />
         </div>
       )}
+      {/* 月底對帳：先用人／月份篩好，一次把這頁全部標成已報帳 */}
+      {rows.filter((r) => !r.reimbursed_at).length > 1 && (
+        <form action="/api/expense/update" method="post" className="mb-4">
+          <input type="hidden" name="org" value={slug} />
+          <input type="hidden" name="back" value={back} />
+          {rows.filter((r) => !r.reimbursed_at).map((r) => (
+            <input key={r.id} type="hidden" name="id" value={r.id} />
+          ))}
+          <button className="btn w-full" name="action" value="reimburse">
+            這頁還沒報的 {rows.filter((r) => !r.reimbursed_at).length} 筆，全部標成已報帳
+          </button>
+        </form>
+      )}
 
       {!rows.length ? (
         all?.length ? (
@@ -147,6 +171,10 @@ export default async function ExpenseList({
             return (
               <li key={r.id} className="card">
                 <div className="flex items-start gap-3">
+                  {/* 還沒報的列前面可勾：勾了底部浮出「標成已報帳」（一列只留一個動作，原本每列都有一顆按鈕） */}
+                  {!r.reimbursed_at && (
+                    <input type="checkbox" name="id" value={r.id} form="reimburse-batch" className="exp-pick mt-1 h-5 w-5 flex-none accent-emerald-700" aria-label={`勾選 ${money(r.amount)} ${r.category}`} />
+                  )}
                   {img ? (
                     <a href={img} target="_blank" rel="noreferrer" className="flex-none">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -171,13 +199,16 @@ export default async function ExpenseList({
                     </p>
                     {r.note && <p className="truncate text-xs text-gray-500">{r.note}</p>}
                   </div>
-                  <form action="/api/expense/update" method="post" className="flex-none">
-                    <input type="hidden" name="org" value={slug} />
-                    <input type="hidden" name="id" value={r.id} />
-                    <input type="hidden" name="back" value={back} />
-                    <input type="hidden" name="action" value={r.reimbursed_at ? 'unreimburse' : 'reimburse'} />
-                    <button className="btn btn-sm">{r.reimbursed_at ? '改回未報' : '標已報帳'}</button>
-                  </form>
+                  {r.reimbursed_at && (
+                    <form action="/api/expense/update" method="post" className="flex-none">
+                      <input type="hidden" name="org" value={slug} />
+                      <input type="hidden" name="id" value={r.id} />
+                      <input type="hidden" name="back" value={back} />
+                      <button className="btn btn-sm" name="action" value="unreimburse">
+                        改回未報
+                      </button>
+                    </form>
+                  )}
                 </div>
                 <details className="mt-2">
                   <summary className="cursor-pointer text-xs text-gray-500">編輯</summary>
@@ -240,7 +271,12 @@ export default async function ExpenseList({
                       <button className="btn-primary" name="action" value="save">
                         儲存
                       </button>
-                      <button className="btn" name="action" value="delete" formNoValidate>
+                      {/* 刪了救不回來：先勾才按得下去（同檔案頁，globals.css 的 data-ack） */}
+                      <label className="ml-auto flex min-h-11 cursor-pointer items-center gap-1.5 text-xs text-gray-600">
+                        <input type="checkbox" name="confirm_delete" data-ack />
+                        刪了救不回來
+                      </label>
+                      <button className="btn-danger" name="action" value="delete" formNoValidate data-requires-ack>
                         刪除
                       </button>
                     </div>
@@ -251,6 +287,17 @@ export default async function ExpenseList({
           })}
         </ul>
       )}
+      {/* 勾了才浮出（body:has(.exp-pick:checked)）；浮在手機底部導覽上面 */}
+      <form id="reimburse-batch" action="/api/expense/update" method="post" className="exp-bar fixed inset-x-3 bottom-24 z-40 mx-auto max-w-md items-center gap-3 rounded-2xl border border-gray-200 bg-white py-2.5 pr-2.5 pl-4 shadow-lg md:bottom-6">
+        <input type="hidden" name="org" value={slug} />
+        <input type="hidden" name="back" value={back} />
+        <span className="flex-1 text-sm font-bold">
+          已勾 <span className="exp-n" /> 筆
+        </span>
+        <button className="btn-primary" name="action" value="reimburse">
+          標成已報帳
+        </button>
+      </form>
       <datalist id="expense-projects">
         {[...projects].map((p) => (
           <option key={p} value={p} />

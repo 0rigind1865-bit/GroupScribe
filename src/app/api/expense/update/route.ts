@@ -25,11 +25,20 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   const now = new Date().toISOString();
 
+  // 標已報帳／改回可一次多筆（2026-10 設計畫布「收據」：月底勾一批一次標，不用一筆一筆按）
   if (action === 'reimburse' || action === 'unreimburse') {
-    await scoped(db.from('expenses').update({ reimbursed_at: action === 'reimburse' ? now : null, updated_at: now }));
-    return go('ok=saved');
+    const ids = form.getAll('id').map(String).filter(Boolean);
+    if (!ids.length) return go('err=bad');
+    await db
+      .from('expenses')
+      .update({ reimbursed_at: action === 'reimburse' ? now : null, updated_at: now })
+      .in('id', ids)
+      .eq('org_id', access.org.id);
+    return go(ids.length > 1 ? `ok=reimbursed&n=${ids.length}` : 'ok=saved');
   }
+  // 刪了救不回來：表單要勾「刪了救不回來」才送得出來（globals.css 的 data-ack），沒勾硬送的這裡擋
   if (action === 'delete') {
+    if (form.get('confirm_delete') !== 'on') return go('err=confirm');
     await scoped(db.from('expenses').delete());
     return go('ok=deleted');
   }
