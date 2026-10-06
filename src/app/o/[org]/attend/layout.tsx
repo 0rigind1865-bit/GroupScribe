@@ -6,7 +6,6 @@ import { orgAdminAccess } from '@/attend/auth';
 import { moduleGate } from '@/org/modules';
 import { ShellHeader } from '../shell-header';
 import { BottomNav } from '../nav';
-import { EmployeeSwitcher } from './employee-switcher';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,25 +30,19 @@ export default async function AttendLayout({
   await moduleGate(slug, 'attend');
 
   const db = getDb();
-  const [{ count: reviews }, { count: pendingEmps }, { data: emps }] = await Promise.all([
+  const [{ count: reviews }, { count: pendingEmps }] = await Promise.all([
     db.from('adjustment_requests').select('id', { count: 'exact', head: true }).eq('org_id', org.id).eq('status', 'pending'),
     db.from('employees').select('id', { count: 'exact', head: true }).eq('org_id', org.id).eq('status', 'pending'),
-    db.from('employees').select('id, display_name, dept, status').eq('org_id', org.id).neq('status', 'pending').order('display_name'),
   ]);
   const counts = { reviews: reviews ?? 0, pendingEmps: pendingEmps ?? 0 };
 
   return (
     <>
       <Suspense fallback={null}>
-        <ShellHeader
-          slug={slug}
-          moduleId="attend"
-          counts={counts}
-          // 手機頂欄只留工具按鈕與個人／管理（同群組助理）：換人改從「薪資」總表或「員工」清單點
-          context={<div className="hidden md:block"><EmployeeSwitcher employees={(emps ?? []) as never} /></div>}
-        />
+        {/* 不放員工膠囊（手機、電腦都一樣，2026-10 設計畫布 AttendDesktop）：換人從「薪資」總表或「員工」清單點 */}
+        <ShellHeader slug={slug} moduleId="attend" counts={counts} />
       </Suspense>
-      <div className="nav-gap md:!pb-0">{children}</div>
+      <div className="nav-gap md:!pb-0 md:pl-58">{children}</div>
       <Suspense fallback={null}>
         <BottomNav moduleId="attend" counts={counts} />
       </Suspense>

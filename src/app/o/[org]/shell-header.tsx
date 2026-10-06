@@ -8,22 +8,24 @@ import { IdentityBar } from '@/app/ui/identity-bar';
 import { oh } from '@/org/href';
 import { liffUrl } from '@/core/ingest';
 import { moduleById, moreItems, type ModuleId } from './routes';
-import { TopNav, type Counts } from './nav';
+import { SideNav, type Counts } from './nav';
 
-// 管理端頂欄（docs/identity-switcher-plan.md 第 2 節；畫布 IdAdminAttend／IdDesktopGs／IdDesktopMenu）：
-//   一條深色帶，手機也是（深色＝在管公司）：角色開關 → 工具按鈕 → 電腦版分頁 → 情境膠囊（群組／員工）
-//   公司名不再放右邊：只管一家時在工具選單標題；管多家、或站在清單外的公司時工具按鈕寫「考勤 · 公司A」。
-//   手機不黏頂（往下捲就讓位給內容）；電腦黏頂。所有路徑由 IdentityBar 從 surfaces 產生，這裡只傳資料。
+// 管理端頂欄（docs/identity-switcher-plan.md 第 2 節；畫布 IdAdminAttend／IdDesktopMenu）：
+//   手機：一條深色帶（深色＝在管公司）：角色開關 → 工具按鈕；不黏頂（往下捲就讓位給內容）。
+//   電腦（2026-10 設計畫布 DesktopToday／AttendDesktop／ExpenseDesktop）：同一條身分列變成固定在左邊的 232px 側欄——
+//   工具按鈕（公司切換）→ 導覽 → 範圍篩選（群組清單）→ 其餘頁面 → 角色開關。內容區由各模組 layout 用 md:pl-58 讓開。
+//   所有路徑由 IdentityBar 從 surfaces 產生，這裡只傳資料。
 export async function ShellHeader({
   slug,
   moduleId,
   counts,
-  context,
+  scope,
 }: {
   slug: string;
   moduleId: ModuleId;
   counts?: Counts;
-  context?: React.ReactNode;
+  /** 電腦版側欄的範圍篩選（群組助理的群組清單） */
+  scope?: React.ReactNode;
 }) {
   const access = await visibleModules(slug);
   if (!access) notFound();
@@ -74,7 +76,7 @@ export async function ShellHeader({
   );
 
   return (
-    <header className="shell-bar md:sticky md:top-0 md:z-30">
+    <header className="shell-bar md:fixed md:inset-y-0 md:left-0 md:z-30 md:w-58 md:overflow-y-auto">
       <IdentityBar
         groups={groups}
         currentKey={currentKey}
@@ -82,10 +84,9 @@ export async function ShellHeader({
         tt={(k, p) => t('zh-TW', k, p)}
         // 角色開關跟員工端同一種語言：越南籍的員工兼管理者兩側看到同樣的「Tôi｜Quản lý」（T10 第 3 輪）
         roleTt={(k, p) => t(loc, k, p)}
-        brand
+        rail
         // 未認領的群只有群組清單一頁：不畫群組助理的分頁（身分列說「未認領的群」，分頁卻是今天／收件匣，T10 第 2 輪）
-        navSlot={slug === 'unclaimed' ? undefined : <TopNav moduleId={mod.id} counts={counts} />}
-        contextSlot={context}
+        navSlot={slug === 'unclaimed' ? undefined : <SideNav moduleId={mod.id} counts={counts} scope={scope} />}
         menuExtra={extra}
       />
     </header>

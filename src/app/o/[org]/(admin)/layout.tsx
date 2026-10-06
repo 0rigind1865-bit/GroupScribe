@@ -8,13 +8,13 @@ import { fmtDate } from '@/core/date';
 import { oh } from '@/org/href';
 import { GRACE_DAYS } from '@/org/plans';
 import { notFound } from 'next/navigation';
-import { GroupChips, GroupSwitcher, type GroupOption } from '@/app/ui/group-switcher';
+import { GroupChips, GroupList, type GroupOption } from '@/app/ui/group-switcher';
 import { ShellHeader } from '../shell-header';
 import { BottomNav } from '../nav';
 
 export const dynamic = 'force-dynamic';
 
-// 群組助理模組的內殼：頂欄（工作區切換器＋nav＋群組切換器）＋ 手機底部膠囊。
+// 群組助理模組的內殼：身分列（手機頂欄／電腦左側欄，含群組清單）＋ 手機底部膠囊。
 // 權限已由上一層 o/[org]/layout.tsx 把關；路由表在 ../routes.tsx。
 //
 // 群組清單依 org 過濾；?group= 指到別 org 的群組時 scopedGroup 會自動退回合法群組。
@@ -65,11 +65,11 @@ export default async function AdminLayout({
           slug={slug}
           moduleId="gs"
           counts={counts}
-          // 手機的群組範圍改成內容上方的一排籤（GroupChips），頂欄膠囊只留給電腦版
-          context={slug === 'unclaimed' ? undefined : <div className="hidden md:block"><GroupSwitcher groups={groups as GroupOption[]} /></div>}
+          // 群組範圍：手機是內容上方的一排籤（GroupChips），電腦是左側欄的群組清單
+          scope={<GroupList groups={groups as GroupOption[]} />}
         />
       </Suspense>
-      <div className="nav-gap md:!pb-0">
+      <div className="nav-gap md:!pb-0 md:pl-58">
         {slug !== 'unclaimed' && (
           <Suspense fallback={null}>
             <GroupChips groups={groups as GroupOption[]} />

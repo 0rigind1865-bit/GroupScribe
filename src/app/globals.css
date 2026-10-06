@@ -1042,3 +1042,54 @@ form:has([data-ack]:not(:checked)) [data-requires-ack] { opacity: 0.5; pointer-e
   .id-sec, .id-row-desc, .id-all, .id-close { color: #a7b3ac; }
   .ctx-pill { background: #1a211e; border-color: #39443e; color: #e8edea; }
 }
+
+/* ── 電腦版左側欄（/o 管理殼；2026-10 設計畫布 DesktopToday／DesktopReview／AttendDesktop／ExpenseDesktop）──
+   同一條身分列（identity-bar.tsx 的 rail）：手機照舊是深色頂列；md 以上整條變成 232px 淺色左側欄：
+   工具鈕（logo＋工具名＋「公司 · 管理」，點開＝換工具、換公司）→ 主要導覽 → 群組清單（範圍篩選）→ 其餘頁面 → 角色開關壓最底。
+   側欄內容（nav.tsx 的 SideNav、group-switcher.tsx 的 GroupList）放在 .id-nav 裡，手機本來就不顯示。 */
+.id-tool-rail { display: none; }
+.side-nav, .side-groups, .side-more { display: flex; flex-direction: column; gap: 2px; }
+.side-more--foot { margin-top: auto; padding-top: 10px; border-top: 1px solid #e0dacb; }
+.side-sec { padding: 0 10px 6px; font-size: 12px; font-weight: 800; letter-spacing: 2px; color: #5b665f; }
+.side-link { display: flex; align-items: center; gap: 10px; min-height: 42px; min-width: 0; padding: 0 10px; border-radius: 10px; color: #3d4741; font-size: 14px; font-weight: 700; text-decoration: none; }
+.side-link > svg { width: 20px; height: 20px; flex-shrink: 0; }
+.side-link:hover { background: rgb(255 255 255 / 0.55); }
+.side-nav .side-link[aria-current] { background: #ffffff; color: #1c2420; font-weight: 800; box-shadow: 0 1px 2px rgb(28 36 32 / 0.06); }
+.side-more .side-link { min-height: 40px; font-weight: 400; }
+.side-groups .side-link { min-height: 40px; font-weight: 600; }
+.side-groups .side-link[aria-current] { background: #1c2420; color: #ffffff; }
+.side-ava { width: 22px; height: 22px; flex-shrink: 0; border-radius: 9999px; display: grid; place-items: center; object-fit: cover; background: #0f5c46; color: #ffffff; font-size: 11px; font-weight: 800; }
+@media (min-width: 768px) {
+  header.shell-bar:has(> .id-bar--rail) { background: none; border: 0; }
+  .id-bar--rail { flex-direction: column; align-items: stretch; gap: 18px; min-height: 100%; padding: 16px 12px; background: #efece4; color: #1c2420; border-right: 1px solid #e6e0d2; box-shadow: none; }
+  .id-bar--rail .id-sep, .id-bar--rail .id-tool-org { display: none; }
+  .id-bar--rail .id-tool { min-height: 48px; padding: 4px 8px; border-radius: 12px; }
+  .id-bar--rail .id-tool:hover { background: rgb(255 255 255 / 0.55); }
+  /* 側欄頂端是群記 logo，不是工具圖示（畫布）：換底圖、藏圖示，不必多一份 markup */
+  .id-bar--rail .id-tile { width: 34px; height: 34px; border-radius: 10px; background: url('/brand/mark-512.png') center / cover; }
+  .id-bar--rail .id-tile > svg { display: none; }
+  .id-bar--rail .id-tool-text { flex: 1; flex-direction: column; align-items: stretch; gap: 0; line-height: 1.25; }
+  .id-bar--rail .id-tool-name { font-size: 15px; font-weight: 800; }
+  .id-bar--rail .id-tool-rail { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 400; color: #5b665f; }
+  .id-bar--rail .id-nav { flex-direction: column; gap: 18px; overflow: visible; }
+  /* 角色開關壓到最底（.id-nav 撐滿中間），兩格平分 */
+  .id-bar--rail .id-toggle { order: 1; background: #e6e0d2; }
+  .id-bar--rail .id-role { flex: 1; justify-content: center; color: #5b665f; }
+  .id-bar--rail .id-role[aria-current] { background: #ffffff; color: #1c2420; box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+  /* 選單面板改 fixed：側欄自己會捲（overflow-y），absolute 的 300px 面板會被側欄裁掉 */
+  .id-bar--rail .id-panel { position: fixed; top: 72px; left: 12px; }
+  /* 批次列讓開側欄 */
+  body:has(.id-bar--rail):has(.batch-box:checked) #batch { left: 232px; }
+}
+@media (min-width: 768px) and (prefers-color-scheme: dark) {
+  .id-bar--rail { background: #151b18; color: #e8edea; border-right-color: #2a332f; }
+  .id-bar--rail .id-tool:hover, .side-link:hover { background: rgb(255 255 255 / 0.05); }
+  .id-bar--rail .id-tool-rail, .side-sec { color: #a7b3ac; }
+  .id-bar--rail .id-toggle { background: #252d28; }
+  .id-bar--rail .id-role { color: #a7b3ac; }
+  .id-bar--rail .id-role[aria-current] { background: #46554d; color: #ffffff; box-shadow: none; }
+  .side-link { color: #c8d2cd; }
+  .side-nav .side-link[aria-current] { background: #1a211e; color: #e8edea; box-shadow: none; }
+  .side-groups .side-link[aria-current] { background: #e8edea; color: #1c2420; }
+  .side-more--foot { border-top-color: #2a332f; }
+}

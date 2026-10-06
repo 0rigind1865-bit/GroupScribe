@@ -17,7 +17,7 @@ export default async function ExpenseLayout({ children, params }: { children: Re
       <Suspense fallback={null}>
         <ShellHeader slug={slug} moduleId="expense" />
       </Suspense>
-      <div className="nav-gap md:!pb-0">{children}</div>
+      <div className="nav-gap md:!pb-0 md:pl-58">{children}</div>
       <Suspense fallback={null}>
         <BottomNav moduleId="expense" />
       </Suspense>
