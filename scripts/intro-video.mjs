@@ -1,7 +1,7 @@
 // 產生「群記」開場動畫影片（1920×1080、60fps、9 秒、無聲）
 // 故事：滿畫面亂抖的對話框（噪音）→ 暗處樹枝上一隻貓頭鷹（原本的 logo），金眼左看右看 → 亮起來、變身張翅成俯衝版（甲）、
 //      起飛一路滑翔、越來越快撲向那個重要的訊息 → 金色爪子一把扣住 → 一圈波紋把噪音清空
-//      → 放開訊息，訊息往右飛、越飛越大，變成「群記」標題；貓頭鷹收翅變回原本的 logo、退到左邊、眼睛一亮 → 英文名與標語
+//      → 放開訊息，訊息往右飛、越飛越大，變成「群記」標題；貓頭鷹收翅變回原本的 logo、退到左邊（眼睛的光熄掉）→ 英文名與標語、眨眼
 // 貓頭鷹本身的動作（張翅、變身、伸爪抓）直接用 scripts/mark-dive-open.mjs 的 owlLayer，兩支影片的動作永遠一致
 // 用法：node scripts/intro-video.mjs → public/brand/intro.mp4（加 --still 3.2 只輸出那一秒的靜態圖）
 // 流程：每一格算好位置寫成 SVG → sharp 轉 PNG → macOS 內建 AVFoundation（swift）壓成 H.264 MP4，不用裝 ffmpeg
@@ -128,13 +128,13 @@ function frame(t) {
   //    放開訊息後收翅變回原本的 logo（眼睛再亮一下）
   const P = pose(t), L = look(t);
   // 眼睛的光（跟上一版一樣）：一直亮著，暗處最亮、變身張翅時亮一下、扣住訊息時閃一下、之後像呼吸一樣；眨眼時光也一起暗；
-  //   最後變回原本的 logo 時再亮一下、結尾眨一次眼
+  //   收翅變回原本的 logo 時光慢慢熄掉，結尾只眨一次眼、不發光
   const blink = BLINKS.reduce((k, b) => k * (1 - 0.92 * Math.sin(Math.PI * prog(t, b, 0.2))), 1);
   const dark = 1 - inOutSine(prog(t, 1.0, 1.4));
   const glow = clamp(0.35 + 0.65 * dark + 0.5 * bump(t, TRANS + 0.6, 0.15) + 0.1 * Math.sin(t * 2.4) * prog(t, GRAB, 0.6)
-    + 0.7 * bump(t, GRAB + 0.1, 0.18) + 0.6 * bump(t, BACK + BACK_D + 0.1, 0.18)) * blink;
+    + 0.7 * bump(t, GRAB + 0.1, 0.18)) * blink * (1 - inOutCubic(prog(t, BACK, BACK_D))); // 收翅變回原本的 logo 時光慢慢熄掉，結尾不發光
   const E = eyesAt(owlT(t), L);
-  const glows = E.pts.map((e) => { const [gx, gy] = toStage(P, e); return `<circle cx="${f1(gx)}" cy="${f1(gy)}" r="${f1((32 + 24 * dark) * 0.994 * E.k * P.s)}" fill="${GOLD}" opacity="${f1(glow)}" filter="url(#blur)"/>`; }).join('');
+  const glows = glow < 0.01 ? '' : E.pts.map((e) => { const [gx, gy] = toStage(P, e); return `<circle cx="${f1(gx)}" cy="${f1(gy)}" r="${f1((32 + 24 * dark) * 0.994 * E.k * P.s)}" fill="${GOLD}" opacity="${f1(glow)}" filter="url(#blur)"/>`; }).join('');
   const bubble = held && !flying ? { s: 1, dy: TIMES.REACH * (1 - pullK(t)) } : { s: 0, dy: 0 };
   const owl = `<g transform="translate(${P.x} ${P.y}) rotate(${P.r}) scale(${P.s}) translate(-256 -256)">${owlLayer(owlT(t), {
     ivory: mix(BG, IVORY, lit), lift: false, ext: ext(t), close: close(t), pull: pullK(t), tuck: ext(t), bubble, look: L, blink,
