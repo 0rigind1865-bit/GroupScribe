@@ -23,15 +23,23 @@ export async function POST(req: NextRequest) {
     if (!name || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
       return redirectTo(`${back}?err=ERR_LOCATION_PARAMS`);
     }
-    const { error } = await db
+    const { data: row, error } = await db
       .from('punch_locations')
-      .insert({ org_id: access.org.id, name, lat, lng, radius_m: radius });
-    if (error) return redirectTo(`${back}?err=ERR_WRITE`);
-    return redirectTo(`${back}?ok=1`);
+      .insert({ org_id: access.org.id, name, lat, lng, radius_m: radius })
+      .select('id')
+      .single();
+    if (error || !row) return redirectTo(`${back}?err=ERR_WRITE`);
+    return redirectTo(`${back}?loc=${row.id}&ok=added`); // 新增完就選中它：地圖上馬上看得到圈圈
   }
 
   const id = String(form.get('id') ?? '');
   if (!id) return NextResponse.json({ error: '參數不足' }, { status: 400 });
+  // 改範圍（設計畫布「打卡地點」的 4 個選項）：只動半徑，名稱與座標不變
+  if (action === 'radius') {
+    const radius = Math.min(Math.max(Number(form.get('radius')) || 100, 10), 5000);
+    const { error } = await db.from('punch_locations').update({ radius_m: radius }).eq('id', id).eq('org_id', access.org.id);
+    return redirectTo(`${back}?loc=${encodeURIComponent(id)}&${error ? 'err=ERR_WRITE' : 'ok=radius'}`);
+  }
   if (action === 'toggle') {
     const { data: loc } = await db
       .from('punch_locations')
@@ -40,12 +48,12 @@ export async function POST(req: NextRequest) {
       .eq('org_id', access.org.id)
       .maybeSingle();
     if (loc) await db.from('punch_locations').update({ enabled: !loc.enabled }).eq('id', id).eq('org_id', access.org.id);
-    return redirectTo(back);
+    return redirectTo(`${back}?loc=${encodeURIComponent(id)}`);
   }
   if (action === 'delete') {
     // punch_records.location_id 有 FK：曾被引用的地點刪不掉（改停用），沒被用過的可直接刪
     const { error } = await db.from('punch_locations').delete().eq('id', id).eq('org_id', access.org.id);
-    if (error) return redirectTo(`${back}?err=ERR_LOCATION_IN_USE`);
+    if (error) return redirectTo(`${back}?loc=${encodeURIComponent(id)}&err=ERR_LOCATION_IN_USE`);
     return redirectTo(back);
   }
   return NextResponse.json({ error: '未知操作' }, { status: 400 });

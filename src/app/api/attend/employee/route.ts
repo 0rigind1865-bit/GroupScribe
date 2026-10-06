@@ -82,5 +82,7 @@ export async function POST(req: NextRequest) {
 
   const { error } = await db.from('employees').update(patch).eq('id', id).eq('org_id', access.org.id);
   if (error) return redirectTo(`${back}?err=ERR_WRITE`);
+  // 啟用／停用回清單（「啟用，月薪之後再填」不該一按就跳出資料抽屜）；存檔留在那個人的抽屜
+  if (action === 'activate' || action === 'disable') return redirectTo(`${back}?ok=${action}&who=${encodeURIComponent(id)}`);
   return redirectTo(`${back}?emp=${id}`);
 }

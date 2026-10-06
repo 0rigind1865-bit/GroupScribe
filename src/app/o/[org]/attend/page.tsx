@@ -13,12 +13,14 @@ export const dynamic = 'force-dynamic';
 // 考勤「今天」（2026-10 設計畫布）：一眼看現在誰在班；等你處理的事寫出是誰；
 // 本月異常寫清楚少了哪一張卡、點了直接到那個人。授權在 layout 完成；此頁只讀。
 
-const MISSING: Partial<Record<DayStatus['status'], string>> = {
-  STATUS_PUNCH_IN_MISSING: '少上班卡',
-  STATUS_PUNCH_OUT_MISSING: '少下班卡',
-  STATUS_PUNCH_BOTH_MISSING: '整天沒打卡',
+const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+const wd = (iso: string) => WEEK[new Date(`${iso}T00:00:00Z`).getUTCDay()];
+const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}（週${wd(iso)}）`;
+/** 少了哪張卡：從那天實際打到的卡推（補卡審核中的日子狀態只剩「等審」，一樣要說缺什麼） */
+const missing = (d: DayStatus) => {
+  const has = (t: string) => d.punches.some((p) => p.type === t);
+  return has('in') ? '少下班卡' : has('out') ? '少上班卡' : '整天沒打卡';
 };
-const md = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}`;
 
 export default async function AttendToday({ params }: { params: Promise<{ org: string }> }) {
   const { org: slug } = await params;
@@ -53,7 +55,7 @@ export default async function AttendToday({ params }: { params: Promise<{ org: s
     await Promise.all(
       employees.map(async (e) => {
         const { days } = await monthData(org.id, e.id, month);
-        return { emp: e, days: days.filter((d) => d.abnormal) };
+        return { emp: e, days: days.filter((d) => d.abnormal || d.status === 'STATUS_REPAIR_PENDING') }; // 已送補卡的也列，標「已送補卡」
       }),
     )
   ).filter((a) => a.days.length > 0);
@@ -74,7 +76,7 @@ export default async function AttendToday({ params }: { params: Promise<{ org: s
       <div className="mb-4 flex items-baseline gap-3">
         <h1>今天</h1>
         <span className="text-sm text-gray-600">
-          {Number(today.slice(5, 7))} 月 {Number(today.slice(8, 10))} 日
+          {Number(today.slice(5, 7))} 月 {Number(today.slice(8, 10))} 日 · 週{wd(today)}
         </span>
       </div>
 
@@ -137,23 +139,32 @@ export default async function AttendToday({ params }: { params: Promise<{ org: s
         <h2 className="section-title mb-2">這個月的異常</h2>
         {issues.length ? (
           <div className="space-y-2">
+            {/* 名字連到他的月份；每一顆日子連到那一天（?d=），點了直接看那天少什麼、怎麼算 */}
             {issues.map(({ emp, days }) => (
-              <a key={emp.id} href={oh(slug, '/attend/report', { emp: emp.id, month })} className="card block hover:bg-gray-50">
-                <span className="flex items-center gap-2">
+              <div key={emp.id} className="card">
+                <a href={oh(slug, '/attend/report', { emp: emp.id, month })} className="flex min-h-8 items-center gap-2 hover:opacity-80">
                   <span className="font-bold">{emp.display_name}</span>
                   <span className="text-xs text-gray-600">{emp.dept ?? ''}</span>
                   <span className="ml-auto text-sm text-gray-400" aria-hidden="true">
                     ›
                   </span>
-                </span>
+                </a>
                 <span className="mt-1.5 flex flex-wrap gap-1.5 text-xs">
-                  {days.map((d) => (
-                    <span key={d.date} className="rounded-full bg-red-50 px-2.5 py-0.5 font-bold text-red-700">
-                      {md(d.date)} {MISSING[d.status]}
-                    </span>
-                  ))}
+                  {days.map((d) => {
+                    const sent = d.status === 'STATUS_REPAIR_PENDING';
+                    return (
+                      <a
+                        key={d.date}
+                        href={oh(slug, '/attend/report', { emp: emp.id, month, d: d.date })}
+                        className={`inline-flex min-h-8 items-center rounded-full px-2.5 font-bold ${sent ? 'bg-amber-100 text-amber-900' : 'bg-red-50 text-red-700'}`}
+                      >
+                        {md(d.date)} {missing(d)}
+                        {sent && ' · 已送補卡'}
+                      </a>
+                    );
+                  })}
                 </span>
-              </a>
+              </div>
             ))}
           </div>
         ) : (
