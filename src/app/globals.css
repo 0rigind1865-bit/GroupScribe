@@ -939,6 +939,8 @@ body:has(details[open] > .ctx-pill, .id-menu[open]) #batch {
    同一張表單裡還有沒勾的確認框，按鈕就半透明、點不到。純 CSS :has()，零 JS。
    pointer-events 只擋得住滑鼠與觸控：要連鍵盤（Enter）一起擋，勾選框本身再加 required */
 form:has([data-ack]:not(:checked)) [data-requires-ack] { opacity: 0.5; pointer-events: none; }
+/* 打字確認版（刪除群組要打出群組名）：輸入框加 data-ack-name＋required＋pattern，還沒打對（:invalid）按鈕就灰 */
+form:has([data-ack-name]:invalid) [data-requires-ack] { opacity: 0.5; pointer-events: none; }
 
 /* ── 深色模式：跟隨系統。綠偏中性色盤（提案定案），utility 整表 remap ── */
 @media (prefers-color-scheme: dark) {
