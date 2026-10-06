@@ -1,9 +1,10 @@
 // 「群記」開場動畫的音樂＋音效：全部用程式合成（不用任何現成音樂，沒有版權問題），時間點跟影片的時間軸一起算
 // 聲音設計：
-//   音樂：暗暗的小調和弦鋪底 → 起飛後和弦往上走、濾波慢慢打開、加一個像心跳的低音，緊張感往上推 → 扣住訊息時重擊
+//   音樂：暗暗的小調和弦鋪底 → 飛行時沒有音樂 → 扣住訊息時重擊
 //        → 明亮的大調和弦 → 訊息變成標題時一聲鈴、四個音的琶音，慢慢收掉
-//   噪音：一片模糊的嘈雜（群組裡的雜訊）＋零星的小提示音，起飛後降到約三分之一，扣住後全部消失
-//   貓頭鷹：眼睛左右看、眨眼是很輕的「喀」；起飛時樹枝「啪」一下；張翅、滑翔、收翅只有很輕的風聲（貓頭鷹飛行是安靜的）
+//   噪音：一片模糊的嘈雜（群組裡的雜訊）＋零星的小提示音，起飛就消失
+//   飛行時：張翅那刻起，其他聲音（含殘響）0.2 秒內收掉，只剩樹枝「啪」、張翅和滑翔的風聲，直到扣住
+//   貓頭鷹：眼睛左右看、眨眼是很輕的「喀」；收翅也是很輕的風聲
 //   瞄準：鎖定時一聲輕輕往上的「叮」；扣住：低沉的重擊一下 → 接著完全無聲（噪音沒了，只剩安靜），直到訊息開始往右飛
 //   訊息往右飛：「咻」一聲從中間往右；抵達變成標題：一聲清亮的鈴
 // 用法：被 scripts/intro-video.mjs 呼叫（renderIntroAudio）；只想試聽聲音：node scripts/intro-video.mjs --wav 試聽.wav
@@ -29,16 +30,17 @@ const biquad = (type) => {
 };
 
 export const renderIntroAudio = (T, dur) => {
-  const N = Math.round(dur * SR), L = new Float32Array(N), R = new Float32Array(N), revL = new Float32Array(N), revR = new Float32Array(N);
+  const N = Math.round(dur * SR), bus = () => [0, 0, 0, 0].map(() => new Float32Array(N)); // [左, 右, 送殘響左, 送殘響右]
+  const MAIN = bus(), FLY = bus(), [L, R, revL, revR] = MAIN; // FLY＝飛行聲音（飛行時唯一聽得到的）
   const idx = (t) => Math.round(t * SR);
-  // 放一段聲音：fn(秒, 第幾格) 回傳單聲道值；pan －1 左～＋1 右（可以是函式）；send 送進殘響多少
-  const put = (start, len, fn, { gain = 1, pan = 0, send = 0 } = {}) => {
-    const i0 = Math.max(0, idx(start)), i1 = Math.min(N, idx(start + len));
+  // 放一段聲音：fn(秒, 第幾格) 回傳單聲道值；pan －1 左～＋1 右（可以是函式）；send 送進殘響多少；flight＝飛行聲音
+  const put = (start, len, fn, { gain = 1, pan = 0, send = 0, flight = false } = {}) => {
+    const [dL, dR, sL, sR] = flight ? FLY : MAIN, i0 = Math.max(0, idx(start)), i1 = Math.min(N, idx(start + len));
     for (let i = i0; i < i1; i++) {
       const tt = (i - idx(start)) / SR, v = fn(tt, i) * gain, p = typeof pan === 'function' ? pan(tt) : pan;
       const gl = Math.cos(((p + 1) * Math.PI) / 4), gr = Math.sin(((p + 1) * Math.PI) / 4);
-      L[i] += v * gl; R[i] += v * gr;
-      if (send) { revL[i] += v * gl * send; revR[i] += v * gr * send; }
+      dL[i] += v * gl; dR[i] += v * gr;
+      if (send) { sL[i] += v * gl * send; sR[i] += v * gr * send; }
     }
   };
   const env = (t, a, d) => (t < a ? t / a : Math.exp(-(t - a) / d)); // 起音 a 秒、之後以 d 秒衰減
@@ -48,9 +50,7 @@ export const renderIntroAudio = (T, dur) => {
 
   // ── 音樂：和弦鋪底（每個音三條稍微走音的鋸齒波，經過低通濾波＝溫暖的合成器墊音）
   const CHORDS = [ // [開始秒, 長度, MIDI 音, 濾波起點, 濾波終點, 音量]
-    [0, 2.4, [38, 50, 53, 57, 64], 450, 700, 0.55],                  // D 小調（加 9 音）：暗暗的，盯著
-    [2.2, 1.2, [34, 46, 50, 53, 57], 700, 1400, 0.6],               // 降 B 大七：起飛
-    [3.35, 1.1, [36, 48, 53, 55, 60], 1400, 2600, 0.68],            // C 掛四：越飛越快，往上推
+    [0, 2.4, [38, 50, 53, 57, 64], 450, 700, 0.55],                  // D 小調（加 9 音）：暗暗的，盯著（張翅時被收掉）
     [T.GRAB, 1.9, [41, 53, 57, 60, 67], 2600, 1800, 0.72],          // F 大調（加 9 音）：扣住，一下子亮起來
     [T.ARRIVE - 0.2, dur - T.ARRIVE + 0.2, [41, 53, 57, 60, 64, 69], 1800, 900, 0.62], // F 大七：標題，慢慢收掉
   ];
@@ -67,26 +67,18 @@ export const renderIntroAudio = (T, dur) => {
       }, { gain: (vol * 0.055) / Math.sqrt(notes.length / 5), pan, send: 0.35 });
     });
   });
-  // 像心跳的低音：起飛後越來越快、越來越大聲，扣住那刻停
-  for (let t = T.FLY0; t < T.GRAB - 0.1;) {
-    const k = (t - T.FLY0) / (T.GRAB - T.FLY0), f = hz(33);
-    put(t, 0.35, (tt) => Math.sin(2 * Math.PI * f * tt * (1 - 0.15 * tt)) * env(tt, 0.008, 0.1), { gain: 0.05 + 0.07 * k, send: 0.1 });
-    t += lerp(0.6, 0.22, k);
-  }
-
-  // ── 噪音：一片模糊的嘈雜＋零星的小提示音；波紋掃過時一口氣清空
-  const rnd = makeRand(11), cut = (t) => (t < T.HIT ? 1 : Math.max(0, 1 - (t - T.HIT) / 0.35));
-  const duck = (t) => 1 - 0.65 * smooth(Math.max(0, Math.min(1, (t - T.FLY0) / 0.6))); // 起飛後嘈雜聲降到約三分之一（飛行時不吵）
+  // ── 噪音：一片模糊的嘈雜＋零星的小提示音；起飛就沒了（張翅時被收掉）
+  const rnd = makeRand(11);
   { const bp = biquad('bp'), bp2 = biquad('bp'); let ph = 0;
-    put(0, T.HIT + 0.4, (t) => {
+    put(0, T.FLY0, (t) => {
       ph += (2 * Math.PI * 0.7) / SR;
       if (t % (32 / SR) < 1 / SR) { bp.set(650 + 250 * Math.sin(ph * 1.7), 1.2); bp2.set(1500 + 400 * Math.sin(ph * 0.9 + 1), 2); }
       const n = rnd() * 2 - 1, w = 0.6 + 0.4 * Math.sin(t * 9 + Math.sin(t * 2.3) * 3);
-      return (bp.run(n) * 0.8 + bp2.run(n) * 0.4) * w * Math.min(1, t / 0.8) * cut(t) * duck(t);
+      return (bp.run(n) * 0.8 + bp2.run(n) * 0.4) * w * Math.min(1, t / 0.8);
     }, { gain: 0.3, send: 0.2 }); }
-  for (let i = 0; i < 46; i++) { // 零星的提示音（像別人的訊息一直跳出來）
-    const st = 0.15 + rnd() * (T.HIT - 0.3), f = 900 + rnd() * 1600, p = rnd() * 1.6 - 0.8;
-    put(st, 0.12, (t) => Math.sin(2 * Math.PI * f * t) * env(t, 0.003, 0.03) * cut(st + t) * duck(st + t), { gain: 0.035 + 0.03 * rnd(), pan: p, send: 0.3 });
+  for (let i = 0; i < 22; i++) { // 零星的提示音（像別人的訊息一直跳出來）
+    const st = 0.15 + rnd() * (T.TRANS - 0.2), f = 900 + rnd() * 1600, p = rnd() * 1.6 - 0.8;
+    put(st, 0.12, (t) => Math.sin(2 * Math.PI * f * t) * env(t, 0.003, 0.03), { gain: 0.035 + 0.03 * rnd(), pan: p, send: 0.3 });
   }
 
   // ── 貓頭鷹：眼睛左右看、眨眼（很輕的「喀」）
@@ -100,15 +92,13 @@ export const renderIntroAudio = (T, dur) => {
 
   // ── 起飛：樹枝「啪」一下（低低的悶響＋短短的木頭裂響）
   { const hp = biquad('hp'); hp.set(2500); const r2 = makeRand(5);
-    put(T.FLY0, 0.4, (t) => Math.sin(2 * Math.PI * (95 - 40 * t) * t) * env(t, 0.003, 0.07) * 0.8 + hp.run(r2() * 2 - 1) * env(t, 0.001, 0.025) * (1 + 0.6 * Math.sin(t * 900)), { gain: 0.32, pan: -0.55, send: 0.2 }); }
+    put(T.FLY0, 0.4, (t) => Math.sin(2 * Math.PI * (95 - 40 * t) * t) * env(t, 0.003, 0.07) * 0.8 + hp.run(r2() * 2 - 1) * env(t, 0.001, 0.025) * (1 + 0.6 * Math.sin(t * 900)), { gain: 0.32, pan: -0.55, send: 0.2, flight: true }); }
 
   // ── 風聲（安靜的飛行）：一段帶通雜訊，中心頻率往上滑；sw＝[開始, 長度, 起點頻率, 終點頻率, 音量, 左右]
-  const whoosh = (st, len, f0, f1, g, pan, q = 1.1) => { const bp = biquad('bp'), r2 = makeRand(idx(st) + 3);
-    put(st, len, (t) => { if (t % (32 / SR) < 1 / SR) bp.set(f0 * (f1 / f0) ** smooth(t / len), q); return bp.run(r2() * 2 - 1) * Math.sin(Math.PI * Math.min(1, t / len)) ** 1.5; }, { gain: g, pan, send: 0.3 }); };
-  whoosh(T.TRANS, 1.3, 350, 1600, 0.22, (t) => -0.5 + 0.3 * t);          // 張翅
-  whoosh(T.FLY0 + 0.2, T.GRAB - T.FLY0 - 0.15, 300, 2400, 0.17, (t) => -0.4 + 0.45 * Math.min(1, t / 2), 0.8); // 滑翔，越飛越快（輕輕的，不吵）
-  // 往上推的上升音（扣住前一刻剎住，留一點點空白讓重擊更有力）
-  { let ph = 0; put(T.FLY0 + 0.8, T.GRAB - T.FLY0 - 0.85, (t, i) => { const k = t / (T.GRAB - T.FLY0 - 0.85); ph += (2 * Math.PI * (180 * 2 ** (2 * k))) / SR; return Math.sin(ph) * k ** 2 * (1 - smooth(Math.max(0, (k - 0.97) / 0.03))); }, { gain: 0.06, send: 0.4 }); }
+  const whoosh = (st, len, f0, f1, g, pan, q = 1.1, flight = false) => { const bp = biquad('bp'), r2 = makeRand(idx(st) + 3);
+    put(st, len, (t) => { if (t % (32 / SR) < 1 / SR) bp.set(f0 * (f1 / f0) ** smooth(t / len), q); return bp.run(r2() * 2 - 1) * Math.sin(Math.PI * Math.min(1, t / len)) ** 1.5; }, { gain: g, pan, send: 0.3, flight }); };
+  whoosh(T.TRANS, 1.3, 350, 1600, 0.22, (t) => -0.5 + 0.3 * t, 1.1, true);          // 張翅
+  whoosh(T.FLY0 + 0.2, T.GRAB - T.FLY0 - 0.15, 300, 2400, 0.17, (t) => -0.4 + 0.45 * Math.min(1, t / 2), 0.8, true); // 滑翔，越飛越快（輕輕的，不吵）
 
   // ── 扣住：低沉的重擊（往下掉的低音）＋短短的撞擊聲＋爪子的金屬亮音
   { const r2 = makeRand(9); let ph = 0;
@@ -145,10 +135,16 @@ export const renderIntroAudio = (T, dur) => {
     }
     return out;
   };
-  const wl = reverb(revL, 0), wr = reverb(revR, 23);
+  const wl = reverb(revL, 0), wr = reverb(revR, 23), fwl = reverb(FLY[2], 0), fwr = reverb(FLY[3], 23);
+  // 飛行時只留飛行聲音：張翅那刻起，其他聲音（含殘響）0.2 秒內收掉，扣住那刻才回來
+  const quiet = (t) => (t < T.TRANS ? 1 : t < T.FLY0 ? 1 - (t - T.TRANS) / (T.FLY0 - T.TRANS) : t < T.GRAB ? 0 : 1);
   // ── 混音：加回殘響、輕輕壓縮（tanh）、整體音量拉到最大聲處約 −1 dB、頭尾淡入淡出
   let peak = 0;
-  for (let i = 0; i < N; i++) { L[i] = Math.tanh((L[i] + wl[i]) * 1.4); R[i] = Math.tanh((R[i] + wr[i]) * 1.4); peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i])); }
+  for (let i = 0; i < N; i++) {
+    const q = quiet(i / SR);
+    L[i] = Math.tanh(((L[i] + wl[i]) * q + FLY[0][i] + fwl[i]) * 1.4); R[i] = Math.tanh(((R[i] + wr[i]) * q + FLY[1][i] + fwr[i]) * 1.4);
+    peak = Math.max(peak, Math.abs(L[i]), Math.abs(R[i]));
+  }
   const g = 0.89 / peak;
   // 抓住後完全無聲：重擊只留一下下，接著全部切掉（音樂、殘響、波紋都沒有聲音），直到訊息開始往右飛才回來
   const S0 = T.GRAB + 0.12, S1 = T.REL + 0.35; // 大約 0.9 秒的完全無聲
@@ -156,7 +152,6 @@ export const renderIntroAudio = (T, dur) => {
   for (let i = 0; i < N; i++) { const t = i / SR, f = Math.min(1, t / 0.05, (dur - t) / 0.6) * hush(t); L[i] *= g * f; R[i] *= g * f; }
   return { L, R, SR };
 };
-const lerp = (a, b, k) => a + (b - a) * k;
 
 // 寫成 16 位元立體聲 WAV
 export const writeWav = (file, { L, R, SR: sr }) => {
