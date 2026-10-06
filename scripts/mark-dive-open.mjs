@@ -2,7 +2,7 @@
 //   1. 原本 logo 停一下
 //   2. 調整姿勢：頭壓低、眉毛下壓、眼神變銳利、整顆頭縮到兩翼中間；身體往前傾（胸口看起來變短）、尾巴從後面張開露出來；
 //      兩側收著的翅膀抬起來變成肩上的短羽毛
-//   3. 張開翅膀：長羽毛原本收在兩側那片翅膀裡，一根接一根轉出來、伸長（硬的，不變形，像折扇打開）
+//   3. 張開翅膀＝折扇：每邊 4 根長羽毛共用一個轉軸，原本疊成一束藏在兩側收著的翅膀裡，先伸長、再一起照比例張開
 //   4. 一個訊息框從下面浮上來 → 尾巴收回、金色爪子從胸口下面往下伸、張開 → 一把扣住、把訊息往上拉（整隻微微往上一提）
 // 用法：node scripts/mark-dive-open.mjs → public/brand/dive-open.mp4（加 --still 2.9 只輸出那一秒的靜態圖）
 import sharp from 'sharp';
@@ -91,20 +91,18 @@ const morph = (id, srcD, side, time, haloFrom) => {
   morphs[id] = { m, time, poseAt: (t) => m.pose(inOutCubic(prog(t, time[0], time[1]))) };
   tracks.push({ ...l, draw: (t) => { const raw = prog(t, time[0], time[1]); return { pts: m(inOutCubic(raw)), halo: lerp(haloFrom ?? l.halo, l.halo, inOutCubic(raw)) }; } });
 };
-// 張開翅膀的長羽毛：一開始收在兩側那片翅膀裡（縮到跟它差不多長、轉成跟它同一個方向、疊在它下面），
-// 跟著它一起抬起來；輪到它時再一根接一根轉出去、伸長到定位（形狀不變，像折扇打開）
-const spread = (id, k, side, host, time) => {
-  const l = byId[id], H = morphs[host], F = resample(l.d), cF = centroid(F), aF = axis(F, side);
-  const along = (pts, a) => { const pr = pts.map((p) => p[0] * Math.cos(a) + p[1] * Math.sin(a)); return Math.max(...pr) - Math.min(...pr); };
-  const hostSrc = H.m.src, s0 = (0.9 * along(hostSrc, axis(hostSrc, side))) / along(F, aF);
-  const local = F.map((p) => [p[0] - cF[0], p[1] - cF[1]]);
-  const wrap = (x) => { while (x > Math.PI) x -= 2 * Math.PI; while (x < -Math.PI) x += 2 * Math.PI; return x; };
+// 張開翅膀的長羽毛＝折扇：每邊 4 根共用同一個轉軸（胸口後面那個放射中心），
+// 收起來時全部疊成一束、縮短，藏在兩側收著的翅膀裡（方向 FAN_CLOSED）；打開時先一起伸長，再繞轉軸一起照比例張開
+const FAN_CLOSED = 38, FAN_S0 = 0.5, FAN_LEN = [1.45, 0.8], FAN_OPEN = [1.8, 1.6];
+const fan = (id, k, side) => {
+  const l = byId[id], [px, py] = side < 0 ? dive.place(...dive.pivot) : dive.place(512 - dive.pivot[0], dive.pivot[1]);
+  const mid = (dive.angles[k] + dive.angles[k + 1]) / 2, psi = (a) => Math.atan2(-Math.sin(rad(a)), -Math.cos(rad(a)));
+  let d0 = psi(FAN_CLOSED) - psi(mid); while (d0 > Math.PI) d0 -= 2 * Math.PI; while (d0 < -Math.PI) d0 += 2 * Math.PI;
+  if (side > 0) d0 = -d0;
+  const pts = resample(l.d).map(([x, y]) => [x - px, y - py]);
   tracks.push({ ...l, draw: (t) => {
-    const hp = H.poseAt(t), hostAxis = hp.a + (axis(hostSrc, side) - H.m.pose(0).a); // 那片翅膀現在的中心、方向
-    const u = outBack(prog(t, time[0], time[1])), w = inOutCubic(prog(t, time[0], time[1]));
-    const a = aF + wrap(hostAxis - aF) * (1 - u), sc = lerp(s0, 1, u), c = [lerp(hp.c[0], cF[0], w), lerp(hp.c[1], cF[1], w)];
-    const r = a - aF, cs = Math.cos(r), sn = Math.sin(r);
-    return { pts: local.map(([x, y]) => [c[0] + sc * (x * cs - y * sn), c[1] + sc * (x * sn + y * cs)]), halo: l.halo };
+    const u = outBack(prog(t, ...FAN_OPEN)), r = d0 * (1 - u), sc = lerp(FAN_S0, 1, inOutCubic(prog(t, ...FAN_LEN))), c = Math.cos(r), sn = Math.sin(r);
+    return { pts: pts.map(([x, y]) => [px + sc * (x * c - y * sn), py + sc * (x * sn + y * c)]), halo: l.halo };
   } });
 };
 // 頭（0.55 秒起）、胸口、肩上的短羽毛（covert0／2＝下面那片從原本下翅變、covert1／3＝上面那片從原本收著的翅膀變）
@@ -116,12 +114,7 @@ morph('mask6', mapPath(byId.mask6.d, (x, y) => [256 + (x - 256) * 0.01, 172 + (y
 morph('chest', SRC.chest, 0, [1.0, 1.3]); // 身體往前傾：胸口看起來變短（尾巴同時露出來，見下面）
 morph('covert0', SRC.lowL, -1, [1.0, 1.45]); morph('covert2', SRC.lowR, 1, [1.0, 1.45]);
 morph('covert1', SRC.wingL, -1, [1.05, 1.45]); morph('covert3', SRC.wingR, 1, [1.05, 1.45]);
-// 上面那片短羽毛（原本收著的翅膀）收著長羽毛 1、2；下面那片（原本的下翅）收著 3、4 —— 正好是一片短羽毛對兩根長羽毛
-for (let j = 0; j < 4; j++) {
-  const time = [1.55 + 0.16 * j, 1.5];
-  spread(`long${j}`, j + 1, -1, j < 2 ? 'covert1' : 'covert0', time);
-  spread(`long${j + 4}`, j + 1, 1, j < 2 ? 'covert3' : 'covert2', time);
-}
+for (let j = 0; j < 4; j++) { fan(`long${j}`, j + 1, -1); fan(`long${j + 4}`, j + 1, 1); }
 
 // ── 尾巴：身體往前傾（胸口看起來變短）的同時，尾巴從胸口後面張開露出來；爪子往前伸的時候再收回胸口後面（爪子版沒有尾巴）
 const TILT = [1.2, 1.1], TUCK = [4.0, 0.6];
