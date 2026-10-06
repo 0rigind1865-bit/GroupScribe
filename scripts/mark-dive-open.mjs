@@ -11,6 +11,7 @@ import { writeFileSync, mkdtempSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildDive, flatten, mapPath, P, ORIG_BEAK, BG, IVORY } from './mark-dive.mjs';
 
 const SIZE = 1080, FPS = 60, DUR = 5.8, N_PTS = 180;
@@ -167,12 +168,14 @@ const bubbleD = mapPath(`M${bx + br} ${by}L${bx + bw - br} ${by}Q${bx + bw} ${by
 const lines = [[bx + 12, by + 11, bx + bw - 12], [bx + 12, by + 18, bx + bw - 24]].map(([x1, y, x2]) => [dive.place(x1, y), dive.place(x2, y)]);
 const bubC = dive.place(BUB.cx, BUB.top + BUB.h / 2);
 const BUB_IN = [2.3, 0.7], REACH = 10, CLOSE = [3.35, 0.22], PULL = [3.45, 0.45]; // 訊息框先停在低一點的地方，爪子伸下去抓、合起來、再往上拉回定位
-const bubble = (t) => {
+// 畫訊息框：tf＝把「靜止時的訊息框」每個點搬到哪裡、s＝縮放（字的粗細跟著縮放）
+export const bubbleSvg = (tf, s = 1, fill = IVORY) => `<path d="${mapPath(bubbleD, tf)}" fill="${fill}" stroke="${BG}" stroke-width="${f2(dive.gap * 2 * Z * s)}" paint-order="stroke" stroke-linejoin="round"/>`
+  + lines.map(([a, b]) => { const p = tf(...a), q = tf(...b); return `<path d="M${f2(p[0])} ${f2(p[1])}L${f2(q[0])} ${f2(q[1])}" stroke="${BG}" stroke-width="${f2(3.6 * Z * s)}" stroke-linecap="round"/>`; }).join('');
+export const BUBBLE_C = bubC; // 訊息框靜止時的中心（512 畫布座標）
+const bubble = (t, from = BUB_IN[0], fill = IVORY) => {
   const u = outBack(prog(t, ...BUB_IN)), s = lerp(0.2, 1, u), dy = (lerp(30, REACH, u) - REACH * outBack(prog(t, ...PULL))) * Z;
-  const tf = (x, y) => [bubC[0] + s * (x - bubC[0]), bubC[1] + s * (y - bubC[1]) + dy];
-  if (prog(t, ...BUB_IN) <= 0) return '';
-  return `<path d="${mapPath(bubbleD, tf)}" fill="${IVORY}" stroke="${BG}" stroke-width="${f2(dive.gap * 2 * Z)}" paint-order="stroke" stroke-linejoin="round"/>`
-    + lines.map(([a, b]) => { const p = tf(...a), q = tf(...b); return `<path d="M${f2(p[0])} ${f2(p[1])}L${f2(q[0])} ${f2(q[1])}" stroke="${BG}" stroke-width="${f2(3.6 * Z * s)}" stroke-linecap="round"/>`; }).join('');
+  if (prog(t, ...BUB_IN) <= 0 || t < from) return '';
+  return bubbleSvg((x, y) => [bubC[0] + s * (x - bubC[0]), bubC[1] + s * (y - bubC[1]) + dy], s, fill);
 };
 
 // ── 爪子：從胸口下面伸出來（往下、變大），一邊伸一邊張開，碰到訊息框時一把扣起來
@@ -201,18 +204,25 @@ const order = (id) => (id.startsWith('tail') ? dive.findIndex((l) => l.id === 'c
   : dive.findIndex((l) => l.id === id)); // 尾巴畫在胸口後面
 tracks.sort((a, b) => order(a.id) - order(b.id));
 const LIFT = 9; // 抓到訊息時整隻往上提一點（加上訊息框之後還是置中）
-const frame = (t) => {
-  const draw = (tr) => { const { pts, halo } = tr.draw(t); return `<path d="${pathOf(pts)}" fill="${tr.fill}"${halo > 0.05 ? ` stroke="${BG}" stroke-width="${f2(halo * 2)}" paint-order="stroke" stroke-linejoin="round"` : ''}/>`; };
+// 整隻貓頭鷹在 t 秒的樣子（512 畫布座標、不含底色）。給開場動畫用的選項：
+//   ivory：白色部分改用的顏色（暗處由暗變亮）；bubbleFrom：從幾秒起才畫自己的訊息框（之前由外面畫）；lift：抓到時要不要往上提
+export const owlLayer = (t, { ivory = IVORY, bubbleFrom, lift: doLift = true } = {}) => {
+  const col = (c) => (c === IVORY ? ivory : c);
+  const draw = (tr) => { const { pts, halo } = tr.draw(t); return `<path d="${pathOf(pts)}" fill="${col(tr.fill)}"${halo > 0.05 ? ` stroke="${BG}" stroke-width="${f2(halo * 2)}" paint-order="stroke" stroke-linejoin="round"` : ''}/>`; };
   const chestAt = tracks.findIndex((tr) => tr.id === 'chest');
-  const shown = () => true;
-  const before = tracks.slice(0, chestAt + 1).filter(shown).map(draw).join(''), after = tracks.slice(chestAt + 1).filter(shown).map(draw).join('');
-  const lift = -LIFT * inOutCubic(prog(t, 2.3, 1.4));
+  const before = tracks.slice(0, chestAt + 1).map(draw).join(''), after = tracks.slice(chestAt + 1).map(draw).join('');
+  const lift = doLift ? -LIFT * inOutCubic(prog(t, 2.3, 1.4)) : 0;
   // 鏡頭：CAM 之前整個畫面用「縮放前」的樣子（原本 logo 原大），CAM 期間一起縮到定位
   const e = inOutCubic(prog(t, ...CAM)), cs = lerp(1, K_CAM, e) / K_CAM, cc = [lerp(R0[0], R1[0], e), lerp(R0[1], R1[1], e)];
   const camT = `translate(${f2(cc[0])} ${f2(cc[1])}) scale(${+cs.toFixed(5)}) translate(${f2(-R1[0])} ${f2(-R1[1])})`;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${SIZE}" height="${SIZE}"><rect width="512" height="512" fill="${BG}"/><g transform="translate(0 ${f2(lift)}) ${camT}">${before}${bubble(t)}${feet(t)}${after}</g></svg>`;
+  return `<g transform="translate(0 ${f2(lift)}) ${camT}">${before}${bubble(t, bubbleFrom, ivory)}${feet(t)}${after}</g>`;
 };
+// 給開場動畫對時間用
+export const TIMES = { CAM, RAISE, BUB_IN, EXT, CLOSE, PULL, REACH: REACH * Z, DUR };
+export const EYES_AT_START = [-45.5, 45.5].map((x) => [256 + 0.994 * x, 256 + 0.994 * (186 - 252.5)]); // 原本 logo 的兩隻眼睛（鏡頭還沒動時）
+const frame = (t) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="${SIZE}" height="${SIZE}"><rect width="512" height="512" fill="${BG}"/>${owlLayer(t)}</svg>`;
 
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
 // 只輸出一張靜態圖檢查：node scripts/mark-dive-open.mjs --still 2.9 [輸出檔名]
 const stillAt = process.argv.indexOf('--still');
 if (stillAt > 0) {
@@ -260,3 +270,4 @@ console.log('\n壓縮成 MP4…');
 execFileSync('swift', [join(dir, 'encode.swift'), dir, OUT, String(FPS), String(N)], { stdio: 'inherit' });
 rmSync(dir, { recursive: true });
 console.log(`完成：${OUT}`);
+}
