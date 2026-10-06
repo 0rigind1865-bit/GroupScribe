@@ -7,5 +7,5 @@ export type ExpenseLabels = {
 export const ZH_LABELS: ExpenseLabels = {
   tabAdd: '記一筆', tabList: '清單', tabExport: '匯出', tabAnalytics: '分析',
   titleAdd: '記一筆', titleList: '我的清單', titleExport: '匯出報帳單', titleAnalytics: '花費分析',
-  amount: '金額', photo: '拍照', category: '分類', project: '專案', pay: '付款方式', save: '＋ 存一筆',
+  amount: '金額', photo: '收據照片', category: '分類', project: '專案', pay: '怎麼付的', save: '存起來',
 };
