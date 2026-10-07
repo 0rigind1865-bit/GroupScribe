@@ -75,16 +75,13 @@ export async function ShellHeader({
       )}
     </section>
   );
-  const extra = (
-    <>
-      {pages}
-      <section>
-        <h2 className="id-sec">外觀</h2>
-        <div className="px-2 pb-2">
-          <ThemeSwitch title="外觀" labels={{ auto: '跟系統', light: '淺色', dark: '深色' }} />
-        </div>
-      </section>
-    </>
+  const theme = (
+    <section>
+      <h2 className="id-sec">外觀</h2>
+      <div className="px-2 pb-2">
+        <ThemeSwitch title="外觀" labels={{ auto: '跟系統', light: '淺色', dark: '深色' }} />
+      </div>
+    </section>
   );
 
   return (
@@ -99,7 +96,8 @@ export async function ShellHeader({
         rail
         // 未認領的群只有群組清單一頁：不畫群組助理的分頁（身分列說「未認領的群」，分頁卻是今天／收件匣，T10 第 2 輪）
         navSlot={slug === 'unclaimed' ? undefined : <SideNav moduleId={mod.id} counts={counts} scope={scope} />}
-        menuExtra={extra}
+        menuExtra={pages}
+        menuFoot={theme}
       />
     </header>
   );

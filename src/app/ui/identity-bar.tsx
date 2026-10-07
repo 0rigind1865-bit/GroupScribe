@@ -57,6 +57,8 @@ export type IdentityBarProps = {
   /** 工具選單最下面多一段（管理側：這個工具沒進分頁的頁面，取代原本的「更多」分頁）。
    *  有它就一定有選單——只管一個工具的人也要點得到設定、匯入 */
   menuExtra?: ReactNode;
+  /** 工具選單最底下（管理側：外觀 跟系統／淺色／深色）——不常用，放在換工具、換公司之後 */
+  menuFoot?: ReactNode;
   /** 電腦版整條變成淺色左側欄（/o 管理殼，2026-10 設計畫布 DesktopToday）：工具鈕第二行固定寫「公司 · 管理」——
    *  不再有深色帶說「在管公司」。樣式全在 md 以上，手機照舊 */
   rail?: boolean;
@@ -65,7 +67,7 @@ export type IdentityBarProps = {
 /** 身分列會不會出現（個人側單一工具時整列不渲染，語言地球要改放姓名列——審查 F3） */
 export const identityBarShown = (g: Grouped, side: Side) => !(side === 'me' && barState(g, side) === 'c');
 
-export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot, contextSlot, rightSlot, dot, brand, closeHref, menuExtra, rail }: IdentityBarProps) {
+export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot, contextSlot, rightSlot, dot, brand, closeHref, menuExtra, menuFoot, rail }: IdentityBarProps) {
   if (!identityBarShown(groups, side)) return null;
   const items = itemsOf(groups, side);
   // 目前這頁不在清單裡（非員工的老闆開 /a、不在群裡的人開 /g）：按鈕照實寫這一頁的工具，
@@ -74,7 +76,7 @@ export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot
   const cur = found ?? items[0];
   const curId: SurfaceId = found?.id ?? (currentKey in TOOL_ICON ? (currentKey as SurfaceId) : cur?.id);
   const dark = side === 'admin';
-  const hasMenu = items.length > 1 || !found || !!menuExtra;
+  const hasMenu = items.length > 1 || !found || !!menuExtra || !!menuFoot;
   // 公司名：管多家時一定帶；工具畫成純標題（沒有選單）時也帶——那是畫面上唯一說「你在管哪家」的地方（F9、T10 第 1 輪）
   const withOrg = side === 'admin' && !!cur?.orgName && (multiOrg(groups) || !hasMenu);
   // 第二行：公司名；平台段的工具（未認領的群）寫「平台」
@@ -135,6 +137,7 @@ export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot
                   {tt(hasRoleToggle(groups) ? 'SEE_ALL_ROLES' : 'SEE_ALL_TOOLS')}
                 </a>
               )}
+              {menuFoot}
             </div>
           </details>
         ) : (
