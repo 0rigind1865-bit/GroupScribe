@@ -11,8 +11,9 @@ import { mediaForItems } from '@/core/media';
 import { ItemPhotos } from '@/app/ui/item-photos';
 import { DetailSheet, SourceQuotes, safeFrom } from '@/app/ui/detail-sheet';
 import { ConfirmIcon, PendingBadge } from '@/app/ui/review-ui';
-import { TimeChip, realAssignee } from '@/app/ui/item-marker';
+import { realAssignee } from '@/app/ui/item-marker';
 import { Badge } from '@/app/ui/badge';
+import { AgendaDay, AgendaEvent, WeekStrip } from '@/app/ui/agenda';
 import { I } from '../../routes';
 import { oh } from '@/org/href';
 
@@ -35,10 +36,6 @@ const AGENDA_LIMIT = 200; // 「全部」防爆量
 // YYYY-MM-DD → 中文顯示，用 UTC 正午鎖定避免跨日
 function zhDate(dateIso: string, opts: Intl.DateTimeFormatOptions) {
   return new Date(`${dateIso}T12:00:00Z`).toLocaleDateString('zh-TW', { timeZone: 'UTC', ...opts });
-}
-function zhMonth(ym: string) {
-  const [y, m] = ym.split('-');
-  return `${y} 年 ${Number(m)} 月`;
 }
 
 type Ev = { id: string; title: string; starts_at: string; start_time: string | null; needs_confirmation: boolean; location?: string | null };
@@ -333,8 +330,6 @@ export default async function CalendarPage({
   const weeks = monthGrid(year, month);
   // 清單：只列有行程或期限的日子，今天一定列（沒有就寫「沒有行程」）
   const agendaDays = [...new Set([todayIso, ...byDay.keys(), ...dueByDay.keys()])].sort();
-  // 一排週曆：今天起兩週，左右滑看下週
-  const strip = Array.from({ length: 14 }, (_, i) => addDays(todayIso, i));
   const rangeLabel = RANGES.find(([r]) => r === range)![1];
   const nextRange = ({ '30d': '90d', '90d': '1y', '1y': 'all' } as Record<string, string>)[range];
   const agendaTruncated = view === 'agenda' && range === 'all' && events.length === AGENDA_LIMIT;
@@ -479,59 +474,13 @@ export default async function CalendarPage({
       {/* ── 清單：一排週曆＋只列有行程的日子（2026-10 設計畫布，取代議程的兩排切換鈕） ── */}
       {live && view === 'agenda' && (
         <div className="space-y-4">
-          <div className="card px-1.5 py-2.5">
-            <div className="flex items-center justify-between px-2 pb-1.5">
-              <span className="text-sm font-bold">{zhMonth(todayIso.slice(0, 7))}</span>
-              <span className="text-xs text-gray-600">左右滑動看下週</span>
-            </div>
-            {/* data-no-swipe：這排要能橫滑，不能被底部膠囊當成換分頁；有東西的日子點了跳到清單那天 */}
-            <div data-no-swipe="" className="flex snap-x snap-mandatory overflow-x-auto">
-              {strip.map((iso, i) => {
-                const evs = byDay.get(iso) ?? [];
-                const now = iso === todayIso;
-                const has = evs.length > 0 || dueByDay.has(iso);
-                const cls = `flex min-h-[60px] flex-none basis-[14.2857%] flex-col items-center justify-center gap-0.5 rounded-xl ${i % 7 ? '' : 'snap-start'} ${
-                  now ? 'bg-emerald-600 text-white' : 'text-gray-700'
-                }`;
-                const inner = (
-                  <>
-                    <span className={`text-[11px] ${now ? '' : 'text-gray-600'}`}>{zhDate(iso, { weekday: 'narrow' })}</span>
-                    <span className="text-[17px] font-bold">{Number(iso.slice(8))}</span>
-                    {now ? (
-                      <span className="text-[10px]">今天</span>
-                    ) : evs.length ? (
-                      // 圓點＝行程（琥珀＝還有待把關的）；方框＝只有待辦期限
-                      <span className={`h-1.5 w-1.5 rounded-full ${evs.some((e) => e.needs_confirmation) ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                    ) : has ? (
-                      <span className="h-1.5 w-1.5 rounded-sm border border-gray-400" />
-                    ) : (
-                      <span className="h-1.5" />
-                    )}
-                  </>
-                );
-                return has || now ? (
-                  <a key={iso} href={`#d-${iso}`} className={cls}>
-                    {inner}
-                  </a>
-                ) : (
-                  <span key={iso} className={cls}>
-                    {inner}
-                  </span>
-                );
-              })}
-            </div>
-          </div>
+          <WeekStrip today={todayIso} byDay={byDay} due={dueByDay} />
 
           {agendaDays.map((iso) => {
             const evs = byDay.get(iso) ?? [];
             const tks = dueByDay.get(iso) ?? [];
             return (
-              <section key={iso} id={`d-${iso}`} className="scroll-mt-24">
-                <h2 className={`mb-1.5 text-[13px] font-bold ${iso === todayIso ? 'text-emerald-700' : 'text-gray-700'}`}>
-                  {iso === todayIso && '今天 · '}
-                  {zhDate(iso, { month: 'numeric', day: 'numeric' })} {zhDate(iso, { weekday: 'short' })}
-                </h2>
-                {!evs.length && !tks.length && <p className="py-0.5 text-sm text-gray-600">沒有行程</p>}
+              <AgendaDay key={iso} iso={iso} today={todayIso} empty={!evs.length && !tks.length}>
                 {tks.map((t) => (
                   <a
                     key={t.id}
@@ -550,22 +499,10 @@ export default async function CalendarPage({
                 ))}
                 <div className="space-y-2">
                   {evs.map((e) => (
-                    <a key={e.id} href={chipHref(e.id)} className="card flex min-h-[72px] items-center gap-3 px-3 py-2.5 hover:bg-gray-50">
-                      <TimeChip time={e.start_time ? String(e.start_time).slice(0, 5) : null} />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-base font-bold break-words">{e.title}</span>
-                        {e.location && (
-                          <span className="mt-0.5 flex items-center gap-1 text-[13px] text-gray-600">
-                            <Icon d={I.pin} className="h-3.5 w-3.5" />
-                            <span className="truncate">{e.location}</span>
-                          </span>
-                        )}
-                      </span>
-                      {e.needs_confirmation && <Badge tone="warn">待把關</Badge>}
-                    </a>
+                    <AgendaEvent key={e.id} e={e} href={chipHref(e.id)} />
                   ))}
                 </div>
-              </section>
+              </AgendaDay>
             );
           })}
 
