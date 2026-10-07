@@ -3,6 +3,7 @@ import { dbConfigured, getDb } from '@/db';
 import { liffId, liffUser } from '@/core/liff';
 import { myEmployees } from '@/attend/auth';
 import { monthData } from '@/attend/data';
+import { currentRuleSet } from '@/attend/rules-store';
 import { workDate } from '@/attend/util';
 import { locale, t, type MsgKey } from '@/attend/i18n';
 import { Banner } from '@/app/ui/banner';
@@ -21,8 +22,7 @@ const ERR: Record<string, MsgKey> = {
   ERR_SESSION: 'ERR_SESSION',
 };
 
-// 點缺卡日帶入的預設時間（對等舊 UI）
-// ponytail: 固定 09:00／18:00；公司規則有上下班時間欄位時改讀規則
+// 點缺卡日帶入的預設時間：公司薪資規則的上下班時刻（規則頁「上班時間」），沒設照舊 UI 的 09:00／18:00
 const DEF_TIME = { in: '09:00', out: '18:00' } as const;
 const REASONS: MsgKey[] = ['REASON_FORGOT', 'REASON_FIELD', 'REASON_BATTERY'];
 
@@ -52,7 +52,8 @@ export default async function AdjustPage({
 
   const sp = await searchParams;
   const today = workDate(new Date());
-  const { days } = await monthData(emp.org_id, emp.id, today.slice(0, 7));
+  const [{ days }, { rules }] = await Promise.all([monthData(emp.org_id, emp.id, today.slice(0, 7)), currentRuleSet(emp.org_id)]);
+  const defTime = { in: rules.workStart ?? DEF_TIME.in, out: rules.workEnd ?? DEF_TIME.out };
   const abnormal = days.filter((d) => d.abnormal);
 
   const { data: reqs } = await getDb()
@@ -63,9 +64,9 @@ export default async function AdjustPage({
     .order('created_at', { ascending: false })
     .limit(20);
 
-  // 點異常日帶入預設：缺上班卡 → 09:00、缺下班卡 → 18:00（對等舊 UI 的預設時間）
+  // 點異常日帶入預設：缺上班卡 → 上班時刻、缺下班卡 → 下班時刻
   const defType = sp.t === 'out' ? 'out' : 'in';
-  const defDatetime = sp.d ? `${sp.d}T${DEF_TIME[defType]}` : '';
+  const defDatetime = sp.d ? `${sp.d}T${defTime[defType]}` : '';
 
   return (
     <AttendShell emp={emp} current="requests" loc={loc} tt={tt} back="/a/adjust" {...sd} title={tt('TAB_REQUESTS')} alert={abnormal.length}>
@@ -92,7 +93,7 @@ export default async function AdjustPage({
                       <span className="block font-bold">
                         {day} {missIn && missOut ? tt('MISS_BOTH') : missIn ? tt('MISS_IN') : tt('MISS_OUT')}
                       </span>
-                      <span className="block text-xs">{tt('ADJUST_AUTO_FILL', { t: DEF_TIME[ty] })}</span>
+                      <span className="block text-xs">{tt('ADJUST_AUTO_FILL', { t: defTime[ty] })}</span>
                     </span>
                     <span className="flex-none text-sm font-bold">{tt('FILL_IN')}</span>
                   </a>

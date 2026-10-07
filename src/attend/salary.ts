@@ -21,6 +21,9 @@ export type SalaryRules = {
   restDay: { tiers: Tier[] }; // 休息日倍率（作用於全部時數）
   regularOff: { guaranteedHours: number; over8Rate: Frac; compDayCashOut: boolean };
   holiday: { guaranteedHours: number; otTiers: Tier[] };
+  // 上下班時刻（HH:MM，選填）：只給員工補卡帶預設時間，計算不讀。舊規則沒有＝補卡照 09:00／18:00
+  workStart?: string;
+  workEnd?: string;
 };
 
 export type DayType = 'normal' | 'rest_day' | 'regular_off' | 'holiday';
