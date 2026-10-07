@@ -7,13 +7,13 @@ import { Flash } from '@/app/ui/banner';
 import { Empty } from '@/app/ui/empty';
 import { RangeMap } from '@/app/ui/range-map';
 import { UseHere } from './use-here';
+import { AddressSearch } from './address-search';
 import { RADII, RadiusPicker } from './radius';
 
 export const dynamic = 'force-dynamic';
 
 // 打卡地點（2026-10 設計畫布「打卡地點」）：選一個地點（?loc=）→ 上面看地圖與範圍圈圈、範圍用 4 個選項改；
-// 新增＝站在現場按一下（瀏覽器定位帶入經緯度）。不在現場的後備：貼上座標。
-// ponytail: 設計稿的「在地圖上搜尋地址」沒做（要接地理編碼服務）；先用 Google 地圖長按複製座標貼上
+// 新增＝站在現場按一下（瀏覽器定位帶入經緯度）。不在現場：搜尋地址（有 GOOGLE_MAPS_API_KEY 才有）或貼上座標。
 const FLASH = {
   added: { tone: 'ok' as const, text: '地點已新增 ✓' },
   radius: { tone: 'ok' as const, text: '範圍已更新 ✓（員工下次打卡就照新的範圍）' },
@@ -44,6 +44,7 @@ export default async function LocationsPage({
   const locs = (data ?? []) as Loc[];
   // 選中的：?loc= 優先，否則第一個啟用中的
   const cur = locs.find((l) => l.id === sp.loc) ?? locs.find((l) => l.enabled) ?? locs[0];
+  const hasKey = !!process.env.GOOGLE_MAPS_API_KEY;
   const herePeople = new Set((todayPunches ?? []).filter((p) => p.location_id === cur?.id).map((p) => p.employee_id)).size;
 
   return (
@@ -116,9 +117,17 @@ export default async function LocationsPage({
 
       <UseHere slug={slug} />
 
-      {/* 不在現場的後備：Google 地圖長按（電腦版右鍵）→ 複製座標，貼進來 */}
+      {/* 不在現場：輸入地址選候選（伺服器查 Google）。沒金鑰整塊不出現，只剩貼座標 */}
+      {hasKey && (
+        <details className="mt-3 text-sm">
+          <summary className="flex min-h-11 cursor-pointer items-center text-gray-600">不在現場？搜尋地址新增</summary>
+          <AddressSearch slug={slug} />
+        </details>
+      )}
+
+      {/* 最後的後備：Google 地圖長按（電腦版右鍵）→ 複製座標，貼進來 */}
       <details className="mt-3 text-sm">
-        <summary className="flex min-h-11 cursor-pointer items-center text-gray-600">不在現場？貼上座標新增</summary>
+        <summary className="flex min-h-11 cursor-pointer items-center text-gray-600">{hasKey ? '或貼上座標新增' : '不在現場？貼上座標新增'}</summary>
         <form action="/api/attend/location" method="post" className="card mt-2 space-y-3">
           <input type="hidden" name="org" value={slug} />
           <input type="hidden" name="action" value="add" />
