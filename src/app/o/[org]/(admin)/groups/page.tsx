@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { isPlatformOwner, requireModule } from '@/org/orgs';
 import { oh } from '@/org/href';
 import { Banner } from '@/app/ui/banner';
+import { SimpleMarkdown } from '@/app/ui/simple-markdown';
 import { dbConfigured, getDb } from '@/db';
 import { SetupNotice } from '../setup-notice';
 
@@ -166,8 +167,9 @@ export default async function GroupsPage({
             群記讀過這個群的對話，記下在做什麼、常講的詞。這讓它整理得更準。
             {prof?.profile_updated_at && ` 更新於 ${fmt(prof.profile_updated_at)}。`}
           </p>
-          <div className="rounded-[10px] bg-gray-50 p-3 text-sm leading-relaxed whitespace-pre-wrap text-gray-700">
-            {prof?.profile || '還沒有。匯入聊天記錄、抽取完成後會自動產生，也可以按「讓群記重讀一次」。'}
+          {/* AI 寫的是 markdown 條列：照粗體與條列呈現，不讓「- **產業與業務**」的符號露在畫面上 */}
+          <div className="space-y-1.5 rounded-[10px] bg-gray-50 p-3 text-sm leading-relaxed break-words text-gray-700">
+            {prof?.profile ? <SimpleMarkdown text={prof.profile} /> : '還沒有。匯入聊天記錄、抽取完成後會自動產生，也可以按「讓群記重讀一次」。'}
           </div>
           <div className="flex flex-wrap gap-2">
             {/* 修改：零 JS 的展開（details），展開後是可改的全文 */}
