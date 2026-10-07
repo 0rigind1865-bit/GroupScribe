@@ -3,6 +3,7 @@ import { aiScope } from './quota';
 import { getLLM } from './config';
 import { label } from './ingest';
 import { getProfile, profileGroup } from './profile';
+import { AI_EDITOR } from './date';
 
 // 結構化抽取引擎：把對話轉成事件（月曆）與待辦（清單）
 // 觸發：webhook 處理完後對觸及群組呼叫 extractGroup()；回補走 /api/extract 或 scripts/extract.ts
@@ -512,6 +513,14 @@ kind 只能是 announcement（公告）或 decision（決議）。沒有可抽�
   res.deduped = fresh.length - ops.length;
   if (res.deduped) console.log('丟棄與既有項目重複的抽取', groupId, res.deduped);
 
+  // AI 改既有項目：記 edited_by＝AI_EDITOR，把關才分得出「AI 已更新」（core/date.ts isRevised）。
+  // migration 008 沒跑時退回不記，改動照寫（同 LIFF 寫入的降級慣例）
+  const revise = async (table: string, id: string, patch: Record<string, unknown>) => {
+    let { error } = await db.from(table).update({ ...patch, edited_by: AI_EDITOR }).eq('id', id);
+    if (error && /edited_by/.test(error.message)) ({ error } = await db.from(table).update(patch).eq('id', id));
+    if (error) throw error;
+  };
+
   // 6. 套用（單筆失敗不影響其他筆）
   for (const op of ops) {
     try {
@@ -541,8 +550,7 @@ kind 只能是 announcement（公告）或 decision（決議）。沒有可抽�
         if (op.time) patch.start_time = op.time;
         if (op.location) patch.location = op.location;
         if (op.note) patch.note = op.note;
-        const { error: e } = await db.from('events').update(patch).eq('id', op.id);
-        if (e) throw e;
+        await revise('events', op.id, patch);
         res.updated++;
       } else if (op.op === 'create_task') {
         const { error: e } = await db.from('tasks').insert({
@@ -567,8 +575,7 @@ kind 只能是 announcement（公告）或 decision（決議）。沒有可抽�
         if (op.assignee) patch.assignee = op.assignee;
         if (op.due) patch.due_at = op.due;
         if (op.note) patch.note = op.note;
-        const { error: e } = await db.from('tasks').update(patch).eq('id', op.id);
-        if (e) throw e;
+        await revise('tasks', op.id, patch);
         res.updated++;
       } else if (op.op === 'create_note') {
         const { error: e } = await db.from('notes').insert({
@@ -591,8 +598,7 @@ kind 只能是 announcement（公告）或 decision（決議）。沒有可抽�
         if (op.title) patch.title = op.title;
         if (op.kind) patch.kind = op.kind;
         if (op.body) patch.body = op.body;
-        const { error: e } = await db.from('notes').update(patch).eq('id', op.id);
-        if (e) throw e;
+        await revise('notes', op.id, patch);
         res.updated++;
       }
     } catch (e) {

@@ -30,10 +30,11 @@ export function fmtDate(iso: string, today = todayISO()): string {
 //   新抽取＝從沒看過，判斷「這件事存在嗎」
 //   已更新＝AI 依後續對話改了既有項目（extract.ts 的 update_* 一律重設 needs_confirmation），
 //           判斷「改得對嗎」——你原本確認過的結論可能已經不成立
-// 不需要新欄位：所有人工編輯路徑都會把 needs_confirmation 清成 false（管理版與 LIFF 的 save 皆然），
-// 所以「還在待確認 ＋ 改過時間」只可能是 AI 動的手。
-export const isRevised = (i: { created_at?: string | null; updated_at?: string | null }) =>
-  !!i.created_at && !!i.updated_at && new Date(i.updated_at).getTime() - new Date(i.created_at).getTime() > 60_000;
+// 認 edited_by（最後修改者，migration 008）：AI 改的時候記成 AI_EDITOR，成員在 LIFF 改會換成他的 userId。
+// 不能看 updated_at 比 created_at 晚多少——把關的「忽略→復原」「確認→復原」也會動 updated_at、
+// 待確認又回到 true，用時間差推斷會把人剛按過的誤標成「AI 已更新」。
+export const AI_EDITOR = 'ai';
+export const isRevised = (i: { edited_by?: string | null }) => i.edited_by === AI_EDITOR;
 
 // 已忽略的項目不該再喊「待確認」——忽略本身就是人做過的判斷。
 // （ignore 動作只改 status、不清 needs_confirmation，所以這個條件必須在 UI 層擋。）
