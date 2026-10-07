@@ -3,7 +3,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLineExport, inExtractWindow } from '../src/core/importer';
-import { fmtDate, isRevised, needsReview } from '../src/core/date';
+import { AI_EDITOR, fmtDate, isRevised, needsReview } from '../src/core/date';
 import { isLowInfo, mimeOfKind, DM_ASK_RE } from '../src/core/ingest';
 import { lineConnector } from '../src/connectors/line';
 import { rankHits } from '../src/core/query';
@@ -43,12 +43,16 @@ test('parseLineExport：日期行、上午/下午、24 小時制、多行續行'
 });
 
 test('待確認 badge：分辨「AI 新抽」與「AI 已更新」，已忽略的不再喊確認', () => {
-  const t0 = '2026-07-27T03:00:00Z';
-  // 剛抽出來的：created 與 updated 幾乎同時
-  assert.equal(isRevised({ created_at: t0, updated_at: '2026-07-27T03:00:10Z' }), false);
-  // AI 依後續對話改過：差超過一分鐘
-  assert.equal(isRevised({ created_at: t0, updated_at: '2026-07-27T04:00:00Z' }), true);
-  assert.equal(isRevised({ created_at: null, updated_at: t0 }), false);
+  // 剛抽出來的：沒有人或 AI 改過
+  assert.equal(isRevised({ edited_by: null }), false);
+  // AI 依後續對話改過（extract.ts 的 update_* 記 edited_by）
+  assert.equal(isRevised({ edited_by: AI_EDITOR }), true);
+  // 成員在 LIFF 改過＝人看過了
+  assert.equal(isRevised({ edited_by: 'U0123456789abcdef0123456789abcdef' }), false);
+  // 把關「忽略→復原」「確認→復原」之後：updated_at 比 created_at 晚很多、又回到待確認，
+  // 但沒有 AI 動過——不能標成「AI 已更新」（舊版用時間差推斷，這裡會誤判）
+  const restored = { created_at: '2026-07-27T03:00:00Z', updated_at: '2026-07-27T05:00:00Z', needs_confirmation: true, status: 'active', edited_by: null };
+  assert.equal(isRevised(restored), false);
 
   assert.equal(needsReview({ needs_confirmation: true, status: 'open' }), true);
   assert.equal(needsReview({ needs_confirmation: false, status: 'open' }), false);

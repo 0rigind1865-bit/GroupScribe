@@ -9,7 +9,7 @@ import { addDays, fmtDate, isOverdue, needsReview, todayISO } from '@/core/date'
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
 import { isGroupMember, liffId, liffUser, memberName } from '@/core/liff';
 import { mediaForItems, type ItemMedia } from '@/core/media';
-import { monthGrid } from '@/core/grid';
+import { AgendaDay, AgendaEvent, WeekStrip } from '@/app/ui/agenda';
 import { ItemPhotos } from '@/app/ui/item-photos';
 import { LiffInit } from '../liff-init';
 import { logFunnel, parseLiffEntry } from '@/core/funnel';
@@ -59,7 +59,6 @@ export default async function MemberView({
   params: Promise<{ groupId: string }>;
   searchParams: Promise<{
     tab?: string;
-    month?: string;
     view?: string;
     q?: string;
     kind?: string;
@@ -107,9 +106,8 @@ export default async function MemberView({
     !!myName && !!x.assignee && (String(x.assignee).includes(myName) || myName.includes(String(x.assignee)));
 
   const today = todayISO();
-  const ym = /^\d{4}-\d{2}$/.test(sp.month ?? '') ? sp.month! : today.slice(0, 7);
   const base = `/g/${encodeURIComponent(groupId)}`;
-  const here = `${base}?tab=${tab}${tab === 'calendar' ? `&month=${ym}` : ''}${archived ? '&view=done' : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}${kind ? `&kind=${kind}` : ''}`;
+  const here = `${base}?tab=${tab}${archived ? '&view=done' : ''}${q ? `&q=${encodeURIComponent(q)}` : ''}${kind ? `&kind=${kind}` : ''}`;
 
   // 角色開關：只有群組＋管理兩種身分都有的人看得到（ComponentsMore：只有一種身分的人看不到「個人／管理」）
   const [{ data: g }, { data: sub }, roles, loc] = await Promise.all([
@@ -146,13 +144,11 @@ export default async function MemberView({
         .order('created_at', { ascending: false }).limit(5),
     ]).then((r) => r.map((x) => x.data ?? []));
   } else if (tab === 'calendar') {
-    const [y, m] = ym.split('-').map(Number);
-    const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    // 今天以後（同管理端行程清單的主畫面；過去的行程成員端不列）
     events =
       (
-        await db.from('events').select(EV).eq('group_id', groupId).eq('status', 'active')
-          .gte('starts_at', `${ym}-01`).lte('starts_at', `${ym}-${String(last).padStart(2, '0')}`)
-          .order('starts_at').order('start_time', { nullsFirst: true })
+        await db.from('events').select(EV).eq('group_id', groupId).eq('status', 'active').gte('starts_at', today)
+          .order('starts_at').order('start_time', { nullsFirst: true }).limit(100)
       ).data ?? [];
   } else if (tab === 'tasks') {
     // 主清單只查進行中；已完成在 ?view=done 的深一層視圖，主畫面連筆數都不提
@@ -331,10 +327,10 @@ export default async function MemberView({
   };
 
   // 行程＝發生在某一天的事：左邊是日期大字（設計畫布「成員端」），時間寫在第二行
-  const EventRow = ({ e, anchor }: { e: any; anchor?: boolean }) => {
+  const EventRow = ({ e }: { e: any }) => {
     const d = new Date(`${e.starts_at}T12:00:00Z`);
     return (
-      <li id={anchor ? `d-${e.starts_at}` : undefined} className="scroll-mt-20 border-b border-gray-100 last:border-b-0">
+      <li className="border-b border-gray-100 last:border-b-0">
         <a href={open('event', e.id)} className="flex min-h-16 items-center gap-3 px-3 py-2 hover:opacity-70">
           <span className="w-[52px] flex-none text-center leading-tight">
             <span className={`block text-[22px] font-black ${e.starts_at === today ? 'text-emerald-700' : ''}`} style={{ fontFamily: 'var(--font-title)' }}>
@@ -404,11 +400,6 @@ export default async function MemberView({
       </a>
     );
   };
-
-  // 月曆導航
-  const [yy, mm] = ym.split('-').map(Number);
-  const prevYm = `${mm === 1 ? yy - 1 : yy}-${String(mm === 1 ? 12 : mm - 1).padStart(2, '0')}`;
-  const nextYm = `${mm === 12 ? yy + 1 : yy}-${String(mm === 12 ? 1 : mm + 1).padStart(2, '0')}`;
 
   // 待辦依期限分組（同管理端「待辦」）；查詢已照期限排好，各組裡「我的」在前
   const in7 = addDays(today, 7);
@@ -548,52 +539,22 @@ export default async function MemberView({
           </>
         )}
 
-        {/* ── 行程 ── */}
+        {/* ── 行程：一排週曆＋只列有行程的日子（與管理端行程頁同一份元件，src/app/ui/agenda.tsx） ── */}
         {tab === 'calendar' && (
           <>
-            <div className="flex items-center gap-2">
-              <a className="btn px-3" href={`${base}?tab=calendar&month=${prevYm}`} aria-label="上個月">←</a>
-              <strong className="flex-1 text-center">{yy} 年 {mm} 月</strong>
-              <a className="btn px-3" href={`${base}?tab=calendar&month=${nextYm}`} aria-label="下個月">→</a>
-              <a className="btn btn-sm" href={`${base}?tab=calendar`}>本月</a>
-            </div>
-            <div className="card grid grid-cols-7 gap-px p-1">
-              {['日', '一', '二', '三', '四', '五', '六'].map((d) => (
-                <div key={d} className="py-1 text-center text-xs text-gray-400">{d}</div>
-              ))}
-              {monthGrid(yy, mm).flat().map((cell, i) => {
-                if (!cell) return <div key={i} />;
-                const evs = byDay.get(cell.iso) ?? [];
-                const inner = (
-                  <>
-                    <span className={`text-xs ${cell.iso === today ? 'rounded bg-emerald-600 px-1 font-bold text-white' : 'text-gray-600'}`}>
-                      {cell.day}
-                    </span>
-                    <span className="mt-0.5 flex flex-wrap justify-center gap-0.5">
-                      {evs.slice(0, 3).map((e: any) => (
-                        <span key={e.id} className={`h-1.5 w-1.5 rounded-full ${e.needs_confirmation ? 'bg-amber-400' : 'bg-emerald-500'}`} />
-                      ))}
-                      {evs.length > 3 && <span className="text-[10px] leading-none text-gray-400">+{evs.length - 3}</span>}
-                    </span>
-                  </>
-                );
-                return evs.length ? (
-                  <a key={i} href={`#d-${cell.iso}`} className="flex aspect-square flex-col items-center rounded p-1 hover:bg-gray-50">
-                    {inner}
-                  </a>
-                ) : (
-                  <div key={i} className="flex aspect-square flex-col items-center p-1">{inner}</div>
-                );
-              })}
-            </div>
+            <WeekStrip today={today} byDay={byDay} />
             {events.length ? (
-              <ul className="card overflow-hidden p-0">
-                {events.map((e, i) => (
-                  <EventRow key={e.id} e={e} anchor={events[i - 1]?.starts_at !== e.starts_at} />
-                ))}
-              </ul>
+              [...new Set([today, ...byDay.keys()])].sort().map((iso) => (
+                <AgendaDay key={iso} iso={iso} today={today} empty={!byDay.has(iso)}>
+                  <div className="space-y-2">
+                    {(byDay.get(iso) ?? []).map((e) => (
+                      <AgendaEvent key={e.id} e={e} href={open('event', e.id)} />
+                    ))}
+                  </div>
+                </AgendaDay>
+              ))
             ) : (
-              <Empty title="這個月沒有行程" hint="群組裡講到時間、地點的安排，AI 會自動整理進來。" />
+              <Empty title="接下來沒有行程" hint="群組裡講到時間、地點的安排，AI 會自動整理進來。" />
             )}
           </>
         )}

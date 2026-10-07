@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 // 把關（原「收件匣」）：三表待確認合流成一條把關流水線。
 // 2026-10 設計畫布「把關模式」：一次看一則對話——上面前後文，下面它整理出的每一筆（可取消勾選、欄位直接改），
-// 「確認 N 筆」最大顆在拇指區；忽略不再多問，改成下方跳「復原」。手機蓋滿整個畫面（像抽屜），
+// 「確認 N 筆」最大顆在拇指區；忽略不再多問，忽略與確認之後都在下方跳「復原」。手機蓋滿整個畫面（像抽屜），
 // 電腦版左邊待把關清單、右邊這則對話（左側導覽外框在 layout）。寫入都打既有的 /api/batch。
 // 無 ?group ＝ 跨群聚合（admin 殼內天然安全）；有 ?group ＝ 單群。?at=kind:id 指定看哪一則；?of＝這輪開始時的筆數（進度條用）。
 
@@ -61,11 +61,11 @@ export default async function InboxPage({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ group?: string; undo?: string | string[]; at?: string; of?: string }>;
+  searchParams: Promise<{ group?: string; undo?: string | string[]; confirmed?: string | string[]; at?: string; of?: string }>;
 }) {
   const { org: slug } = await params;
   if (!dbConfigured()) return <SetupNotice />;
-  const { group: groupParam, undo: undoParam, at, of: ofParam } = await searchParams;
+  const { group: groupParam, undo: undoParam, confirmed: confirmedParam, at, of: ofParam } = await searchParams;
   const db = getDb();
 
   const { org } = await requireModule(slug, 'gs');
@@ -103,14 +103,16 @@ export default async function InboxPage({
     : { data: [] as Msg[] };
   const msgOf = new Map((msgs ?? []).map((m: any) => [m.id, m as Msg]));
 
-  // 剛忽略的項目（?undo=kind:id，多筆逗號串）→ 下方「已忽略『標題』」＋「復原」。
-  // 單筆由卡片的忽略表單帶進 back、批次由 /api/batch 補。標題從 DB 查、不放網址；
-  // 只認本公司的群、而且現在還是 ignored 的（已經復原過或被改過就不再顯示）。
+  // 剛忽略的項目（?undo=kind:id，多筆逗號串）→ 下方「已忽略『標題』」＋「復原」；
+  // 剛確認的（?confirmed=，同格式）→「已確認…」＋「復原」＝翻回待確認。兩個都由 /api/batch 補進網址，一次只會有一種。
+  // 標題從 DB 查、不放網址；只認本公司的群、而且現在還是 ignored／已確認的（已經復原過或被改過就不再顯示）。
   // 網址被手打成 ?undo=a&undo=b 時 Next 給的是陣列：先接成一串，不然 split 會讓整頁 500
-  const undoRaw = Array.isArray(undoParam) ? undoParam.join(',') : (undoParam ?? '');
+  const confirmed = !undoParam && !!confirmedParam;
+  const undoSrc = confirmed ? confirmedParam : undoParam;
+  const undoRaw = Array.isArray(undoSrc) ? undoSrc.join(',') : (undoSrc ?? '');
   const undoIds = new Map<Row['kind'], string[]>();
-  // 「選取全部 N 筆」忽略的復原憑證 all@<毫秒>：那次 update 把每一筆的 updated_at 都寫成同一刻（/api/batch），
-  // 幾百筆也不用把 id 塞進網址。筆數現查：同一刻、現在還是 ignored、仍待確認、在本公司的群
+  // 「選取全部 N 筆」忽略／確認的復原憑證 all@<毫秒>：那次 update 把每一筆的 updated_at 都寫成同一刻（/api/batch），
+  // 幾百筆也不用把 id 塞進網址。筆數現查：同一刻、現在還是 ignored 且仍待確認（確認的：已確認）、在本公司的群
   const undoAll = new Set<string>(); // Set：網址重複帶同一個憑證也不會算兩次
   for (const raw of undoRaw.split(',')) {
     if (/^all@\d{10,15}$/.test(raw)) {
@@ -129,13 +131,15 @@ export default async function InboxPage({
       [...undoIds].map(([kind, list]) =>
         db
           .from(KIND_STYLE[kind].table)
-          .select('id, title, status')
+          .select('id, title, status, needs_confirmation')
           .in('id', list)
           .in('group_id', ids)
           .then(({ data, error }) =>
             error
-              ? list.map((id) => ({ kind, id, title: '' })) // 查不到標題：照網址的筆數，只寫「已忽略 N 筆」
-              : (data ?? []).filter((r: any) => r.status === 'ignored').map((r: any) => ({ kind, id: r.id as string, title: r.title as string })),
+              ? list.map((id) => ({ kind, id, title: '' })) // 查不到標題：照網址的筆數，只寫「已忽略／已確認 N 筆」
+              : (data ?? [])
+                  .filter((r: any) => (confirmed ? r.needs_confirmation === false : r.status === 'ignored'))
+                  .map((r: any) => ({ kind, id: r.id as string, title: r.title as string })),
           ),
       ),
     )
@@ -144,16 +148,12 @@ export default async function InboxPage({
     await Promise.all(
       [...undoAll].flatMap((token) => {
         const at = new Date(Number(token.slice(4))).toISOString();
-        return Object.values(KIND_STYLE).map((s) =>
-          db
-            .from(s.table)
-            .select('id', { count: 'exact', head: true })
-            .in('group_id', ids)
-            .eq('updated_at', at)
-            .eq('status', 'ignored')
-            .eq('needs_confirmation', true)
-            .then(({ count }) => count ?? 0),
-        );
+        return Object.values(KIND_STYLE).map((s) => {
+          const q = db.from(s.table).select('id', { count: 'exact', head: true }).in('group_id', ids).eq('updated_at', at);
+          return (confirmed ? q.eq('needs_confirmation', false) : q.eq('status', 'ignored').eq('needs_confirmation', true)).then(
+            ({ count }) => count ?? 0,
+          );
+        });
       }),
     )
   ).reduce((a, n) => a + n, 0);
@@ -426,7 +426,8 @@ export default async function InboxPage({
             </div>
           )}
 
-          {/* 忽略可復原（principles.md：可逆性優先——按錯了救得回來）。原生表單零 JS；浮在確認列上方 */}
+          {/* 忽略、確認都可復原（principles.md：可逆性優先——按錯了救得回來）。原生表單零 JS；浮在確認列上方。
+              確認的復原只把那幾筆翻回待確認；確認時順手改的欄位留著，不還原 */}
           {undoneCount > 0 && (
             <div
               role="status"
@@ -435,7 +436,9 @@ export default async function InboxPage({
               }`}
             >
               <span className="min-w-0 flex-1 py-2 break-words">
-                {undoneCount === 1 && undone[0]?.title ? `已忽略「${undone[0].title}」` : `已忽略 ${undoneCount} 筆`}
+                {undoneCount === 1 && undone[0]?.title
+                  ? `${confirmed ? '已確認' : '已忽略'}「${undone[0].title}」`
+                  : `${confirmed ? '已確認' : '已忽略'} ${undoneCount} 筆`}
               </span>
               <form action="/api/batch" method="post" className="flex-none">
                 <input type="hidden" name="kind" value="inbox" />
@@ -444,7 +447,7 @@ export default async function InboxPage({
                 ))}
                 {undoneAll > 0 && [...undoAll].map((token) => <input key={token} type="hidden" name="ids" value={token} />)}
                 <input type="hidden" name="back" value={back} />
-                <button className="review-undo min-h-11 rounded-lg px-3 font-bold" name="action" value="restore">
+                <button className="review-undo min-h-11 rounded-lg px-3 font-bold" name="action" value={confirmed ? 'unconfirm' : 'restore'}>
                   復原
                 </button>
               </form>
