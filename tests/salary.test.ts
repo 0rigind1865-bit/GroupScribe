@@ -118,3 +118,77 @@ test('月彙總：平日 9h + 休息日 9h → 月薪 + 166.67 + 1916.67', () =>
   assert.equal(m.days.length, 2);
   assert.equal(m.hourlyRate, 125);
 });
+
+// ── 規則頁白話表單（plainRules）：表單原樣送回＝規則不變；填錯交給 parseRules 擋 ──
+import { parseRules, plainRules, rateText, tierLists } from '../src/attend/rules-store';
+
+/** 照規則頁的欄位名把規則填回表單（＝老闆按「改」之後什麼都沒動就存） */
+function asForm(r: typeof R, section: 'time' | 'pay', over: Record<string, string> = {}) {
+  const f = new FormData();
+  f.set('section', section);
+  if (section === 'time') {
+    f.set('workStart', r.workStart ?? '');
+    f.set('workEnd', r.workEnd ?? '');
+    f.set('normalDailyHours', String(r.normalDailyHours));
+    for (const b of [...r.breaks, { start: '', end: '' }]) {
+      f.append('breakStart', b.start);
+      f.append('breakEnd', b.end);
+    }
+    f.set('weeklyRestDay', String(r.weeklyRestDay));
+    f.set('weeklyRegularOff', String(r.weeklyRegularOff));
+  } else {
+    f.set('baseDivisor', String(r.baseDivisor));
+    for (const [k, ts] of tierLists(r))
+      ts.forEach((t, i) => {
+        if (t.upToHours != null) f.set(`${k}H${i}`, String(t.upToHours));
+        f.set(`${k}R${i}`, rateText(t.rate));
+      });
+    f.set('holidayHours', String(r.holiday.guaranteedHours));
+    f.set('regularOffHours', String(r.regularOff.guaranteedHours));
+    f.set('over8Rate', rateText(r.regularOff.over8Rate));
+  }
+  for (const [k, v] of Object.entries(over)) f.set(k, v);
+  return f;
+}
+
+test('白話表單：沒改就存＝規則一模一樣（4/3 不會變成 1.33），也不動到預設規則本身', () => {
+  const before = JSON.stringify(R);
+  assert.deepEqual(plainRules(R, asForm(R, 'time')), R);
+  assert.deepEqual(plainRules(R, asForm(R, 'pay')), R);
+  assert.equal(JSON.stringify(R), before);
+});
+
+test('白話表單：上下班時刻選填、清空一段休息＝刪掉、倍率可填小數或分數', () => {
+  const t = plainRules(R, asForm(R, 'time', { workStart: '08:30', workEnd: '17:30' }));
+  assert.equal(t.workStart, '08:30');
+  assert.equal(t.workEnd, '17:30');
+  assert.ok(parseRules(t));
+
+  const f = asForm(R, 'time');
+  f.delete('breakStart');
+  f.delete('breakEnd');
+  for (const [s, e] of [['12:00', '13:00'], ['', ''], ['', ''], ['', '']]) {
+    f.append('breakStart', s);
+    f.append('breakEnd', e);
+  }
+  assert.deepEqual(plainRules(R, f).breaks, [{ start: '12:00', end: '13:00' }]);
+
+  const p = plainRules(R, asForm(R, 'pay', { weekdayR0: '1.5', weekdayR1: '5/3', weekdayH0: '3' }));
+  assert.deepEqual(p.weekday.tiers, [
+    { upToHours: 3, rate: { num: 3, den: 2 } },
+    { upToHours: null, rate: { num: 5, den: 3 } },
+  ]);
+  assert.deepEqual(p.restDay, R.restDay); // 沒改的段不受影響
+});
+
+test('白話表單：空白、亂填、休息只填一邊、上班時刻格式錯 → parseRules 擋下', () => {
+  assert.equal(parseRules(plainRules(R, asForm(R, 'time', { normalDailyHours: '' }))), null);
+  assert.equal(parseRules(plainRules(R, asForm(R, 'pay', { weekdayR0: 'abc' }))), null);
+  assert.equal(parseRules(plainRules(R, asForm(R, 'pay', { restDayH1: '' }))), null);
+  assert.equal(parseRules(plainRules(R, asForm(R, 'pay', { baseDivisor: '0' }))), null);
+  const f = asForm(R, 'time');
+  f.append('breakStart', '15:00');
+  f.append('breakEnd', '');
+  assert.equal(parseRules(plainRules(R, f)), null);
+  assert.equal(parseRules({ ...R, workStart: '9點' }), null);
+});

@@ -2,7 +2,7 @@ import { getDb } from '@/db';
 import { notFound } from 'next/navigation';
 import { requireModule } from '@/org/orgs';
 import { oh } from '@/org/href';
-import { currentRuleSet } from '@/attend/rules-store';
+import { currentRuleSet, rateText, tierLists } from '@/attend/rules-store';
 import { workDate } from '@/attend/util';
 import { Banner } from '@/app/ui/banner';
 import { Badge } from '@/app/ui/badge';
@@ -15,9 +15,9 @@ export const dynamic = 'force-dynamic';
 //   第一層＝結構化規則 JSON（預設勞基法模板；表單即 JSON 編輯器＋伺服端 parseRules 驗證）
 //   第二層＝自訂計算腳本（沙箱執行；存檔時先試跑一筆樣本，爛腳本當場擋下）
 // 版本 append-only：每次存檔＝新版本；已結算月份讀快照，改規則不影響。
-// ponytail: 設計稿「上班時間」「加班費」旁的「改」沒做成表單——要改還是走最下面的 JSON（白話表單之後再補）
+// 「上班時間」「加班費」旁的「改」（?edit=time|pay）＝白話表單（零 JS），送 action=plain，只改那張卡的數值。
 const WEEKDAY = ['日', '一', '二', '三', '四', '五', '六'];
-const x = (f: Frac) => `×${(f.num / f.den).toFixed(2).replace(/\.?0+$/, '')}`;
+const x = (f: Frac) => `×${rateText(f)}`;
 /** 一段一行：前 2 小時 ×1.34、第 3–4 小時 ×1.67 */
 const tiers = (ts: Tier[]) =>
   ts.map((t, i) => {
@@ -25,6 +25,7 @@ const tiers = (ts: Tier[]) =>
     const span = t.upToHours == null ? (i === 0 ? '全部' : `第 ${from + 1} 小時起`) : i === 0 ? `前 ${t.upToHours} 小時` : `第 ${from + 1}–${t.upToHours} 小時`;
     return `${span} ${x(t.rate)}`;
   });
+const TIER_LABEL = { weekday: '平日加班', restDay: '休息日上班', holiday: '國定假日上班' } as const;
 const mdw = (iso: string) => `${Number(iso.slice(5, 7))}/${Number(iso.slice(8, 10))}（週${WEEKDAY[new Date(`${iso}T00:00:00Z`).getUTCDay()]}）`;
 
 export default async function RulesPage({
@@ -32,7 +33,7 @@ export default async function RulesPage({
   searchParams,
 }: {
   params: Promise<{ org: string }>;
-  searchParams: Promise<{ ok?: string; err?: string; msg?: string; tab?: string }>;
+  searchParams: Promise<{ ok?: string; err?: string; msg?: string; tab?: string; edit?: string }>;
 }) {
   const { org: slug } = await params;
   const { org } = await requireModule(slug, 'attend');
@@ -58,10 +59,31 @@ export default async function RulesPage({
   const upcoming = yearHolidays.filter((h) => h.day >= today).slice(0, 3);
   // 假日區的三顆：全部（?tab=holidays，API 加／刪一天後也回這裡）、加一天（?tab=add）、匯入政府公告
   const tab = sp.err === 'ERR_HOLIDAY_PARAMS' ? 'add' : sp.tab;
-  const codeErr = !!sp.err && sp.err !== 'ERR_HOLIDAY_PARAMS';
+  const codeErr = !!sp.err && sp.err !== 'ERR_HOLIDAY_PARAMS' && sp.err !== 'ERR_PLAIN';
+  const edit = sp.edit;
+  // 卡片右上的「改」／「取消」
+  const editLink = (to: 'time' | 'pay') => (
+    <a className="-my-2 -mr-3 flex min-h-10 items-center px-3 font-bold text-emerald-700" href={oh(slug, '/attend/rules', { edit: edit === to ? undefined : to })}>
+      {edit === to ? '取消' : '改'}
+    </a>
+  );
+  const plainHidden = (section: 'time' | 'pay') => (
+    <>
+      <input type="hidden" name="org" value={slug} />
+      <input type="hidden" name="action" value="plain" />
+      <input type="hidden" name="section" value={section} />
+    </>
+  );
+  const hoursInput = (name: string, v: number | null) => (
+    <input className="input w-16 text-right" type="number" name={name} min="0" step="any" defaultValue={v ?? ''} required />
+  );
+  const rateInput = (name: string, v: Frac, label: string) => (
+    <input className="input w-20 text-right" name={name} defaultValue={rateText(v)} aria-label={label} required />
+  );
 
   const ERR: Record<string, string> = {
     ERR_RULES_INVALID: '規則 JSON 不合法（結構或數值有誤），未存檔',
+    ERR_PLAIN: '有格子沒填或不是合理的數字（例如休息時段只填了一邊），未存檔',
     ERR_SCRIPT: `腳本試跑失敗，未存檔：${sp.msg ?? ''}`,
     ERR_WRITE: '寫入失敗，請重試',
     ERR_HOLIDAY_PARAMS: '假日日期或種類不合法',
@@ -88,40 +110,136 @@ export default async function RulesPage({
 
       <div className="space-y-3">
         <section className="card text-sm">
-          <h2 className="card-title mb-1">上班時間</h2>
-          <p className="leading-loose text-gray-700">
-            一天正常 {r.normalDailyHours} 小時
-            <br />
-            {r.breaks.length ? `休息 ${r.breaks.map((b) => `${b.start}–${b.end}`).join('、')}（不算工時）` : '沒有扣休息時間'}
-            <br />
-            休息日週{WEEKDAY[r.weeklyRestDay]}、例假日週{WEEKDAY[r.weeklyRegularOff]}
-          </p>
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="card-title">上班時間</h2>
+            {editLink('time')}
+          </div>
+          {edit === 'time' ? (
+            <form action="/api/attend/rules" method="post" className="mt-2 space-y-3">
+              {plainHidden('time')}
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="label mb-1 block">上班</span>
+                  <input className="input w-full" type="time" name="workStart" defaultValue={r.workStart} />
+                </label>
+                <label className="block">
+                  <span className="label mb-1 block">下班</span>
+                  <input className="input w-full" type="time" name="workEnd" defaultValue={r.workEnd} />
+                </label>
+              </div>
+              <p className="text-xs text-gray-600">員工補卡時先帶這兩個時間，不影響薪資計算；空著＝09:00／18:00。</p>
+              <label className="block">
+                <span className="label mb-1 block">一天正常幾小時（超過算加班）</span>
+                <input className="input w-full" type="number" name="normalDailyHours" min="0.5" max="24" step="any" defaultValue={r.normalDailyHours} required />
+              </label>
+              <fieldset>
+                <legend className="label mb-1 block">休息時段（不算工時；兩格都清空＝刪掉這段）</legend>
+                {[...r.breaks, { start: '', end: '' }].map((b, i) => (
+                  <div key={i} className="mb-2 grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <input className="input w-full" type="time" name="breakStart" defaultValue={b.start} aria-label={`第 ${i + 1} 段開始`} />
+                    <span aria-hidden="true">–</span>
+                    <input className="input w-full" type="time" name="breakEnd" defaultValue={b.end} aria-label={`第 ${i + 1} 段結束`} />
+                  </div>
+                ))}
+              </fieldset>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    ['weeklyRestDay', '休息日', r.weeklyRestDay],
+                    ['weeklyRegularOff', '例假日', r.weeklyRegularOff],
+                  ] as const
+                ).map(([name, label, v]) => (
+                  <label key={name} className="block">
+                    <span className="label mb-1 block">{label}</span>
+                    <select className="input w-full" name={name} defaultValue={v}>
+                      {WEEKDAY.map((w, i) => (
+                        <option key={w} value={i}>
+                          週{w}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+              <button className="btn-primary w-full">存成第 {ruleSet.version + 1} 版</button>
+            </form>
+          ) : (
+            <p className="leading-loose text-gray-700">
+              {r.workStart && r.workEnd && (
+                <>
+                  {r.workStart} – {r.workEnd}，
+                </>
+              )}
+              一天正常 {r.normalDailyHours} 小時
+              <br />
+              {r.breaks.length ? `休息 ${r.breaks.map((b) => `${b.start}–${b.end}`).join('、')}（不算工時）` : '沒有扣休息時間'}
+              <br />
+              休息日週{WEEKDAY[r.weeklyRestDay]}、例假日週{WEEKDAY[r.weeklyRegularOff]}
+            </p>
+          )}
         </section>
 
         <section className="card text-sm">
-          <h2 className="card-title mb-1">加班費</h2>
-          <dl className="divide-y divide-gray-100">
-            {(
-              [
-              ['時薪', [`月薪 ÷ ${r.baseDivisor}`]],
-              ['平日加班', tiers(r.weekday.tiers)],
-              ['休息日上班', tiers(r.restDay.tiers)],
-              ['國定假日上班', [`給一天工資（${r.holiday.guaranteedHours} 小時）`, ...tiers(r.holiday.otTiers).map((t) => `再加班 ${t}`)]],
-              ['例假日上班', [`給一天工資，超過 ${r.regularOff.guaranteedHours} 小時 ${x(r.regularOff.over8Rate)}`]],
-              ] as [string, string[]][]
-            ).map(([k, v]) => (
-              <div key={k} className="flex justify-between gap-4 py-2">
-                <dt className="flex-none text-gray-600">{k}</dt>
-                <dd className="text-right">
-                  {v.map((line) => (
-                    <span key={line} className="block">
-                      {line}
-                    </span>
+          <div className="mb-1 flex items-center justify-between">
+            <h2 className="card-title">加班費</h2>
+            {editLink('pay')}
+          </div>
+          {edit === 'pay' ? (
+            <form action="/api/attend/rules" method="post" className="mt-2 divide-y divide-gray-100">
+              {plainHidden('pay')}
+              <label className="flex items-center gap-2 pb-2">
+                <span className="flex-1 text-gray-600">時薪＝月薪 ÷</span>
+                <input className="input w-20 text-right" type="number" name="baseDivisor" min="1" step="any" defaultValue={r.baseDivisor} required />
+              </label>
+              {tierLists(r).map(([k, ts]) => (
+                <div key={k} className="space-y-1.5 py-2">
+                  <p className="text-gray-600">{TIER_LABEL[k]}</p>
+                  {k === 'holiday' && <p className="flex items-center gap-2">給一天工資 {hoursInput('holidayHours', r.holiday.guaranteedHours)} 小時，再加班：</p>}
+                  {ts.map((t, i) => (
+                    <p key={i} className="flex items-center gap-2">
+                      <span className="flex flex-1 items-center gap-2">
+                        {t.upToHours == null ? (i ? '再之後' : '全部') : <>{i ? '到第' : '前'} {hoursInput(`${k}H${i}`, t.upToHours)} 小時</>}
+                      </span>
+                      ×{rateInput(`${k}R${i}`, t.rate, `${TIER_LABEL[k]}第 ${i + 1} 段倍率`)}
+                    </p>
                   ))}
-                </dd>
+                </div>
+              ))}
+              <div className="space-y-1.5 py-2">
+                <p className="text-gray-600">例假日上班</p>
+                <p className="flex flex-wrap items-center gap-2">
+                  給一天工資 {hoursInput('regularOffHours', r.regularOff.guaranteedHours)} 小時，超過的 ×{rateInput('over8Rate', r.regularOff.over8Rate, '例假日超時倍率')}
+                </p>
               </div>
-            ))}
-          </dl>
+              <div className="pt-3">
+                <p className="mb-3 text-xs text-gray-600">倍率填小數（1.5）或分數（4/3＝加三分之一）。「到第幾小時」是累計時數；要多分幾段請用最下面的 JSON。</p>
+                <button className="btn-primary w-full">存成第 {ruleSet.version + 1} 版</button>
+              </div>
+            </form>
+          ) : (
+            <dl className="divide-y divide-gray-100">
+              {(
+                [
+                ['時薪', [`月薪 ÷ ${r.baseDivisor}`]],
+                ['平日加班', tiers(r.weekday.tiers)],
+                ['休息日上班', tiers(r.restDay.tiers)],
+                ['國定假日上班', [`給一天工資（${r.holiday.guaranteedHours} 小時）`, ...tiers(r.holiday.otTiers).map((t) => `再加班 ${t}`)]],
+                ['例假日上班', [`給一天工資，超過 ${r.regularOff.guaranteedHours} 小時 ${x(r.regularOff.over8Rate)}`]],
+                ] as [string, string[]][]
+              ).map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-4 py-2">
+                  <dt className="flex-none text-gray-600">{k}</dt>
+                  <dd className="text-right">
+                    {v.map((line) => (
+                      <span key={line} className="block">
+                        {line}
+                      </span>
+                    ))}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </section>
 
         <section className="card text-sm">

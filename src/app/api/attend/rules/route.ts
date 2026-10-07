@@ -3,7 +3,7 @@ import { getDb } from '@/db';
 import { redirectTo } from '@/http';
 import { moduleAccess } from '@/org/orgs';
 import { liffUser } from '@/core/liff';
-import { currentRuleSet, parseRules } from '@/attend/rules-store';
+import { currentRuleSet, parseRules, plainRules } from '@/attend/rules-store';
 import { runDayScript } from '@/attend/sandbox';
 import { DEFAULT_RULES } from '@/attend/rules-default';
 // 放在 src/：Docker 建置會忽略 scripts/（.dockerignore），放那裡正式站 build 會失敗
@@ -54,12 +54,14 @@ export async function POST(req: NextRequest) {
   }
 
   // ── 存規則新版本 ──
-  const rulesJson = String(form.get('rules') ?? '');
-  const script = String(form.get('script') ?? '').trim() || null;
-  const scriptEnabled = form.get('script_enabled') === 'on' && !!script;
+  // plain＝白話表單（只送一張卡的欄位，其餘與腳本沿用目前版本）；save＝最下面的 JSON＋腳本整份
+  const cur = await currentRuleSet(access.org.id);
+  const plain = action === 'plain';
+  const script = plain ? cur.script : String(form.get('script') ?? '').trim() || null;
+  const scriptEnabled = plain ? cur.scriptEnabled : form.get('script_enabled') === 'on' && !!script;
 
-  const rules = parseRules(rulesJson);
-  if (!rules) return redirectTo(`${back}?err=ERR_RULES_INVALID`);
+  const rules = parseRules(plain ? plainRules(cur.rules, form) : String(form.get('rules') ?? ''));
+  if (!rules) return redirectTo(plain ? `${back}?edit=${form.get('section') === 'time' ? 'time' : 'pay'}&err=ERR_PLAIN` : `${back}?err=ERR_RULES_INVALID`);
 
   if (scriptEnabled && script) {
     // 樣本試跑：平日 09:00–19:00、月薪 30000
@@ -84,7 +86,6 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const cur = await currentRuleSet(access.org.id);
   const { error } = await db.from('salary_rule_sets').insert({
     org_id: access.org.id,
     version: cur.version + 1,
