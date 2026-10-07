@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 // AI 寫的簡易 markdown（群組理解摘要是「- **產業與業務**：…」這種條列）：只認粗體 **…** 與「- 」「* 」條列，
-// 其餘照原文一行一段。不拼 HTML、不用 dangerouslySetInnerHTML——全部是 React 文字節點，
+// 其餘照原文一行一段。不拼 HTML 字串塞進頁面——全部是 React 文字節點，
 // 內容（AI 寫的或人手改的）裡就算有 <script> 也只會顯示成字。
 const bold = (s: string): ReactNode[] => s.split(/\*\*(.+?)\*\*/g).map((p, i) => (i % 2 ? <strong key={i}>{p}</strong> : p));
 
