@@ -9,7 +9,7 @@
 
 import { REFERRAL } from '@/org/plans';
 
-export type BadgeKey = 'pending' | 'reviews' | 'pendingEmps';
+export type BadgeKey = 'pending' | 'reviews' | 'pendingEmps' | 'unreimbursed';
 export type ModuleId = 'gs' | 'attend' | 'expense';
 
 export type NavItem = {
@@ -215,7 +215,7 @@ export const EXPENSE_MODULE: ModuleDef = {
   base: (slug) => `/o/${slug}/expense`,
   ctxParam: null,
   items: [
-    { key: 'list', path: '', label: '收據', desc: '員工送來的收據，勾一批標成已核銷', icon: I.receipt, primary: true },
+    { key: 'list', path: '', label: '收據', desc: '員工送來的收據，勾一批標成已核銷', icon: I.receipt, primary: true, badge: 'unreimbursed' },
     // 「加總」併進「統計」（2026-10 設計畫布）：舊網址 /report 轉到 /stats。分頁不叫「報帳」：模組本身就叫報帳（審查 F10）
     { key: 'stats', path: '/stats', label: '統計', desc: '花在哪、還沒核銷多少、依專案／人匯出', icon: I.chart, primary: true },
     { key: 'categories', path: '/categories', label: '分類', desc: '報帳分類的名稱與順序', icon: I.rules },
