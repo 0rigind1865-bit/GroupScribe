@@ -5,9 +5,10 @@ import { gsAccess } from '@/org/orgs';
 
 // 批次操作：kind=task|event|note|file|inbox，ids 多值（inbox 的 ids 為 `kind:id`，三表混排）。
 // task/event/note：confirm（清待確認）/ ignore / restore / done（僅 task）——與單筆 update 路由同一套欄位慣例。
-// inbox：confirm / ignore / restore（ignore 後轉回時帶 ?undo=，給收件匣的「復原」橫幅用；
+// inbox：confirm / ignore / restore / unconfirm（ignore 後轉回時帶 ?undo=、confirm 後帶 ?confirmed=，給收件匣的「復原」橫幅用；
 //        勾選的帶 kind:id，「選取全部 N 筆」帶 all@<毫秒>＝那次 update 寫進 updated_at 的時間）。
-//        confirm 另收把關卡上直接改的欄位（欄位:kind:id），見 reviewEdits。
+//        restore 復原忽略、unconfirm 復原確認（翻回待確認）。
+//        confirm 另收把關卡上直接改的欄位（欄位:kind:id），見 reviewEdits；unconfirm 不還原這些欄位。
 // file：project（指定專案）/ delete（需勾確認，沒勾回 400 講清楚；連 Storage 原檔一併刪除）。
 export async function POST(req: NextRequest) {
   const form = await req.formData();
@@ -46,18 +47,15 @@ export async function POST(req: NextRequest) {
       );
       if (error) console.error('收件匣全部處理失敗', t, action, error);
     }
-    // 全部忽略也要救得回來（principles.md：可逆性優先）：這次每一筆的 updated_at 都是同一個 now，
+    // 全部忽略／確認也要救得回來（principles.md：可逆性優先）：這次每一筆的 updated_at 都是同一個 now，
     // 拿它當復原憑證帶回收件匣，不用把幾百個 id 塞進網址
-    if (action === 'ignore') {
-      const u = new URL(back, 'http://x');
-      u.searchParams.set('undo', `all@${Date.parse(now)}`);
-      back = u.pathname + u.search;
-    }
-    return redirectTo(back);
+    const u = new URL(back, 'http://x');
+    u.searchParams.set(action === 'ignore' ? 'undo' : 'confirmed', `all@${Date.parse(now)}`);
+    return redirectTo(u.pathname + u.search);
   }
   if (!ids.length) return redirectTo(back);
 
-  if (kind === 'inbox' && (action === 'confirm' || action === 'ignore' || action === 'restore')) {
+  if (kind === 'inbox' && (action === 'confirm' || action === 'ignore' || action === 'restore' || action === 'unconfirm')) {
     // 收件匣全選：依前綴拆回三表，各下一次 update（同樣綁 group_id ∈ 本 org）
     const byKind = new Map<string, string[]>();
     for (const raw of ids) {
@@ -76,42 +74,43 @@ export async function POST(req: NextRequest) {
     }
     for (const [k, list] of byKind) {
       // restore＝收件匣「已忽略…」橫幅的「復原」：只動目前還是 ignored 的，不會把別處完成的待辦翻回進行中
+      // unconfirm＝「已確認…」橫幅的「復原」：只動目前還是已確認的（確認時順手改的欄位不還原）
       const patch =
         action === 'confirm'
           ? { needs_confirmation: false }
           : action === 'ignore'
             ? { status: 'ignored' }
-            : { status: k === 'task' ? 'open' : 'active' };
+            : action === 'unconfirm'
+              ? { needs_confirmation: true }
+              : { status: k === 'task' ? 'open' : 'active' };
       let q = db.from(TABLE[k]).update({ ...patch, updated_at: now }).in('id', list).in('group_id', access.groupIds);
       if (action === 'restore') q = q.eq('status', 'ignored');
+      if (action === 'unconfirm') q = q.eq('needs_confirmation', false);
       const { error } = await q;
       if (error) console.error('收件匣批次操作失敗', k, action, error);
     }
-    // 「選取全部 N 筆」忽略的復原（all@<毫秒>）：同一刻被忽略、現在還是 ignored、仍待確認的一起翻回。
-    // 那之後被改過的（updated_at 變了）就不動，同 kind:id 那條只動還是 ignored 的
-    if (action === 'restore') {
+    // 「選取全部 N 筆」忽略／確認的復原（all@<毫秒>）：同一刻被處理、現在還是那個狀態的一起翻回。
+    // 那之後被改過的（updated_at 變了）就不動，同 kind:id 那條只動還是那個狀態的
+    if (action === 'restore' || action === 'unconfirm') {
       for (const raw of ids) {
         if (!/^all@\d{10,15}$/.test(raw)) continue;
         const at = new Date(Number(raw.slice(4))).toISOString();
         for (const [k, t] of Object.entries(TABLE)) {
-          const { error } = await db
-            .from(t)
-            .update({ status: k === 'task' ? 'open' : 'active', updated_at: now })
-            .in('group_id', access.groupIds)
-            .eq('updated_at', at)
-            .eq('status', 'ignored')
-            .eq('needs_confirmation', true);
-          if (error) console.error('收件匣全部復原失敗', t, error);
+          const patch = action === 'restore' ? { status: k === 'task' ? 'open' : 'active' } : { needs_confirmation: true };
+          let q = db.from(t).update({ ...patch, updated_at: now }).in('group_id', access.groupIds).eq('updated_at', at);
+          q = action === 'restore' ? q.eq('status', 'ignored').eq('needs_confirmation', true) : q.eq('needs_confirmation', false);
+          const { error } = await q;
+          if (error) console.error('收件匣全部復原失敗', t, action, error);
         }
       }
     }
-    // 批次忽略後回收件匣帶 ?undo=（kind:id 逗號串）：頁面據此顯示「已忽略 N 筆」＋「復原」。
-    // 勾選的 id 只有伺服器拿得到（表單的 back 是渲染時就寫死的），所以由這裡補；「選取全部 N 筆」那條路不帶
-    if (action === 'ignore') {
-      const undo = [...byKind].flatMap(([k, list]) => list.map((id) => `${k}:${id}`));
-      if (undo.length) {
+    // 批次忽略／確認後回收件匣帶 ?undo= ／ ?confirmed=（kind:id 逗號串）：頁面據此顯示「已忽略／已確認 N 筆」＋「復原」。
+    // 勾選的 id 只有伺服器拿得到（表單的 back 是渲染時就寫死的），所以由這裡補；「選取全部 N 筆」那條路在上面帶 all@
+    if (action === 'ignore' || action === 'confirm') {
+      const done = [...byKind].flatMap(([k, list]) => list.map((id) => `${k}:${id}`));
+      if (done.length) {
         const u = new URL(back, 'http://x');
-        u.searchParams.set('undo', undo.join(','));
+        u.searchParams.set(action === 'ignore' ? 'undo' : 'confirmed', done.join(','));
         back = u.pathname + u.search;
       }
     }
