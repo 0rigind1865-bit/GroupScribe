@@ -1,6 +1,6 @@
 import type { ExpenseItem } from './types';
 
-// 資料庫的一列 expenses → 畫面用的 ExpenseItem（員工 App、後台分析、CSV 匯出共用）
+// 資料庫的一列 expenses → 畫面用的 ExpenseItem（員工 App、CSV 匯出共用）
 // v2／v3 欄位（migration 023／027）還沒建時給預設值
 export function rowToItem(r: Record<string, any>, photo: string | null = null): ExpenseItem {
   return {
