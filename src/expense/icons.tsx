@@ -289,13 +289,3 @@ export function Icon({
   );
 }
 
-/** 不需正規化、直接指定 key 的版本(介面控制用,如 sun/moon/camera)。 */
-export function UiIcon(props: {
-  name: keyof typeof ICON_PATHS;
-  size?: number;
-  className?: string;
-  strokeWidth?: number;
-}) {
-  return <Icon {...props} />;
-}
-

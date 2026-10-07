@@ -1,6 +1,4 @@
-// 從 Snaptab lib/invoice.ts 搬來（X2 待決項的先行部分）：只有「QR 內容 → 發票資料」的解析，
-// 不含相機掃描——掃描要 jsqr 套件（新依賴），等 jielin 決定要不要加（見夜間計劃早晨報告）。
-// 接上掃描後：左碼 total／rocDate／invoiceNo 直接填進記一筆表單。
+// 從 Snaptab lib/invoice.ts 搬來：只有「QR 內容 → 發票資料」的解析；相機掃描在 src/app/ui/expense/qr-scanner.tsx。
 //
 // 台灣電子發票證明聯「左右兩個 QR」解析。依財政部「電子發票證明聯一維及二維條碼規格」v1.7。
 //
@@ -151,14 +149,6 @@ export function parseInvoiceCodes(
     // 沒宣告明細(0)視為完整;否則需湊到整張發票的品項總數
     complete: invoiceItemTotal === 0 ? true : items.length >= invoiceItemTotal,
   };
-}
-
-/** 單一左碼的便捷包裝(相容舊呼叫 / 單元測試)。 */
-export function parseTaiwanEInvoice(
-  data: string,
-  binary?: Uint8Array,
-): InvoiceData | null {
-  return parseInvoiceCodes({ data, binary });
 }
 
 /** 民國 YYYMMDD → '2026/06/05';無法解析則回空字串 */

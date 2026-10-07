@@ -48,11 +48,6 @@ export function pickPlace(item: string, categories: readonly string[]): string {
   return classifyNote(first, categories) || classifyNote(first, EXPENSE_CATEGORIES) ? '' : first.slice(0, 60);
 }
 
-// 分類改用報帳頁同一套 AI 分類（classify.ts），猜不出來歸「雜支」
-export function guessCategory(item: string, categories: readonly string[]): string {
-  return classifyNote(item, categories) ?? '雜支';
-}
-
 /** 「品項＋金額」→ { item, amount, category }；看起來不像花費 → null */
 export function parseTextExpense(text: string, categories: readonly string[]): { item: string; amount: number; category: string } | null {
   const t = text.trim();

@@ -6,7 +6,7 @@ import { Icon } from '@/expense/icons';
 import { Empty } from '@/app/ui/empty';
 
 // 花費分析（從 Snaptab AnalyticsView 搬來）：期間＋專案篩選；分類甜甜圈、專案排行、付款方式比例、近 6 個月趨勢。
-// 員工 App 看自己的、後台統計頁看全公司的，同一個元件。
+// 只有員工 App 用（看自己的）；後台統計頁 2026-10 改成自己的一頁（expense/stats），不再用這個元件。
 type Period = 'month' | 'year' | 'all';
 const PERIODS: [Period, string][] = [
   ['month', '本月'],
@@ -22,24 +22,21 @@ const PAY_COLOR: Record<string, string> = { 代墊: '#d9773a', 公司卡: '#5b7f
 const ym = (e: ExpenseItem) => e.spent_on.slice(0, 7);
 const nowYm = () => new Date().toLocaleDateString('sv', { timeZone: 'Asia/Taipei' }).slice(0, 7);
 
-// project／onProject 可不給（後台）；員工 App 給，讓「我的清單」選的專案帶過來（看花費分析）
+// project／onProject 由員工 App 給，讓「我的清單」選的專案帶過來（看花費分析）
 export function AnalyticsView({
   items,
   icons,
   projectLabel = '專案',
-  project: pinned,
-  onProject,
+  project,
+  onProject: setProject,
 }: {
   items: ExpenseItem[];
   icons: Record<string, string>;
   projectLabel?: string;
-  project?: string;
-  onProject?: (p: string) => void;
+  project: string;
+  onProject: (p: string) => void;
 }) {
   const [period, setPeriod] = useState<Period>('all');
-  const [own, setOwn] = useState('');
-  const project = pinned ?? own;
-  const setProject = onProject ?? setOwn;
   const projects = useMemo(() => [...new Set(items.map((e) => e.project).filter(Boolean))], [items]);
   const byProject = useMemo(() => (project ? items.filter((e) => e.project === project) : items), [items, project]);
   const filtered = useMemo(() => {
