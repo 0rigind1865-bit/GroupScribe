@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { barState, hasRoleToggle, itemsOf, multiOrg, type Grouped, type Side } from '@/org/surface-groups';
-import { ROLE_ICON, TOOL_ICON, toolDesc, toolName, type Tt } from '@/org/surface-meta';
+import { TOOL_ICON, toolDesc, toolName, type Tt } from '@/org/surface-meta';
 import type { Surface, SurfaceId } from '@/org/surfaces';
+import { RoleToggle } from './role-toggle';
 
 // 身分列（docs/identity-switcher-plan.md 第 2 節；畫布「身分切換提案 A」）：
 //   由左到右 角色開關 → 工具按鈕 → （電腦版的分頁）→ 情境膠囊（群組／員工）→ 右側（語言地球）
@@ -107,27 +108,8 @@ export function IdentityBar({ groups, currentKey, side, tt, roleTt = tt, navSlot
 
       {hasRoleToggle(groups) && (
         <>
-          <nav className="id-toggle" aria-label={roleTt('SWITCH_ROLE')}>
-            {(['me', 'admin'] as const).map((r) =>
-              r === side ? (
-                <span key={r} className="id-role" aria-current="page">
-                  <Svg size={15}>{ROLE_ICON[r]}</Svg>
-                  {roleTt(r === 'me' ? 'ROLE_ME' : 'ROLE_ADMIN')}
-                </span>
-              ) : (
-                <a
-                  key={r}
-                  className="id-role"
-                  // 小點直達也帶 from：回程按「個人」才回得到剛離開的那一格（T10 第 2 輪）
-                  href={`/go/${r === 'admin' && typeof dot === 'string' ? encodeURIComponent(dot) : `@${r}`}?from=${encodeURIComponent(found?.key ?? currentKey)}`}
-                >
-                  <Svg size={15}>{ROLE_ICON[r]}</Svg>
-                  {roleTt(r === 'me' ? 'ROLE_ME' : 'ROLE_ADMIN')}
-                  {r === 'admin' && dot && <span className="id-dot" role="img" aria-label={roleTt('HAS_PENDING')} />}
-                </a>
-              ),
-            )}
-          </nav>
+          {/* from：回程按「個人」才回得到剛離開的那一格（小點直達也帶，T10 第 2 輪） */}
+          <RoleToggle side={side} from={found?.key ?? currentKey} tt={roleTt} dot={dot} />
           <span className="id-sep" aria-hidden="true" />
         </>
       )}
