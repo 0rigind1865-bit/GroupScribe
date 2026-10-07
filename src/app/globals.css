@@ -44,10 +44,18 @@
 
 /* ── 視覺 token（UI 提案階段 A）──
    深色模式策略：全站 Tailwind 色彩 utility 在深色下整表 remap（未分層規則勝過 Tailwind 的 layer，
-   不必逐頁加 dark: 變體）。淺色維持原樣零風險；深色跟隨系統（LIFF 在 LINE 深色主題不刺眼）。 */
+   不必逐頁加 dark: 變體）。淺色維持原樣零風險。
+   深色規則一律掛在 <html data-theme="dark"> 底下（2026-10）：預設「自動」由 layout.tsx 的小腳本照系統設定寫上，
+   使用者在選單選了淺色／深色就照選的（theme cookie，/api/theme）。所以這檔不用 prefers-color-scheme。 */
 
 html {
   color-scheme: light dark;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
 }
 
 /* 換頁淡入淡出：瀏覽器原生的跨頁 View Transition，只用預設的整頁交叉淡化。
@@ -600,10 +608,12 @@ html {
     color: #ffffff;
   }
 }
-@media (min-width: 768px) and (prefers-color-scheme: dark) {
+@media (min-width: 768px) {
+  :root[data-theme='dark'] {
   header.shell-bar {
     background: #1a211e;
     border-bottom: 1px solid #2a332f;
+  }
   }
 }
 
@@ -854,9 +864,11 @@ details[open] > .ctx-pill::before { content: ''; position: fixed; inset: 0; z-in
     background: #f6f4ee; /* = gray-50 */
   }
 }
-@media (max-width: 767px) and (prefers-color-scheme: dark) {
+@media (max-width: 767px) {
+  :root[data-theme='dark'] {
   .review-full {
     background: #111613;
+  }
   }
 }
 .review-undo {
@@ -887,7 +899,7 @@ body:has(.exp-pick:checked) .exp-list {
 .exp-row:has(.exp-pick:checked) {
   background: #f3f8f5;
 }
-@media (prefers-color-scheme: dark) {
+:root[data-theme='dark'] {
   .exp-row:has(.exp-pick:checked) { background: #12312a; }
 }
 
@@ -962,8 +974,15 @@ form:has([data-ack]:not(:checked)) [data-requires-ack] { opacity: 0.5; pointer-e
 /* 打字確認版（刪除群組要打出群組名）：輸入框加 data-ack-name＋required＋pattern，還沒打對（:invalid）按鈕就灰 */
 form:has([data-ack-name]:invalid) [data-requires-ack] { opacity: 0.5; pointer-events: none; }
 
-/* ── 深色模式：跟隨系統。綠偏中性色盤（提案定案），utility 整表 remap ── */
-@media (prefers-color-scheme: dark) {
+/* 外觀選項（管理端工具選單的分段籤、員工端語言選單）：目前選的那個由 <html data-theme-pref>（layout.tsx）標出，元件不必讀 cookie */
+:root { --opt-on: #0f5c46; }
+:root[data-theme='dark'] { --opt-on: #7fd1ae; }
+:root[data-theme-pref='auto'] .theme-opt[data-v='auto'],
+:root[data-theme-pref='light'] .theme-opt[data-v='light'],
+:root[data-theme-pref='dark'] .theme-opt[data-v='dark'] { font-weight: 800; color: var(--opt-on); }
+
+/* ── 深色模式（自動＝跟系統，或使用者選深色）。綠偏中性色盤（提案定案），utility 整表 remap ── */
+:root[data-theme='dark'] {
   body { background: #111613; color: #e8edea; }
 
   .card { background: #1a211e; border-color: #2a332f; }
@@ -1117,7 +1136,8 @@ form:has([data-ack-name]:invalid) [data-requires-ack] { opacity: 0.5; pointer-ev
   /* 批次列讓開側欄 */
   body:has(.id-bar--rail):has(.batch-box:checked) #batch { left: 232px; }
 }
-@media (min-width: 768px) and (prefers-color-scheme: dark) {
+@media (min-width: 768px) {
+  :root[data-theme='dark'] {
   .id-bar--rail { background: #151b18; color: #e8edea; border-right-color: #2a332f; }
   .id-bar--rail .id-tool:hover, .side-link:hover { background: rgb(255 255 255 / 0.05); }
   .id-bar--rail .id-tool-rail, .side-sec { color: #a7b3ac; }
@@ -1128,6 +1148,7 @@ form:has([data-ack-name]:invalid) [data-requires-ack] { opacity: 0.5; pointer-ev
   .side-nav .side-link[aria-current] { background: #1a211e; color: #e8edea; box-shadow: none; }
   .side-groups .side-link[aria-current] { background: #e8edea; color: #1c2420; }
   .side-more--foot { border-top-color: #2a332f; }
+  }
 }
 
 /* 成員群組頁頂欄（src/app/g/[groupId]/page.tsx，2026-10 設計畫布「成員端」）：左邊「‹ 群組名」、右邊角色開關。

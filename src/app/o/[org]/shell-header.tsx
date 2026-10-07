@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { ThemeSwitch } from '@/app/ui/theme-switch';
 import { visibleModules } from '@/org/modules';
 import { orgBySlug } from '@/org/orgs';
 import { surfaces } from '@/org/surfaces';
@@ -38,7 +39,7 @@ export async function ShellHeader({
   // 路徑來自路由表；群組助理多一列「給成員的連結」（未設 LIFF_ID 時不出現）
   const sub = mod.base(slug).slice(`/o/${slug}`.length);
   const liff = mod.id === 'gs' ? liffUrl() : null;
-  const extra = slug === 'unclaimed' ? null : (
+  const pages = slug === 'unclaimed' ? null : (
     <section>
       <h2 className="id-sec">{mod.label} · 其他頁面</h2>
       {moreItems(mod).map((i) => {
@@ -73,6 +74,17 @@ export async function ShellHeader({
         </a>
       )}
     </section>
+  );
+  const extra = (
+    <>
+      {pages}
+      <section>
+        <h2 className="id-sec">外觀</h2>
+        <div className="px-2 pb-2">
+          <ThemeSwitch title="外觀" labels={{ auto: '跟系統', light: '淺色', dark: '深色' }} />
+        </div>
+      </section>
+    </>
   );
 
   return (

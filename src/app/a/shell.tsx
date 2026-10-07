@@ -1,5 +1,6 @@
 import { LiffInit } from '@/app/g/liff-init';
 import { FloatingNav } from '@/app/ui/floating-nav';
+import { THEME_PREFS, themeHref } from '@/app/ui/theme-switch';
 import { IdentityBar, identityBarShown } from '@/app/ui/identity-bar';
 import type { Grouped } from '@/org/surface-groups';
 import { LOCALES, t, type Locale, type MsgKey } from '@/attend/i18n';
@@ -164,7 +165,7 @@ export function AttendHeader({ emp, loc, tt, back, groups, dot, org }: HeaderPro
   );
 }
 
-/** 語言選單：details 折疊，零 JS、佔位小；44px 觸控目標（首頁也用） */
+/** 語言選單：details 折疊，零 JS、佔位小；44px 觸控目標（首頁也用）。下面附外觀（跟系統／淺色／深色） */
 export function LangMenu({ loc, back }: { loc: Locale; back: string }) {
   return (
     <details className="relative">
@@ -185,6 +186,12 @@ export function LangMenu({ loc, back }: { loc: Locale; back: string }) {
             className={`block px-3 py-2 text-sm ${l === loc ? 'font-bold text-emerald-700' : 'text-gray-600'}`}
           >
             {label}
+          </a>
+        ))}
+        <p className="mt-1 border-t border-gray-200 px-3 pt-2 pb-1 text-xs text-gray-500">{t(loc, 'THEME_LABEL')}</p>
+        {THEME_PREFS.map((v) => (
+          <a key={v} href={themeHref(v, back)} data-v={v} className="theme-opt block px-3 py-2 text-sm text-gray-600">
+            {t(loc, v === 'auto' ? 'THEME_AUTO' : v === 'light' ? 'THEME_LIGHT' : 'THEME_DARK')}
           </a>
         ))}
       </div>

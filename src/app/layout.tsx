@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
+import { themePref } from './ui/theme-switch';
 import './globals.css';
 import { locale, t } from '@/attend/i18n';
 import { Remount, SoftNavClient } from './ui/soft-nav';
@@ -47,9 +48,22 @@ async function SoftNav() {
 }
 
 // root layout 只包 html/body：nav 與群組切換器在 (admin) 殼，讓 /login（及未來 LIFF /g/）天然在殼外
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // 外觀：選了淺色／深色就由伺服器直接寫上（不閃）；自動＝畫面出來前由下面的小腳本照系統寫上，系統切換時跟著換。
+  // suppressHydrationWarning：自動時 data-theme 是腳本加的，跟伺服器輸出不同是預期的
+  const theme = await themePref();
   return (
-    <html lang="zh-Hant">
+    <html lang="zh-Hant" data-theme={theme === 'auto' ? undefined : theme} data-theme-pref={theme} suppressHydrationWarning>
+      <head>
+        {theme === 'auto' && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html:
+                "(()=>{const d=document.documentElement,m=matchMedia('(prefers-color-scheme: dark)'),f=()=>{d.dataset.theme=m.matches?'dark':'light'};f();m.addEventListener('change',f)})()",
+            }}
+          />
+        )}
+      </head>
       <body className="min-h-screen bg-gray-50 text-gray-900">
         {/* 換頁、送出表單都不整頁重載（src/app/ui/soft-nav.tsx）；換頁完成時 Remount 重建內容區，表單狀態不殘留 */}
         <Remount>{children}</Remount>

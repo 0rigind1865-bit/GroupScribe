@@ -144,5 +144,9 @@
   "REASON_FORGOT": "Lupa absen",
   "REASON_FIELD": "Kerja lapangan",
   "REASON_BATTERY": "HP mati",
-  "REASON_OTHER_PLACEHOLDER": "Alasan lain (opsional)"
+  "REASON_OTHER_PLACEHOLDER": "Alasan lain (opsional)",
+  "THEME_LABEL": "Tampilan",
+  "THEME_AUTO": "Ikuti perangkat",
+  "THEME_LIGHT": "Terang",
+  "THEME_DARK": "Gelap"
 }

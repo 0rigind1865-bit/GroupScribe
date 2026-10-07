@@ -31,7 +31,15 @@ function walk(dir: string): string[] {
 
 test('用到的色彩 class 都有深色模式 remap', () => {
   const css = readFileSync(join(ROOT, 'src/app/globals.css'), 'utf8');
-  const dark = css.slice(css.indexOf('@media (prefers-color-scheme: dark)'));
+  // 深色規則都在 :root[data-theme='dark'] { … } 區塊裡（可能再包一層寬度 @media）：逐塊取出內容
+  const blocks: string[] = [];
+  for (let i = css.indexOf(":root[data-theme='dark'] {"); i >= 0; i = css.indexOf(":root[data-theme='dark'] {", i + 1)) {
+    let depth = 0;
+    let j = css.indexOf('{', i);
+    for (; j < css.length; j++) if (css[j] === '{') depth++; else if (css[j] === '}' && --depth === 0) break;
+    blocks.push(css.slice(i, j));
+  }
+  const dark = blocks.join('\n');
   const remapped = new Set([...dark.matchAll(/\.((?:bg|text|border)-[a-z]+-\d+)/g)].map((m) => m[1]));
 
   const missing = new Map<string, Set<string>>();

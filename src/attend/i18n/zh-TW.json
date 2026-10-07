@@ -144,5 +144,9 @@
   "REASON_FORGOT": "忘記打卡",
   "REASON_FIELD": "外勤",
   "REASON_BATTERY": "手機沒電",
-  "REASON_OTHER_PLACEHOLDER": "其他原因（自己寫，選填）"
+  "REASON_OTHER_PLACEHOLDER": "其他原因（自己寫，選填）",
+  "THEME_LABEL": "外觀",
+  "THEME_AUTO": "跟系統",
+  "THEME_LIGHT": "淺色",
+  "THEME_DARK": "深色"
 }

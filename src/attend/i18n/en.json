@@ -144,5 +144,9 @@
   "REASON_FORGOT": "Forgot to punch",
   "REASON_FIELD": "Field work",
   "REASON_BATTERY": "Phone died",
-  "REASON_OTHER_PLACEHOLDER": "Other reason (optional)"
+  "REASON_OTHER_PLACEHOLDER": "Other reason (optional)",
+  "THEME_LABEL": "Appearance",
+  "THEME_AUTO": "Match device",
+  "THEME_LIGHT": "Light",
+  "THEME_DARK": "Dark"
 }

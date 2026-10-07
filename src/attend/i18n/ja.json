@@ -144,5 +144,9 @@
   "REASON_FORGOT": "打刻忘れ",
   "REASON_FIELD": "外勤",
   "REASON_BATTERY": "スマホの電池切れ",
-  "REASON_OTHER_PLACEHOLDER": "その他の理由（任意）"
+  "REASON_OTHER_PLACEHOLDER": "その他の理由（任意）",
+  "THEME_LABEL": "表示",
+  "THEME_AUTO": "端末に合わせる",
+  "THEME_LIGHT": "ライト",
+  "THEME_DARK": "ダーク"
 }

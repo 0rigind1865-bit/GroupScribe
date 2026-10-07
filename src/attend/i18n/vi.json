@@ -144,5 +144,9 @@
   "REASON_FORGOT": "Quên chấm công",
   "REASON_FIELD": "Đi công tác",
   "REASON_BATTERY": "Điện thoại hết pin",
-  "REASON_OTHER_PLACEHOLDER": "Lý do khác (không bắt buộc)"
+  "REASON_OTHER_PLACEHOLDER": "Lý do khác (không bắt buộc)",
+  "THEME_LABEL": "Giao diện",
+  "THEME_AUTO": "Theo máy",
+  "THEME_LIGHT": "Sáng",
+  "THEME_DARK": "Tối"
 }
