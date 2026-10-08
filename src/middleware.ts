@@ -121,11 +121,12 @@ export const config = {
   // 不走 admin cookie，改由 LINE ID token 驗證（見 core/liff.ts；考勤 API 自帶三重把關）
   // /api/auth 為 LINE Login 流程（登入本身不能要求已登入）
   // /api/digest 給 NAS cron 打，自行以 ?key=CRON_SECRET 把關
+  // /api/theme 外觀切換：只寫 theme cookie、不碰資料（同 /api/attend/lang），官網首頁還沒登入的訪客也要能切
   // g/(?!a/|a$)：/g 成員版整段跳過，但 /g/a...（LIFF endpoint 設在 /g 時的員工端深連結）
   // 要進來走上面的 rewrite。群組 id 以 a 開頭的 /g/abc 仍會被排除（負向前瞻只認 a/ 與 a 結尾）。
   // /claim 為認領頁：從群組連結點進來的人還沒有 cookie，由頁面自己導去 LINE Login
   // /invite 為管理員邀請頁：同 /claim，被邀的人還沒登入，由頁面自己驗連結簽章再導去 LINE Login
   // /start 自助註冊、/api/org 建組織與接受邀請：由頁面／端點自己驗 LINE 身分
   // /r/<推薦碼> 推薦連結：對方還沒登入，只記 cookie 後導到 /start
-  matcher: ['/((?!api/health|api/webhook|api/login|api/liff|api/digest|api/attend|api/auth|api/org|login|start|about|brand/|shots/|icon|apple-icon|manifest|expense-sw.js|privacy|terms|claim/|invite/|r/|g/(?!a/|a$)|g$|a/|a$|_next|favicon.ico).*)'],
+  matcher: ['/((?!api/health|api/webhook|api/login|api/liff|api/digest|api/attend|api/theme|api/auth|api/org|login|start|about|brand/|shots/|icon|apple-icon|manifest|expense-sw.js|privacy|terms|claim/|invite/|r/|g/(?!a/|a$)|g$|a/|a$|_next|favicon.ico).*)'],
 };
