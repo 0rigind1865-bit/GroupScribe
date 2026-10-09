@@ -21,7 +21,7 @@ function parseWithQty(t: string, categories: readonly string[]): { item: string;
   const price = parseAmount(p[0][1] ?? p[0][2] ?? p[0][3]);
   const qty = Number(q[0][1] ?? q[0][2] ?? q[0][3]);
   if (!price || !qty) return null;
-  const each = /每|單價|@/.test(t) || (!/共|合計|總計/.test(t) && p[0].index! < q[0].index!);
+  const each = /每|單價|@/.test(t) || (!/共|合計|總計/.test(t) && (p[0].index! < q[0].index! || p[0].index === q[0].index! + q[0][0].length)); // 「16個80元」緊貼＝每個80；「2杯 120元」中間有空格＝總價
   const item = t.replace(p[0][0], ' ').replace(q[0][0], ' ').replace(/每個|每|單價|@|總共|一共|共|合計|總計/g, ' ').replace(/\s+/g, ' ').trim();
   if (!item || /\d/.test(item) || NOT_ITEM.test(item)) return null;
   // 算式留在品項裡：回覆看得到「110×20」，乘錯一眼就知道

@@ -167,6 +167,7 @@ test('parseTextExpense：不是花費的句子不能中', () => {
 });
 
 test('parseTextExpense：單價×數量', () => {
+  assert.deepEqual(parseTextExpense('樹下部小吃 蝦仁炒飯 16個80元', EXPENSE_CATEGORIES), { item: '樹下部小吃 蝦仁炒飯 80×16', amount: 1280, category: '餐飲' });
   assert.equal(parseTextExpense('便當 數量X20 單價110', EXPENSE_CATEGORIES)?.amount, 2200);
   assert.equal(parseTextExpense('便當 單價 110 數量 x20', EXPENSE_CATEGORIES)?.amount, 2200);
   // 2026-09-29 實際傳的句子
