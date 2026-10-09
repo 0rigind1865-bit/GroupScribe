@@ -9,16 +9,17 @@ const RE = /^(?<item>[^\d$＄\s][^\d$＄]{0,14}?)\s*(?:NT)?[$＄]?\s*(?<amt>\d{1
 const NOT_ITEM = /(今天|明天|昨天|後天|點|時|分鐘|號|日|月|年|週|星期|樓|個|次|人|位|天|歲|第|號碼|電話|分機)$|^(週|星期|禮拜)/;
 
 // 「便當 中午 110元 20個」→ 單價×數量（2026-09-29 這種句子整句沒中）。要同時有錢（元／塊／$）和數量（20個、×20）才算。
+// 也認「數量X20 單價110」這種寫了標籤、單價沒寫元的句子。
 // 錢寫在數量前面＝單價（110元 20個）；數量在前＝總價（2杯 120元）；寫了「每／單價」或「共／合計」就照字面
-const PRICE = /(?:NT)?[$＄]\s*(\d{1,3}(?:,\d{3})+|\d+)|(?<!\d)(\d{1,3}(?:,\d{3})+|\d+)\s*(?:元|塊)/gi;
-const QTY = /[x×*＊]\s*(\d{1,3})(?!\d)|(?<!\d)(\d{1,3})\s*(?:個|份|盒|杯|瓶|包|件|組|張|箱|顆|支|條|套|罐|袋)/gi;
+const PRICE = /(?:NT)?[$＄]\s*(\d{1,3}(?:,\d{3})+|\d+)|(?<!\d)(\d{1,3}(?:,\d{3})+|\d+)\s*(?:元|塊)|單價\s*[:：]?\s*(?:NT)?[$＄]?\s*(\d{1,3}(?:,\d{3})+|\d+)\s*(?:元|塊)?/gi;
+const QTY = /[x×*＊]\s*(\d{1,3})(?!\d)|(?<!\d)(\d{1,3})\s*(?:個|份|盒|杯|瓶|包|件|組|張|箱|顆|支|條|套|罐|袋)|數量\s*[:：]?\s*[x×*＊]?\s*(\d{1,3})(?!\d)/gi;
 
 function parseWithQty(t: string, categories: readonly string[]): { item: string; amount: number; category: string } | null {
   const p = [...t.matchAll(PRICE)];
   const q = [...t.matchAll(QTY)];
   if (p.length !== 1 || q.length !== 1) return null;
-  const price = parseAmount(p[0][1] ?? p[0][2]);
-  const qty = Number(q[0][1] ?? q[0][2]);
+  const price = parseAmount(p[0][1] ?? p[0][2] ?? p[0][3]);
+  const qty = Number(q[0][1] ?? q[0][2] ?? q[0][3]);
   if (!price || !qty) return null;
   const each = /每|單價|@/.test(t) || (!/共|合計|總計/.test(t) && p[0].index! < q[0].index!);
   const item = t.replace(p[0][0], ' ').replace(q[0][0], ' ').replace(/每個|每|單價|@|總共|一共|共|合計|總計/g, ' ').replace(/\s+/g, ' ').trim();

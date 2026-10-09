@@ -167,6 +167,8 @@ test('parseTextExpense：不是花費的句子不能中', () => {
 });
 
 test('parseTextExpense：單價×數量', () => {
+  assert.equal(parseTextExpense('便當 數量X20 單價110', EXPENSE_CATEGORIES)?.amount, 2200);
+  assert.equal(parseTextExpense('便當 單價 110 數量 x20', EXPENSE_CATEGORIES)?.amount, 2200);
   // 2026-09-29 實際傳的句子
   assert.deepEqual(parseTextExpense('林口體育館 便當 中午 110元  20個', EXPENSE_CATEGORIES), { item: '林口體育館 便當 中午 110×20', amount: 2200, category: '餐飲' });
   assert.equal(parseTextExpense('林口體育館 便當 晚餐 110元  19個', EXPENSE_CATEGORIES)?.amount, 2090);
