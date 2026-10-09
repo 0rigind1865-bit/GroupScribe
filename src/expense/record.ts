@@ -68,11 +68,12 @@ export async function recordReceipt(a: {
   return data?.length ? r : null; // 空＝重試時已記過，不再回覆
 }
 
-/** 語音逐字稿 → { 品項, 總金額 }；不像花費、AI 掛了 → null */
+/** 一句話 → { 品項, 總金額 }；不像花費、AI 掛了 → null。沒有任何數字（含國字數字）的句子不可能有金額，直接略過省一次 AI */
 async function expenseByAi(groupId: string, text: string, cats: readonly string[]): Promise<Hit | null> {
+  if (text.length > 200 || !/[\d〇零一二兩三四五六七八九十百千萬]/.test(text)) return null;
   try {
     const j = (await aiScope(groupId, () =>
-      getLLM().generateJson(`這是一段語音轉成的文字，可能有錯字或口語：「${text}」。若這是在記一筆花費，回 JSON：{"item":"簡短品項","amount":總金額數字}（amount 是全部花了多少元；有單價和數量就算好乘起來）。若不是記帳（提醒、閒聊、問問題）回 {"item":null}。`),
+      getLLM().generateJson(`這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費，回 JSON：{"item":"簡短品項","amount":總金額數字}（amount 是全部花了多少元；有單價和數量就算好乘起來）。若不是記帳（提醒、閒聊、問問題）回 {"item":null}。`),
     )) as { item?: unknown; amount?: unknown };
     const amount = Number(j?.amount);
     if (typeof j?.item !== 'string' || !j.item.trim() || !Number.isFinite(amount) || amount <= 0) return null;
@@ -110,8 +111,8 @@ export async function recordTextExpense(a: {
   const orgId = await orgOfGroup(a.groupId);
   if (!orgId || !(await orgHasExpense(orgId))) return null;
   const cats = await orgCategories(orgId);
-  // 語音逐字稿常有口語、錯字（「加油98起油1156元」），規則看不懂時改請 AI 抽；打字不走這條（寧可漏記）
-  let hit: (Hit & { alt?: Hit }) | null = parseTextExpense(a.text, cats) ?? (a.assetId ? await expenseByAi(a.groupId, a.text, cats) : null);
+  // 規則看不懂時改請 AI 抽並判斷是不是記帳（語音逐字稿常有口語、錯字：「加油98起油1156元」；打字也會有：「10/23號要與XX烤肉」→ AI 回不是）
+  let hit: (Hit & { alt?: Hit }) | null = parseTextExpense(a.text, cats) ?? (await expenseByAi(a.groupId, a.text, cats));
   if (!hit) return null;
   if (hit.alt && (await eachPriceByAi(a.groupId, a.text))) hit = hit.alt;
   const r: Receipt = { amount: hit.amount, spent_on: taipeiDate(a.at), vendor: '', category: hit.category, invoice_no: '' };
