@@ -73,7 +73,7 @@ async function expenseByAi(groupId: string, text: string, cats: readonly string[
   if (text.length > 200 || !/[\d〇零一二兩三四五六七八九十百千萬]/.test(text)) return null;
   try {
     const j = (await aiScope(groupId, () =>
-      getLLM().generateJson(`這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費，回 JSON：{"item":"簡短品項","amount":總金額數字}（amount 是全部花了多少元；有單價和數量就算好乘起來）。若不是記帳（提醒、閒聊、問問題）回 {"item":null}。`),
+      getLLM().generateJson(`這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費，回 JSON：{"item":"簡短品項","amount":總金額數字}（amount 是全部花了多少元；有單價和數量就算好乘起來）。若不是記帳（提醒、閒聊、問問題），或句子殘缺、看不出買了什麼（例如只有一串數字），回 {"item":null}，不要猜。`),
     )) as { item?: unknown; amount?: unknown };
     const amount = Number(j?.amount);
     if (typeof j?.item !== 'string' || !j.item.trim() || !Number.isFinite(amount) || amount <= 0) return null;
