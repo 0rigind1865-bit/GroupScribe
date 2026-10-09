@@ -1,6 +1,7 @@
 import { getDb } from '@/db';
 import { isDm } from '@/core/types';
-import { orgOfGroup } from '@/core/quota';
+import { aiScope, orgOfGroup } from '@/core/quota';
+import { getLLM } from '@/core/config';
 import { parseReceipt, type Receipt } from './receipt';
 import { orgCategories, orgProjects } from './categories';
 import { parseTextExpense, pickPlace, pickProject } from './text';
@@ -66,6 +67,18 @@ export async function recordReceipt(a: {
   return data?.length ? r : null; // 空＝重試時已記過，不再回覆
 }
 
+/** 「16個80元」這種單價或總價都說得通的句子：問 AI 用常識挑。AI 掛了／額度用完 → false（照舊當總價，使用者看得到算式可以改） */
+async function eachPriceByAi(groupId: string, text: string): Promise<boolean> {
+  try {
+    const j = await aiScope(groupId, () =>
+      getLLM().generateJson(`這是一句記帳：「${text}」。句中有數量和一個金額。請依生活常識判斷這個金額是「每一份的單價」還是「全部的總價」（例如 16 份炒飯不可能總共 80 元，所以是單價）。只回 JSON：{"each": true} 代表單價，{"each": false} 代表總價。`),
+    );
+    return (j as { each?: unknown })?.each === true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * 文字／語音記帳（X2-6）：1:1 傳「午餐 120」或講一段語音 → 記一筆。
  * 語音帶 assetId（media_asset_id 唯一，重試不重複記）；文字靠 webhook 層的訊息去重。
@@ -81,8 +94,9 @@ export async function recordTextExpense(a: {
   const orgId = await orgOfGroup(a.groupId);
   if (!orgId || !(await orgHasExpense(orgId))) return null;
   const cats = await orgCategories(orgId);
-  const hit = parseTextExpense(a.text, cats);
+  let hit = parseTextExpense(a.text, cats);
   if (!hit) return null;
+  if (hit.alt && (await eachPriceByAi(a.groupId, a.text))) hit = hit.alt;
   const r: Receipt = { amount: hit.amount, spent_on: taipeiDate(a.at), vendor: '', category: hit.category, invoice_no: '' };
   // 「林口體育館 便當 110元 20個」→ 已有這個專案：專案＝地點；沒有：只猜地點（專案影響報表分組，不猜）
   const project = pickProject(a.text, await orgProjects(orgId));

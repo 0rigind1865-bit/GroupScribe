@@ -167,7 +167,7 @@ test('parseTextExpense：不是花費的句子不能中', () => {
 });
 
 test('parseTextExpense：單價×數量', () => {
-  assert.deepEqual(parseTextExpense('樹下部小吃 蝦仁炒飯 16個80元', EXPENSE_CATEGORIES), { item: '樹下部小吃 蝦仁炒飯 80×16', amount: 1280, category: '餐飲' });
+  assert.deepEqual(parseTextExpense('樹下部小吃 蝦仁炒飯 16個80元', EXPENSE_CATEGORIES), { item: '樹下部小吃 蝦仁炒飯 16個', amount: 80, category: '餐飲', alt: { item: '樹下部小吃 蝦仁炒飯 80×16', amount: 1280, category: '餐飲' } }); // 單價或總價都說得通 → 帶 alt 讓 AI 挑
   assert.equal(parseTextExpense('便當 數量X20 單價110', EXPENSE_CATEGORIES)?.amount, 2200);
   assert.equal(parseTextExpense('便當 單價 110 數量 x20', EXPENSE_CATEGORIES)?.amount, 2200);
   // 2026-09-29 實際傳的句子
@@ -176,7 +176,7 @@ test('parseTextExpense：單價×數量', () => {
   assert.equal(parseTextExpense('林口體育館 飲料中午 21個 忘記多少錢有發票', EXPENSE_CATEGORIES), null); // 沒寫錢：不記
   assert.equal(parseTextExpense('便當 110元×20', EXPENSE_CATEGORIES)?.amount, 2200);
   assert.equal(parseTextExpense('便當 20個 每個110元', EXPENSE_CATEGORIES)?.amount, 2200);
-  assert.deepEqual(parseTextExpense('咖啡 2杯 120元', EXPENSE_CATEGORIES), { item: '咖啡 2杯', amount: 120, category: '餐飲' }); // 數量在前＝總價
+  assert.deepEqual(parseTextExpense('咖啡 2杯 120元', EXPENSE_CATEGORIES), { item: '咖啡 2杯', amount: 120, category: '餐飲', alt: { item: '咖啡 120×2', amount: 240, category: '餐飲' } }); // 數量在前：預設總價，另帶 alt
   assert.equal(parseTextExpense('便當 110元 20個 共2200元', EXPENSE_CATEGORIES), null); // 兩個金額：看不懂就不記
   assert.equal(parseTextExpense('3 個人', EXPENSE_CATEGORIES), null);
   assert.equal(parseTextExpense('便當 20個', EXPENSE_CATEGORIES), null); // 沒寫錢

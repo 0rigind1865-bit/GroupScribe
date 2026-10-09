@@ -14,20 +14,27 @@ const NOT_ITEM = /(今天|明天|昨天|後天|點|時|分鐘|號|日|月|年|�
 const PRICE = /(?:NT)?[$＄]\s*(\d{1,3}(?:,\d{3})+|\d+)|(?<!\d)(\d{1,3}(?:,\d{3})+|\d+)\s*(?:元|塊)|單價\s*[:：]?\s*(?:NT)?[$＄]?\s*(\d{1,3}(?:,\d{3})+|\d+)\s*(?:元|塊)?/gi;
 const QTY = /[x×*＊]\s*(\d{1,3})(?!\d)|(?<!\d)(\d{1,3})\s*(?:個|份|盒|杯|瓶|包|件|組|張|箱|顆|支|條|套|罐|袋)|數量\s*[:：]?\s*[x×*＊]?\s*(\d{1,3})(?!\d)/gi;
 
-function parseWithQty(t: string, categories: readonly string[]): { item: string; amount: number; category: string } | null {
+type Hit = { item: string; amount: number; category: string };
+
+// alt：數量在前、又沒寫「每／共」時，單價或總價都說得通——主答案照舊當總價，另一種放 alt，交給 AI 用常識挑（record.ts）
+function parseWithQty(t: string, categories: readonly string[]): (Hit & { alt?: Hit }) | null {
   const p = [...t.matchAll(PRICE)];
   const q = [...t.matchAll(QTY)];
   if (p.length !== 1 || q.length !== 1) return null;
   const price = parseAmount(p[0][1] ?? p[0][2] ?? p[0][3]);
   const qty = Number(q[0][1] ?? q[0][2] ?? q[0][3]);
   if (!price || !qty) return null;
-  const each = /每|單價|@/.test(t) || (!/共|合計|總計/.test(t) && (p[0].index! < q[0].index! || p[0].index === q[0].index! + q[0][0].length)); // 「16個80元」緊貼＝每個80；「2杯 120元」中間有空格＝總價
+  const before = p[0].index! < q[0].index!;
+  const word = /每|單價|@|共|合計|總計/.test(t);
+  const each = /每|單價|@/.test(t) || (!/共|合計|總計/.test(t) && before);
   const item = t.replace(p[0][0], ' ').replace(q[0][0], ' ').replace(/每個|每|單價|@|總共|一共|共|合計|總計/g, ' ').replace(/\s+/g, ' ').trim();
   if (!item || /\d/.test(item) || NOT_ITEM.test(item)) return null;
+  const category = classifyNote(item, categories) ?? '雜支';
   // 算式留在品項裡：回覆看得到「110×20」，乘錯一眼就知道
-  return each
-    ? { item: `${item} ${price}×${qty}`, amount: price * qty, category: classifyNote(item, categories) ?? '雜支' }
-    : { item: `${item} ${q[0][0].trim()}`, amount: price, category: classifyNote(item, categories) ?? '雜支' };
+  const eachHit = { item: `${item} ${price}×${qty}`, amount: price * qty, category };
+  const totalHit = { item: `${item} ${q[0][0].trim()}`, amount: price, category };
+  const hit = each ? eachHit : totalHit;
+  return !word && !before ? { ...hit, alt: each ? totalHit : eachHit } : hit;
 }
 
 /** 句子裡提到公司已有的專案名稱 → 回那個名稱（多個中取最長的）；專案同時當地點用。只認已有的，不從句子猜新專案 */
@@ -50,7 +57,7 @@ export function pickPlace(item: string, categories: readonly string[]): string {
 }
 
 /** 「品項＋金額」→ { item, amount, category }；看起來不像花費 → null */
-export function parseTextExpense(text: string, categories: readonly string[]): { item: string; amount: number; category: string } | null {
+export function parseTextExpense(text: string, categories: readonly string[]): (Hit & { alt?: Hit }) | null {
   const t = text.trim();
   if (!t || t.length > 30 || t.includes('\n')) return null;
   const withQty = parseWithQty(t, categories);
