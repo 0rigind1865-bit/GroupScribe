@@ -4,7 +4,8 @@ import { aiScope, orgOfGroup } from '@/core/quota';
 import { getLLM } from '@/core/config';
 import { parseReceipt, type Receipt } from './receipt';
 import { orgCategories, orgProjects } from './categories';
-import { parseTextExpense, pickPlace, pickProject } from './text';
+import { parseTextExpense, pickPlace, pickProject, type Hit } from './text';
+import { classifyNote } from './classify';
 import { withV2Fallback } from './store';
 
 // 收據照 → 一筆報帳（X1）。只收 1:1 私訊：私訊給群記＝本人明確說「這筆我墊的」；
@@ -67,6 +68,21 @@ export async function recordReceipt(a: {
   return data?.length ? r : null; // 空＝重試時已記過，不再回覆
 }
 
+/** 語音逐字稿 → { 品項, 總金額 }；不像花費、AI 掛了 → null */
+async function expenseByAi(groupId: string, text: string, cats: readonly string[]): Promise<Hit | null> {
+  try {
+    const j = (await aiScope(groupId, () =>
+      getLLM().generateJson(`這是一段語音轉成的文字，可能有錯字或口語：「${text}」。若這是在記一筆花費，回 JSON：{"item":"簡短品項","amount":總金額數字}（amount 是全部花了多少元；有單價和數量就算好乘起來）。若不是記帳（提醒、閒聊、問問題）回 {"item":null}。`),
+    )) as { item?: unknown; amount?: unknown };
+    const amount = Number(j?.amount);
+    if (typeof j?.item !== 'string' || !j.item.trim() || !Number.isFinite(amount) || amount <= 0) return null;
+    const item = j.item.trim().slice(0, 30);
+    return { item, amount: Math.round(amount), category: classifyNote(item, cats) ?? '雜支' };
+  } catch {
+    return null;
+  }
+}
+
 /** 「16個80元」這種單價或總價都說得通的句子：問 AI 用常識挑。AI 掛了／額度用完 → false（照舊當總價，使用者看得到算式可以改） */
 async function eachPriceByAi(groupId: string, text: string): Promise<boolean> {
   try {
@@ -94,7 +110,8 @@ export async function recordTextExpense(a: {
   const orgId = await orgOfGroup(a.groupId);
   if (!orgId || !(await orgHasExpense(orgId))) return null;
   const cats = await orgCategories(orgId);
-  let hit = parseTextExpense(a.text, cats);
+  // 語音逐字稿常有口語、錯字（「加油98起油1156元」），規則看不懂時改請 AI 抽；打字不走這條（寧可漏記）
+  let hit: (Hit & { alt?: Hit }) | null = parseTextExpense(a.text, cats) ?? (a.assetId ? await expenseByAi(a.groupId, a.text, cats) : null);
   if (!hit) return null;
   if (hit.alt && (await eachPriceByAi(a.groupId, a.text))) hit = hit.alt;
   const r: Receipt = { amount: hit.amount, spent_on: taipeiDate(a.at), vendor: '', category: hit.category, invoice_no: '' };

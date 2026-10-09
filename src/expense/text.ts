@@ -14,7 +14,7 @@ const NOT_ITEM = /(今天|明天|昨天|後天|點|時|分鐘|號|日|月|年|�
 const PRICE = /(?:NT)?[$＄]\s*(\d{1,3}(?:,\d{3})+|\d+)|(?<!\d)(\d{1,3}(?:,\d{3})+|\d+)\s*(?:元|塊)|單價\s*[:：]?\s*(?:NT)?[$＄]?\s*(\d{1,3}(?:,\d{3})+|\d+)\s*(?:元|塊)?/gi;
 const QTY = /[x×*＊]\s*(\d{1,3})(?!\d)|(?<!\d)(\d{1,3})\s*(?:個|份|盒|杯|瓶|包|件|組|張|箱|顆|支|條|套|罐|袋)|數量\s*[:：]?\s*[x×*＊]?\s*(\d{1,3})(?!\d)/gi;
 
-type Hit = { item: string; amount: number; category: string };
+export type Hit = { item: string; amount: number; category: string };
 
 // alt：數量在前、又沒寫「每／共」時，單價或總價都說得通——主答案照舊當總價，另一種放 alt，交給 AI 用常識挑（record.ts）
 function parseWithQty(t: string, categories: readonly string[]): (Hit & { alt?: Hit }) | null {
