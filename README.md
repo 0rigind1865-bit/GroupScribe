@@ -207,6 +207,7 @@ src/
 **設計原則**見 [docs/principles.md](docs/principles.md)——這個產品的第一性原理是「訊號與噪音」，
 以及由它推出的三條規則（假陽性比假陰性貴、噪音分三層、已處置的東西不佔主畫面）。
 每個 UI 決策都對得回那份文件。開發進度與延後項的觸發條件見 [docs/plan.md](docs/plan.md)。
+**新加入的人**先看 [docs/architecture.md](docs/architecture.md)：10 分鐘看懂資料流、身分與權限、資料表、環境變數、守門測試與部署。
 
 <details>
 <summary>管理端點</summary>
