@@ -276,7 +276,7 @@ test('離線暫存：滿了不收、補送成功才移除、送失敗就停在�
 import { toCsv } from '../src/expense/csv';
 
 test('toCsv：新到舊、含時間與付款方式、表尾小計只列 >0 的付款方式、逗號跳脫', () => {
-  const base = { vendor: '', project: 'A 案', invoice_no: '', place_name: '', reimbursed: false, submitted: true, photo: null, person: '小明' };
+  const base = { kind: 'expense' as const, vendor: '', project: 'A 案', invoice_no: '', place_name: '', reimbursed: false, submitted: true, photo: null, person: '小明' };
   const csv = toCsv(
     [
       { ...base, id: '1', amount: 100, category: '餐飲', note: '便當, 飲料', pay_method: '代墊', spent_on: '2026-09-25', spent_at: '2026-09-25T04:30:00.000Z' },
@@ -285,10 +285,11 @@ test('toCsv：新到舊、含時間與付款方式、表尾小計只列 >0 的�
     { includePerson: true },
   );
   const lines = csv.replace('﻿', '').split('\r\n');
-  assert.equal(lines[0], '日期,時間,分類,店家,用途,金額,付款方式,發票號碼,案場,地點,核銷狀態,人'); // 2026-10：「已報帳」改叫「已核銷」（員工端的報帳＝送出申請）
+  assert.equal(lines[0], '日期,時間,分類,店家,用途,金額,付款方式,發票號碼,案場,地點,核銷狀態,收支,人'); // 2026-10：「已報帳」改叫「已核銷」（員工端的報帳＝送出申請）
   assert.match(lines[1], /^2026\/09\/26,,交通/); // 新的在前
   assert.match(lines[2], /^2026\/09\/25,12:30,餐飲,,"便當, 飲料",100,代墊/);
   assert.ok(lines.includes('合計,,,,,150'));
+  assert.ok(!lines.some((l) => l.startsWith('收入合計')), '沒有收入就不列');
   assert.ok(lines.includes('代墊請款,,,,,100'));
   assert.ok(!lines.some((l) => l.startsWith('現金')));
 });
@@ -299,4 +300,33 @@ test('isSubmitted：按過申請、或已核銷才算；還沒貼 030（沒這�
   assert.equal(isSubmitted({ submitted_at: '2026-10-06T01:00:00Z', reimbursed_at: null }), true);
   assert.equal(isSubmitted({ submitted_at: null, reimbursed_at: '2026-10-06T01:00:00Z' }), true);
   assert.equal(isSubmitted({ reimbursed_at: null }), true);
+});
+
+test('parseTextExpense：收入——關鍵字在前後、+ 開頭、萬／千單位；沒單位小額不算', () => {
+  assert.deepEqual(parseTextExpense('收入 薪水 50000', EXPENSE_CATEGORIES), { item: '薪水', amount: 50000, category: '收入', kind: 'income' });
+  assert.deepEqual(parseTextExpense('進帳 3萬', EXPENSE_CATEGORIES), { item: '收入', amount: 30000, category: '收入', kind: 'income' });
+  assert.deepEqual(parseTextExpense('+500 退款', EXPENSE_CATEGORIES), { item: '退款', amount: 500, category: '收入', kind: 'income' });
+  assert.equal(parseTextExpense('獎金 2,000元 收入', EXPENSE_CATEGORIES)?.kind, 'income');
+  assert.equal(parseTextExpense('收到 3 箱貨', EXPENSE_CATEGORIES), null); // 3 沒單位又太小，不是收入
+  assert.equal(parseTextExpense('收到', EXPENSE_CATEGORIES), null);
+  assert.equal(parseTextExpense('午餐 120', EXPENSE_CATEGORIES)?.kind, undefined); // 支出不帶 kind
+});
+
+test('receiptReply：收入用 💰 與「收入」字樣', () => {
+  assert.match(receiptReply({ amount: 50000, spent_on: '2026-10-11', vendor: '薪水', category: '收入', invoice_no: '', kind: 'income' }), /^💰 記好了：10\/11 收入 \$50,000（薪水）/);
+});
+
+test('toCsv：有收入時加「收入合計」「結餘」，合計只算支出', () => {
+  const base = { vendor: '', project: '', invoice_no: '', place_name: '', reimbursed: false, submitted: false, photo: null, person: '', pay_method: '代墊', spent_at: null, note: '' };
+  const lines = toCsv(
+    [
+      { ...base, kind: 'expense', id: '1', amount: 100, category: '餐飲', spent_on: '2026-10-01' },
+      { ...base, kind: 'income', id: '2', amount: 1000, category: '收入', spent_on: '2026-10-02' },
+    ],
+    { includePerson: false },
+  ).replace('\ufeff', '').split('\r\n');
+  assert.match(lines[1], /,收入$/);
+  assert.ok(lines.includes('合計,,,,,100'));
+  assert.ok(lines.includes('收入合計,,,,,1000'));
+  assert.ok(lines.includes('結餘,,,,,900'));
 });

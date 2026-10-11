@@ -5,6 +5,7 @@ import type { ExpenseItem } from './types';
 export function rowToItem(r: Record<string, any>, photo: string | null = null): ExpenseItem {
   return {
     id: r.id,
+    kind: r.kind === 'income' ? 'income' : 'expense',
     amount: r.amount,
     category: r.category,
     note: r.note ?? '',

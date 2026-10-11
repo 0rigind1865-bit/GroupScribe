@@ -1,6 +1,9 @@
 // 前端（員工 App、後台分析）共用的一筆報帳形狀：伺服器整理好、照片已換成 1 小時簽名網址
+export type ExpenseKind = 'expense' | 'income';
+
 export type ExpenseItem = {
   id: string;
+  kind: ExpenseKind; // 收支種類（migration 036）；舊資料一律支出
   amount: number;
   category: string;
   note: string;

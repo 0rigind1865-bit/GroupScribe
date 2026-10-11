@@ -50,10 +50,10 @@ export function ListView({
   const sorted = [...shown].sort((a, b) => itemTime(b) - itemTime(a));
   const groups = new Map<string, ExpenseItem[]>();
   for (const e of sorted) groups.set(e.project || '沒選專案', [...(groups.get(e.project || '沒選專案') ?? []), e]);
-  const draft = shown.filter((e) => !e.submitted); // 還沒申請：可以勾
+  const draft = shown.filter((e) => !e.submitted && e.kind !== 'income'); // 還沒申請：可以勾（收入沒有核銷這回事）
   const owed = shown.filter((e) => e.submitted && !e.reimbursed); // 已申請、等公司
   const pickedRows = draft.filter((e) => picked.has(e.id)); // 只算看得到的：換專案籤後不會偷送別的專案
-  const sum = (rows: ExpenseItem[]) => fmtMoney(rows.reduce((a, r) => a + r.amount, 0));
+  const sum = (rows: ExpenseItem[]) => fmtMoney(rows.reduce((a, r) => a + (r.kind === 'income' ? 0 : r.amount), 0));
   const toggle = (id: string) =>
     setPicked((p) => {
       const n = new Set(p);
@@ -123,7 +123,7 @@ export function ListView({
           <p className="mb-1.5 flex items-baseline text-sm font-medium text-gray-600">
             <span className="text-base font-semibold text-gray-900">{name}</span>
             <span className="ml-auto tabular-nums">
-              {rows.length} 筆・${fmtMoney(rows.reduce((a, r) => a + r.amount, 0))}
+              {rows.length} 筆・${fmtMoney(rows.reduce((a, r) => a + (r.kind === 'income' ? 0 : r.amount), 0))}
             </span>
           </p>
           <ul className="space-y-2">
@@ -137,7 +137,7 @@ export function ListView({
                   className={`card flex cursor-pointer items-center gap-3 ${r.reimbursed ? 'opacity-60' : ''} ${picked.has(r.id) && !r.submitted ? 'ring-2 ring-emerald-600' : ''}`}
                 >
                   {/* 還沒申請的才能勾；勾框自成 44px 點擊區，點它不會打開編輯 */}
-                  {!r.submitted && (
+                  {!r.submitted && r.kind !== 'income' && (
                     <label className="-my-2 -ml-2 grid h-11 w-11 flex-none cursor-pointer place-items-center" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
@@ -176,8 +176,10 @@ export function ListView({
                     </span>
                   </span>
                   <span className="flex flex-none flex-col items-end gap-1">
-                    <span className="text-lg font-semibold tabular-nums">{fmtMoney(r.amount)}</span>
-                    {r.reimbursed ? (
+                    <span className="text-lg font-semibold tabular-nums">{r.kind === 'income' ? '+' : ''}{fmtMoney(r.amount)}</span>
+                    {r.kind === 'income' ? (
+                      <Badge tone="ok">收入</Badge>
+                    ) : r.reimbursed ? (
                       <Badge tone="ok">{r.pay_method === '代墊' ? '錢已發還' : '公司已核銷'}</Badge>
                     ) : r.submitted ? (
                       <Badge tone="neutral">已申請</Badge>
@@ -273,7 +275,7 @@ function EditSheet({
     const fd = new FormData();
     fd.set('id', item.id);
     fd.set('action', 'save');
-    Object.entries({ amount, category, project, pay_method: pay, note, place_name: place, invoice_no: invoiceNo, vendor: item.vendor }).forEach(([k, v]) => fd.set(k, v));
+    Object.entries({ amount, category, project, pay_method: pay, note, place_name: place, invoice_no: invoiceNo, vendor: item.vendor, kind: item.kind }).forEach(([k, v]) => fd.set(k, v));
     if (Number.isFinite(at.getTime())) fd.set('spent_at', at.toISOString());
     if (removePhoto) fd.set('remove_photo', '1');
     send(fd, '✓ 已更新');

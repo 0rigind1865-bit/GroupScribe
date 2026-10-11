@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
     const at = atRaw && Number.isFinite(atRaw.getTime()) ? atRaw : null;
     const spent_on = at ? at.toLocaleDateString('sv', { timeZone: 'Asia/Taipei' }) : parseDate(String(form.get('spent_on') ?? ''));
     const category = String(form.get('category') ?? '');
-    if (amount === null || !spent_on || !(await orgCategories(access.org.id)).includes(category)) return go('err=bad');
+    if (amount === null || !spent_on || !((await orgCategories(access.org.id)).includes(category) || category === '收入')) return go('err=bad');
     const text = (k: string, max: number) => String(form.get(k) ?? '').trim().slice(0, max);
     const pay = String(form.get('pay_method') ?? '代墊');
     const inv = text('invoice_no', 20).replace(/[-\s]/g, '').toUpperCase();

@@ -34,6 +34,7 @@ export async function myExpenseIdentity(): Promise<ExpenseMe | null> {
 
 export type ExpenseInput = {
   amount: number;
+  kind: 'expense' | 'income';
   spent_on: string;
   spent_at: string | null;
   category: string;
@@ -57,7 +58,8 @@ const taipeiDate = (d: Date) => d.toLocaleDateString('sv', { timeZone: 'Asia/Tai
 export function parseExpenseForm(form: FormData, categories: readonly string[], today: string): ExpenseInput | null {
   const amount = parseAmount(String(form.get('amount') ?? ''));
   const category = String(form.get('category') ?? '');
-  if (amount === null || !categories.includes(category)) return null;
+  const kind = form.get('kind') === 'income' ? ('income' as const) : ('expense' as const);
+  if (amount === null || !(categories.includes(category) || (kind === 'income' && category === '收入'))) return null;
   const pay = String(form.get('pay_method') ?? '代墊');
   const text = (k: string, max: number) => String(form.get(k) ?? '').trim().slice(0, max);
   const lat = num(form.get('lat'), -90, 90);
@@ -68,6 +70,7 @@ export function parseExpenseForm(form: FormData, categories: readonly string[], 
   const inv = text('invoice_no', 20).replace(/[-\s]/g, '').toUpperCase();
   return {
     amount,
+    kind,
     spent_at,
     spent_on: spent_at ? taipeiDate(at) : (parseDate(String(form.get('spent_on') ?? '')) ?? today),
     category,

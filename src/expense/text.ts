@@ -14,7 +14,25 @@ const NOT_ITEM = /(今天|明天|昨天|後天|點|時|分鐘|號|日|月|年|�
 const PRICE = /(?:NT)?[$＄]\s*(\d{1,3}(?:,\d{3})+|\d+)|(?<!\d)(\d{1,3}(?:,\d{3})+|\d+)\s*(?:元|塊)|單價\s*[:：]?\s*(?:NT)?[$＄]?\s*(\d{1,3}(?:,\d{3})+|\d+)\s*(?:元|塊)?/gi;
 const QTY = /[x×*＊]\s*(\d{1,3})(?!\d)|(?<!\d)(\d{1,3})\s*(?:個|份|盒|杯|瓶|包|件|組|張|箱|顆|支|條|套|罐|袋)|數量\s*[:：]?\s*[x×*＊]?\s*(\d{1,3})(?!\d)/gi;
 
-export type Hit = { item: string; amount: number; category: string };
+export type Hit = { item: string; amount: number; category: string; kind?: 'income' };
+
+// 收入：「收入 薪水 50000」「進帳 3萬」「+500 退款」；句尾「…收入」也算。沒寫元時金額要 ≥100，免得「收到 3 箱貨」被當 3 元收入
+const INCOME_RE = /^(?:\+|收入|進帳|入帳|收款)\s*|\s*(?:收入|進帳|入帳)$/;
+const INCOME_AMT = /(?:NT)?[$＄]?\s*(\d{1,3}(?:,\d{3})+|\d+(?:\.\d+)?)\s*(萬|千|元|塊)?/;
+
+function parseIncome(t: string): Hit | null {
+  const m = t.match(INCOME_AMT);
+  if (!m) return null;
+  let amount = Number(m[1].replace(/,/g, ''));
+  if (m[2] === '萬') amount *= 10000;
+  else if (m[2] === '千') amount *= 1000;
+  amount = Math.round(amount);
+  const hasUnit = !!m[2] || /[$＄]/.test(t);
+  if (!amount || (!hasUnit && amount < 100)) return null;
+  const item = t.replace(m[0], ' ').replace(/\s+/g, ' ').trim() || '收入';
+  if (NOT_ITEM.test(item)) return null;
+  return { item: item.slice(0, 30), amount, category: '收入', kind: 'income' };
+}
 
 // alt：數量在前、又沒寫「每／共」時，單價或總價都說得通——主答案照舊當總價，另一種放 alt，交給 AI 用常識挑（record.ts）
 function parseWithQty(t: string, categories: readonly string[]): (Hit & { alt?: Hit }) | null {
@@ -60,6 +78,7 @@ export function pickPlace(item: string, categories: readonly string[]): string {
 export function parseTextExpense(text: string, categories: readonly string[]): (Hit & { alt?: Hit }) | null {
   const t = text.trim();
   if (!t || t.length > 30 || t.includes('\n')) return null;
+  if (INCOME_RE.test(t)) return parseIncome(t.replace(INCOME_RE, '').trim());
   const withQty = parseWithQty(t, categories);
   if (withQty) return withQty;
   const m = t.match(RE);

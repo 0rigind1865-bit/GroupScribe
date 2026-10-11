@@ -12,6 +12,7 @@ export type Receipt = {
   vendor: string;
   category: string;
   invoice_no: string;
+  kind?: 'expense' | 'income'; // 沒給＝支出
   duplicate?: boolean; // 這張之前記過了、這次沒再記（只給 1:1 回覆用）
 };
 

@@ -73,14 +73,15 @@ async function expenseByAi(groupId: string, text: string, cats: readonly string[
   if (text.length > 200 || !/[\d〇零一二兩三四五六七八九十百千萬]/.test(text)) return null;
   try {
     const j = (await aiScope(groupId, () =>
-      getLLM().generateJson(`這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費，回 JSON：{"item":"簡短品項","amount":總金額數字}（amount 是全部花了多少元；有單價和數量就算好乘起來）。若不是記帳（提醒、閒聊、問問題），或句子殘缺、看不出買了什麼（例如只有一串數字），回 {"item":null}，不要猜。`, {
+      getLLM().generateJson(`這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費或收入，回 JSON：{"item":"簡短品項","amount":總金額數字,"kind":"expense 或 income"}（amount 是全部金額；有單價和數量就算好乘起來；薪水、獎金、進帳、收款、退款是 income，其他是 expense）。若不是記帳（提醒、閒聊、問問題），或句子殘缺、看不出買了什麼（例如只有一串數字），回 {"item":null}，不要猜。`, {
         purpose: 'expense_text',
-        schema: { type: 'object', properties: { item: { type: 'string', nullable: true }, amount: { type: 'number', nullable: true } }, required: ['item'] },
+        schema: { type: 'object', properties: { item: { type: 'string', nullable: true }, amount: { type: 'number', nullable: true }, kind: { type: 'string', enum: ['expense', 'income'] } }, required: ['item'] },
       }),
-    )) as { item?: unknown; amount?: unknown };
+    )) as { item?: unknown; amount?: unknown; kind?: unknown };
     const amount = Number(j?.amount);
     if (typeof j?.item !== 'string' || !j.item.trim() || !Number.isFinite(amount) || amount <= 0) return null;
     const item = j.item.trim().slice(0, 30);
+    if (j.kind === 'income') return { item, amount: Math.round(amount), category: '收入', kind: 'income' };
     return { item, amount: Math.round(amount), category: classifyNote(item, cats) ?? '雜支' };
   } catch {
     return null;
@@ -121,7 +122,7 @@ export async function recordTextExpense(a: {
   let hit: (Hit & { alt?: Hit }) | null = parseTextExpense(a.text, cats) ?? (await expenseByAi(a.groupId, a.text, cats));
   if (!hit) return null;
   if (hit.alt && (await eachPriceByAi(a.groupId, a.text))) hit = hit.alt;
-  const r: Receipt = { amount: hit.amount, spent_on: taipeiDate(a.at), vendor: '', category: hit.category, invoice_no: '' };
+  const r: Receipt = { amount: hit.amount, spent_on: taipeiDate(a.at), vendor: '', category: hit.category, invoice_no: '', kind: hit.kind ?? 'expense' };
   // 「林口體育館 便當 110元 20個」→ 已有這個專案：專案＝地點；沒有：只猜地點（專案影響報表分組，不猜）
   const project = pickProject(a.text, await orgProjects(orgId));
   const row = {
@@ -153,6 +154,8 @@ export function receiptReply(r: Receipt, url?: string | null): string {
     const head = `🧾 這張收據記過了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}，這次不再重複記`;
     return url ? `${head}\n真的是另一筆的話，請在這裡自己新增 👉 ${url}` : `${head}\n真的是另一筆的話，請跟管理者說`;
   }
-  const head =`🧾 記好了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}`;
+  const head = r.kind === 'income'
+    ? `💰 記好了：${md} 收入 $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}`
+    : `🧾 記好了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}`;
   return url ? `${head}\n查看或修改 👉 ${url}` : `${head}\n金額不對請跟管理者說`;
 }

@@ -2,7 +2,8 @@
 // 早上可能先部署、後貼 SQL——這段時間員工記帳不能失敗。
 
 // v3（migration 027）的 spent_at 也算：還沒貼 027 時一樣拿掉重寫
-export const V2_FIELDS = ['pay_method', 'source', 'photo_path', 'lat', 'lng', 'place_name', 'spent_at'] as const;
+// kind（migration 036，收支種類）也算
+export const V2_FIELDS = ['pay_method', 'source', 'photo_path', 'lat', 'lng', 'place_name', 'spent_at', 'kind'] as const;
 
 type Err = { code?: string; message?: string } | null;
 
@@ -22,5 +23,8 @@ export async function withV2Fallback<T extends Record<string, unknown>, R extend
   run: (row: Partial<T>) => PromiseLike<R>,
 ): Promise<R> {
   const r = await run(row);
-  return r.error && isMissingColumn(r.error) ? run(stripV2(row)) : r;
+  if (!r.error || !isMissingColumn(r.error)) return r;
+  // 收入遇到 kind 欄位還沒建（036）：拿掉 kind 重寫會變成支出＝誤記，寧可不記
+  if (row.kind === 'income') return r;
+  return run(stripV2(row));
 }

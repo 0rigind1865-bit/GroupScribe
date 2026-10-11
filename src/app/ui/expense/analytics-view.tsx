@@ -46,16 +46,18 @@ export function AnalyticsView({
   }, [byProject, period]);
 
   const stat = useMemo(() => {
-    const total = filtered.reduce((a, e) => a + e.amount, 0);
+    const income = filtered.filter((e) => e.kind === 'income').reduce((a, e) => a + e.amount, 0);
+    const spend = filtered.filter((e) => e.kind !== 'income'); // 收入不混進「花在哪」
+    const total = spend.reduce((a, e) => a + e.amount, 0);
     const sum = (key: (e: ExpenseItem) => string) => {
       const m = new Map<string, number>();
-      for (const e of filtered) m.set(key(e) || '（未填）', (m.get(key(e) || '（未填）') ?? 0) + e.amount);
+      for (const e of spend) m.set(key(e) || '（未填）', (m.get(key(e) || '（未填）') ?? 0) + e.amount);
       return [...m].sort((a, b) => b[1] - a[1]);
     };
     const pay: Record<string, number> = { 代墊: 0, 公司卡: 0, 現金: 0 };
-    for (const e of filtered) pay[e.pay_method] = (pay[e.pay_method] ?? 0) + e.amount;
+    for (const e of spend) pay[e.pay_method] = (pay[e.pay_method] ?? 0) + e.amount;
     const ev = sum((e) => e.project);
-    return { total, count: filtered.length, avg: filtered.length ? Math.round(total / filtered.length) : 0, cats: sum((e) => e.category), ev: ev.slice(0, 8), evMore: ev.length - 8, pay };
+    return { total, income, count: spend.length, avg: spend.length ? Math.round(total / spend.length) : 0, cats: sum((e) => e.category), ev: ev.slice(0, 8), evMore: ev.length - 8, pay };
   }, [filtered]);
 
   // 近 6 個月趨勢：只受專案篩選影響（長期脈絡）
@@ -116,6 +118,11 @@ export function AnalyticsView({
             <p className="mt-1 text-4xl font-black tabular-nums" style={{ fontFamily: 'var(--font-title)' }}>
               ${fmtMoney(stat.total)}
             </p>
+            {stat.income > 0 && (
+              <p className="mt-1 text-sm font-semibold text-gray-600 tabular-nums">
+                收入 ${fmtMoney(stat.income)}・結餘 ${fmtMoney(stat.income - stat.total)}
+              </p>
+            )}
             <p className="mt-1 flex gap-4 text-sm text-gray-500">
               <span>{stat.count} 筆</span>
               <span>平均 ${fmtMoney(stat.avg)}／筆</span>

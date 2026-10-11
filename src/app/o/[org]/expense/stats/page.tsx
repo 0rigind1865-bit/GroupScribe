@@ -64,7 +64,9 @@ export default async function ExpenseStats({
       </main>
     );
   const rows = (data ?? []) as unknown as ExpenseRow[];
-  const total = rows.reduce((n, r) => n + r.amount, 0);
+  const spend = rows.filter((r) => r.kind !== 'income');
+  const incomeTotal = rows.filter((r) => r.kind === 'income').reduce((n, r) => n + r.amount, 0);
+  const total = spend.reduce((n, r) => n + r.amount, 0);
   // 還沒核銷＝員工申請過、公司還沒核銷（同收據頁的「還沒核銷」）
   const open = rows.filter((r) => !r.reimbursed_at && isSubmitted(r)).reduce((n, r) => n + r.amount, 0);
   const here = (q: { period?: string; project?: string; by?: string }) =>
@@ -106,6 +108,11 @@ export default async function ExpenseStats({
               <p className="text-[34px] leading-tight font-black tabular-nums" style={{ fontFamily: 'var(--font-title)' }}>
                 NT$ {fmt(total)}
               </p>
+              {incomeTotal > 0 && (
+                <p className="text-sm font-bold text-gray-600 tabular-nums">
+                  收入 NT$ {fmt(incomeTotal)} · 結餘 NT$ {fmt(incomeTotal - total)}
+                </p>
+              )}
             </div>
             {open > 0 && (
               <a
@@ -121,7 +128,7 @@ export default async function ExpenseStats({
           <section className="card">
             <h2 className="mb-3 card-title">花在哪</h2>
             <ul className="space-y-3 text-sm">
-              {sumBy(rows, (r) => r.category).map(([k, amt]) => {
+              {sumBy(spend, (r) => r.category).map(([k, amt]) => {
                 const pct = total ? Math.round((amt / total) * 100) : 0;
                 return (
                   <li key={k}>
@@ -152,7 +159,7 @@ export default async function ExpenseStats({
               </nav>
             </div>
             <ul className="text-sm">
-              {sumBy(rows, BY[by][1]).map(([k, amt]) => (
+              {sumBy(spend, BY[by][1]).map(([k, amt]) => (
                 <li key={k} className="flex min-h-11 items-center justify-between gap-3 border-t border-gray-100 px-4">
                   <span className="truncate">{k}</span>
                   <span className="flex-none font-bold tabular-nums">{fmt(amt)}</span>

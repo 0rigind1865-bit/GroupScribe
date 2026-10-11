@@ -29,6 +29,7 @@ export type ExpenseRow = {
   place_name?: string;
   spent_at?: string | null; // v3（migration 027）
   submitted_at?: string | null; // migration 030
+  kind?: 'expense' | 'income'; // migration 036；沒有＝支出
 };
 
 export const isMonth = (m?: string): m is string => !!m && /^\d{4}-(0[1-9]|1[0-2])$/.test(m);
@@ -55,7 +56,7 @@ export async function expenseQuery(db: SupabaseClient, orgId: string, f: Expense
   // ponytail: 單頁上限 1000 筆；一家公司一個月超過再做分頁
   const r = await q.order('spent_on', { ascending: false }).order('created_at', { ascending: false }).limit(1000);
   // ponytail: 在這裡濾而不是 SQL 濾——沒貼 030 時 submitted_at 不存在，SQL 會整個查詢失敗
-  return f.status !== 'done' && f.status !== 'all' ? { ...r, data: r.data?.filter(isSubmitted) ?? null } : r;
+  return f.status !== 'done' && f.status !== 'all' ? { ...r, data: r.data?.filter((x) => isSubmitted(x) && x.kind !== 'income') ?? null } : r;
 }
 
 /** 依 key 加總（統計頁用）：[[key, 金額合計, 筆數]]，金額大的先 */
