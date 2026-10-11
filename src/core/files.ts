@@ -93,7 +93,7 @@ ${known.length ? known.join('、') : '無'}
 【檔案清單】
 ${lines.join('\n')}`;
 
-    const raw = await getLLM().generateJson(prompt);
+    const raw = await getLLM().generateJson(prompt, { purpose: 'files' });
     const files = Array.isArray((raw as any)?.files) ? (raw as any).files : [];
     for (const f of files) {
       const id = typeof f?.ref === 'string' ? refs.get(f.ref) : undefined;

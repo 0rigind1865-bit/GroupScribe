@@ -31,9 +31,13 @@ export type NormalizedEvent =
 export const dmGroupId = (userId: string) => `dm:${userId}`;
 export const isDm = (groupId: string) => groupId.startsWith('dm:');
 
+// purpose：用量按用途記進 api_usage_purpose（migration 035），讓「哪種呼叫最燒錢」有實測數字
+// schema：JSON 固定格式（Gemini responseSchema 子集：type/properties/required/enum/nullable），分類題用 enum 最穩
+export type LLMOpts = { purpose?: string; schema?: Record<string, unknown> };
+
 export interface LLMProvider {
-  generate(prompt: string): Promise<string>;
-  generateJson(prompt: string): Promise<unknown>; // 回 JSON.parse 後的原始值，由核心自行驗證
+  generate(prompt: string, opts?: LLMOpts): Promise<string>;
+  generateJson(prompt: string, opts?: LLMOpts): Promise<unknown>; // 回 JSON.parse 後的原始值，由核心自行驗證
 }
 
 export interface VisionProvider {

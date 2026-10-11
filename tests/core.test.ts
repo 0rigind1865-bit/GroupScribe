@@ -7,7 +7,7 @@ import { AI_EDITOR, fmtDate, isRevised, needsReview } from '../src/core/date';
 import { isLowInfo, mimeOfKind, DM_ASK_RE } from '../src/core/ingest';
 import { lineConnector } from '../src/connectors/line';
 import { rankHits } from '../src/core/query';
-import { parseOps, dropDupes, type RefMaps, type ParsedOp } from '../src/core/extract';
+import { parseOps, dropDupes, CONFIRM_RE, type RefMaps, type ParsedOp } from '../src/core/extract';
 import {
   monthGrid,
   addDays,
@@ -166,6 +166,31 @@ test('dropDupes：擋掉重建既有項目與同批自我重複，連日同名�
     kept.map((o) => ('title' in o ? o.title : o.op)),
     ['綠博工作', '新竹願景館 演出', 'update_note'],
   );
+});
+
+test('dropDupes：模糊重複——標點差異、標題包含、同日才算；短標題不比', () => {
+  const existing = ['T|阿泉簽文件並搬進宿舍', 'N|獎金發放通知', 'E|怪手進場|2026-09-01', 'T|開會'];
+  const task = (title: string): ParsedOp => ({ op: 'create_task', title, assignee: null, due: null, note: null, sourceIds: [] });
+  const ev = (title: string, date: string): ParsedOp =>
+    ({ op: 'create_event', title, date, time: null, location: null, note: null, sourceIds: [] });
+  const ops: ParsedOp[] = [
+    task('阿泉簽文件'), // 被既有標題包含 → 丟
+    { op: 'create_note', title: '獎金發放通知（10 月）', kind: 'announcement', body: null, sourceIds: [] }, // 括號只是標點 → 丟
+    ev('協民段 怪手進場', '2026-09-01'), // 同日、包含 → 丟
+    ev('協民段 怪手進場', '2026-09-02'), // 不同日 → 放行
+    task('開會前準備資料'), // 既有「開會」太短，不拿來比 → 放行
+  ];
+  assert.deepEqual(
+    dropDupes(ops, existing).map((o) => ('title' in o ? o.title : o.op)),
+    ['協民段 怪手進場', '開會前準備資料'],
+  );
+});
+
+test('CONFIRM_RE：口語同意詞放行，其他短句不算拍板', () => {
+  for (const t of ['好', '好啊', '好呀！', '嗯好', '嗯嗯 可以啊', 'OK的', 'ok', '行', '沒問題~', '好的好的', '收到。'])
+    assert.ok(CONFIRM_RE.test(t), t);
+  for (const t of ['好累', '謝謝', '好像不行', '辛苦了', '可以嗎', '好的嗎', '成本太高'])
+    assert.ok(!CONFIRM_RE.test(t), t);
 });
 
 test('monthGrid：月首偏移、天數、補位', () => {

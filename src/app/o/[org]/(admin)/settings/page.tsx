@@ -29,7 +29,7 @@ function Meter({ pct }: { pct: number }) {
 const PRICES: Record<string, { input: number; output: number }> = {
   'gemini-2.5-flash': { input: 0.3, output: 2.5 },
   'gemini-2.5-flash-lite': { input: 0.1, output: 0.4 },
-  'gemini-3.5-flash': { input: 1.5, output: 9 },
+  'gemini-3.5-flash': { input: 0.75, output: 3.75 }, // 2026-10-08 起官方把 3.5-flash 導向 3.6-flash，依其牌價（2027-01-01 起 1.5／7.5）
   'gemini-3.5-flash-lite': { input: 0.3, output: 2.5 },
 };
 const EMBED_PRICE = 0.15;

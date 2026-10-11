@@ -158,7 +158,8 @@ export function parseOps(raw: unknown, refs: RefMaps): ParsedOp[] {
 // webhook 每收幾則訊息就抽一小批，脈絡窗口高度重疊，於是同一件事被重複建立好幾遍。
 // 對策放在寫入前這一層：既有項目（＋本批已建的）出現同樣的 key 就丟棄該 create。
 // key 帶關鍵日期，所以「連續四天的同名排班」不會被誤殺，同一天的兩筆才算重複。
-export const normTitle = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+// 只留文字與數字：空白、標點、全形括號、emoji 都不算差異（「怪手進場（協民段）」＝「怪手進場 協民段」）
+export const normTitle = (s: string) => s.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase();
 
 export function dupeKey(op: ParsedOp): string | null {
   if (op.op === 'create_event') return `E|${normTitle(op.title)}|${op.date}`;
@@ -174,10 +175,23 @@ export function dropDupes(ops: ParsedOp[], existingKeys: Iterable<string>): Pars
   return ops.filter((op) => {
     const k = dupeKey(op);
     if (!k) return true;
-    if (seen.has(k)) return false;
+    if (seen.has(k) || containedBy(k, seen)) return false;
     seen.add(k); // 同一批 LLM 輸出裡的自我重複一併擋掉
     return true;
   });
+}
+
+// 模糊重複：同類、同日，標題一個包含另一個（「阿泉簽文件並搬進宿舍」vs「阿泉簽文件」）；短於 4 字不比，免得「開會」吃掉一切
+// ponytail: 對 seen 線性掃（≤60 既有＋本批），量大再換索引
+function containedBy(key: string, seen: Set<string>): boolean {
+  const [kind, title, date = ''] = key.split('|');
+  if (title.length < 4) return false;
+  for (const other of seen) {
+    const [k2, t2, d2 = ''] = other.split('|');
+    if (k2 !== kind || d2 !== date || t2.length < 4) continue;
+    if (title.includes(t2) || t2.includes(title)) return true;
+  }
+  return false;
 }
 
 // 並發鎖：抽取中再觸發直接跳過，訊息留給下一輪（天然合批）；失敗不寫游標，下次自動補抽
@@ -241,7 +255,8 @@ type MsgRow = {
 
 // 「好/OK/收到」這類確認語雖是低資訊，卻常是決定成立的那一句（提議＋確認＝拍板）。
 // 只放行明確的同意詞；貼圖、謝謝、辛苦了不算決定，仍不進 prompt（省 LLM 費用）。
-const CONFIRM_RE = /^(好|好的|好喔|好哦|OK|ok|Ok|OKAY|okay|收到|了解|瞭解|沒問題|可以|同意|成)[!！。.~～\s]*$/;
+// 2026-10 補口語（好啊／可以啊／行／嗯好／OK的）：之前漏掉就永不補抽（Jev 評估報告指出的實證缺口）
+export const CONFIRM_RE = /^(嗯+\s*)?(好|好的|好啊|好呀|好啦|好喔|好哦|OK|ok|Ok|OKAY|okay|OK的|ok的|收到|了解|瞭解|沒問題|可以|可以啊|可以呀|行|同意|成)(好的|好)?[!！。.~～\s]*$/;
 
 // 認領租約（migration 009 的 claimed_at）：逾期未完成即視為前一個進程已死，放回隊列
 const LEASE_MS = 10 * 60_000;
@@ -486,7 +501,7 @@ kind 只能是 announcement（公告）或 decision（決議）。沒有可抽�
 
   let rawOut: unknown;
   try {
-    rawOut = await getLLM().generateJson(prompt);
+    rawOut = await getLLM().generateJson(prompt, { purpose: 'extract' });
   } catch (e) {
     // LLM 失敗 → 回滾認領（extracted_at 還原 null），下一輪自動補抽
     await db

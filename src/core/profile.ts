@@ -63,7 +63,7 @@ ${cur?.profile ? `\n【先前歸納】（供更新參考，以新資訊為準）
 
 全文 500 字內，直接輸出內容，不要開場白。`;
 
-  const profile = (await getLLM().generate(prompt)).trim();
+  const profile = (await getLLM().generate(prompt, { purpose: 'profile' })).trim();
 
   // 只寫 profile 欄位，不碰 name/category（與 group/update 同一套 upsert 紀律）
   const { error } = await db

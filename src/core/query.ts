@@ -135,5 +135,5 @@ ${top.length ? top.map((h) => h.chunk_text).join('\n') : '（無相關對話片�
 
 【問題】${question}`;
 
-  return getLLM().generate(prompt);
+  return getLLM().generate(prompt, { purpose: 'answer' });
 }

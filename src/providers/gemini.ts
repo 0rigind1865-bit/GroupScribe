@@ -1,4 +1,4 @@
-import type { EmbeddingProvider, LLMProvider, VisionProvider } from '@/core/types';
+import type { EmbeddingProvider, LLMOpts, LLMProvider, VisionProvider } from '@/core/types';
 import { EXPENSE_CATEGORIES } from '@/expense/receipt';
 import { getDb } from '@/db';
 import { currentSettings, refreshSettings } from '@/core/settings';
@@ -20,6 +20,24 @@ const EMBEDDING_DIM = 768; // 與 supabase/schema.sql 的 vector(768) 一致
 
 // 用量自記帳（migration 006）：Google 沒有查詢剩餘額度的 API，自己記 token 供設定頁畫進度條。
 // fire-and-forget：表未建/DB 未設定時靜默略過，絕不影響主流程。
+// 用途別用量（migration 035）：表還沒建時只警告一次就閉嘴，不影響主流程
+let purposeTableMissing = false;
+function bumpPurpose(purpose: string, f: { calls: number; input: number; output: number }) {
+  if (purposeTableMissing) return;
+  try {
+    getDb()
+      .rpc('bump_usage_purpose', { p_purpose: purpose, p_calls: f.calls, p_in: f.input, p_out: f.output })
+      .then(({ error }) => {
+        if (error) {
+          purposeTableMissing = true;
+          console.warn('用途別用量記帳失敗（migration 035 跑了嗎？），本次啟動不再嘗試', error.message);
+        }
+      });
+  } catch {
+    /* DB 未設定 */
+  }
+}
+
 function bump(f: { calls?: number; input?: number; output?: number; embed?: number; blocked?: number }) {
   try {
     getDb()
@@ -38,7 +56,7 @@ function bump(f: { calls?: number; input?: number; output?: number; embed?: numb
   }
 }
 
-async function post(path: string, body: unknown): Promise<any> {
+async function post(path: string, body: unknown, purpose = 'other'): Promise<any> {
   await refreshSettings(); // 所有 Gemini 呼叫的唯一收口：30 秒 TTL，一次 select 涵蓋整批
   const res = await fetch(`${BASE}/${path}?key=${KEY()}`, {
     method: 'POST',
@@ -59,31 +77,35 @@ async function post(path: string, body: unknown): Promise<any> {
       ) ?? 0;
     bump({ calls: 1, embed: chars });
     bumpOrgUsage({ calls: 1, embed: chars }); // 同時記到該 org（aiScope 提供脈絡；沒有脈絡就略過）
+    bumpPurpose(purpose, { calls: 1, input: chars, output: 0 });
   } else {
     const u = json.usageMetadata ?? {};
     const input = u.promptTokenCount ?? 0;
     // 2.5 系列的 thinking tokens 也算輸出計費，用 total - prompt 最保險
-    bump({ calls: 1, input, output: Math.max(0, (u.totalTokenCount ?? input) - input) });
-    bumpOrgUsage({ calls: 1, input, output: Math.max(0, (u.totalTokenCount ?? input) - input) });
+    const output = Math.max(0, (u.totalTokenCount ?? input) - input);
+    bump({ calls: 1, input, output });
+    bumpOrgUsage({ calls: 1, input, output });
+    bumpPurpose(purpose, { calls: 1, input, output });
   }
   return json;
 }
 
 export const geminiLLM: LLMProvider = {
-  async generate(prompt) {
+  async generate(prompt, opts?: LLMOpts) {
     const json = await post(`models/${GEN_MODEL()}:generateContent`, {
       contents: [{ parts: [{ text: prompt }] }],
-    });
+    }, opts?.purpose);
     return (
       json.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? ''
     );
   },
 
-  async generateJson(prompt) {
+  async generateJson(prompt, opts?: LLMOpts) {
+    // 只設 mime type 官方不保證合法 JSON；給 schema（尤其 enum）才是穩的分類輸出
     const json = await post(`models/${GEN_MODEL()}:generateContent`, {
       contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { response_mime_type: 'application/json' },
-    });
+      generationConfig: { response_mime_type: 'application/json', ...(opts?.schema ? { response_schema: opts.schema } : {}) },
+    }, opts?.purpose);
     const text =
       json.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') ?? '{}';
     return JSON.parse(text);
@@ -108,7 +130,7 @@ export const geminiVision: VisionProvider = {
         { parts: [{ text: prompt }, { inline_data: { mime_type: mime, data: data.toString('base64') } }] },
       ],
       generationConfig: { response_mime_type: 'application/json' },
-    });
+    }, audio ? 'audio' : 'vision');
     const text = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
     const parsed = JSON.parse(text);
     return {
@@ -136,7 +158,7 @@ export const geminiEmbedding: EmbeddingProvider = {
           content: { parts: [{ text: t.slice(0, 8000) }] },
           outputDimensionality: EMBEDDING_DIM,
         })),
-      });
+      }, 'embed');
       for (const e of json.embeddings) out.push(normalize(e.values));
     }
     return out;

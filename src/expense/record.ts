@@ -73,7 +73,10 @@ async function expenseByAi(groupId: string, text: string, cats: readonly string[
   if (text.length > 200 || !/[\d〇零一二兩三四五六七八九十百千萬]/.test(text)) return null;
   try {
     const j = (await aiScope(groupId, () =>
-      getLLM().generateJson(`這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費，回 JSON：{"item":"簡短品項","amount":總金額數字}（amount 是全部花了多少元；有單價和數量就算好乘起來）。若不是記帳（提醒、閒聊、問問題），或句子殘缺、看不出買了什麼（例如只有一串數字），回 {"item":null}，不要猜。`),
+      getLLM().generateJson(`這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費，回 JSON：{"item":"簡短品項","amount":總金額數字}（amount 是全部花了多少元；有單價和數量就算好乘起來）。若不是記帳（提醒、閒聊、問問題），或句子殘缺、看不出買了什麼（例如只有一串數字），回 {"item":null}，不要猜。`, {
+        purpose: 'expense_text',
+        schema: { type: 'object', properties: { item: { type: 'string', nullable: true }, amount: { type: 'number', nullable: true } }, required: ['item'] },
+      }),
     )) as { item?: unknown; amount?: unknown };
     const amount = Number(j?.amount);
     if (typeof j?.item !== 'string' || !j.item.trim() || !Number.isFinite(amount) || amount <= 0) return null;
@@ -88,9 +91,12 @@ async function expenseByAi(groupId: string, text: string, cats: readonly string[
 async function eachPriceByAi(groupId: string, text: string): Promise<boolean> {
   try {
     const j = await aiScope(groupId, () =>
-      getLLM().generateJson(`這是一句記帳：「${text}」。句中有數量和一個金額。請依生活常識判斷這個金額是「每一份的單價」還是「全部的總價」（例如 16 份炒飯不可能總共 80 元，所以是單價）。只回 JSON：{"each": true} 代表單價，{"each": false} 代表總價。`),
+      getLLM().generateJson(`這是一句記帳：「${text}」。句中有數量和一個金額。請依生活常識判斷這個金額是「每一份的單價」還是「全部的總價」（例如 16 份炒飯不可能總共 80 元，所以是單價）。只回 JSON：{"price_is":"each"} 代表單價，{"price_is":"total"} 代表總價。`, {
+        purpose: 'expense_price',
+        schema: { type: 'object', properties: { price_is: { type: 'string', enum: ['each', 'total'] } }, required: ['price_is'] },
+      }),
     );
-    return (j as { each?: unknown })?.each === true;
+    return (j as { price_is?: unknown })?.price_is === 'each';
   } catch {
     return false;
   }
