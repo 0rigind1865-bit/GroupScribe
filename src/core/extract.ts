@@ -169,7 +169,7 @@ export function dupeKey(op: ParsedOp): string | null {
 }
 
 // 純函式，可測：回傳過濾後的操作。existingKeys 由既有清單建（見 extractBatch）。
-// ponytail: 只比對餵進 prompt 的既有項目（MAX_EXISTING=60 內），漏網的再升級成逐筆 DB 查詢
+// existingKeys 含整個群的全部項目（extractBatch 另外撈 title 清單），不受 MAX_EXISTING 限制
 export function dropDupes(ops: ParsedOp[], existingKeys: Iterable<string>): ParsedOp[] {
   const seen = new Set(existingKeys);
   return ops.filter((op) => {
@@ -524,6 +524,17 @@ kind 只能是 announcement（公告）或 decision（決議）。沒有可抽�
     return true;
   });
   res.skipped = allOps.length - fresh.length;
+  // 去重要看「整個群」的項目，不是只看餵進 prompt 的 60 筆：行程超過 60 筆時，後面日期的看不到，
+  // 每批都重建（2026-09-18 實測「池上秋收 硬體搭設 10/14」同一天被建 12 次）。只撈標題與日期，幾千筆也很輕。
+  // 連 ignored 一起算：使用者按過「不是」的東西，不該再冒出來。
+  const [allEv, allTk, allNt] = await Promise.all([
+    db.from('events').select('title, starts_at').eq('group_id', groupId).limit(5000),
+    db.from('tasks').select('title').eq('group_id', groupId).limit(5000),
+    db.from('notes').select('title').eq('group_id', groupId).limit(5000),
+  ]);
+  for (const e of (allEv.data ?? []) as { title: string; starts_at: string }[]) existingKeys.add(`E|${normTitle(e.title)}|${String(e.starts_at).slice(0, 10)}`);
+  for (const t of (allTk.data ?? []) as { title: string }[]) existingKeys.add(`T|${normTitle(t.title)}`);
+  for (const n of (allNt.data ?? []) as { title: string }[]) existingKeys.add(`N|${normTitle(n.title)}`);
   const ops = dropDupes(fresh, existingKeys);
   res.deduped = fresh.length - ops.length;
   if (res.deduped) console.log('丟棄與既有項目重複的抽取', groupId, res.deduped);
