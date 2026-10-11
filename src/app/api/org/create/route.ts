@@ -5,7 +5,8 @@ import { liffUser } from '@/core/liff';
 import { PLAN_LIMITS } from '@/org/plans';
 import { normalizeRefCode, recordReferral, REFERRAL } from '@/org/referral';
 
-// 自助建立組織：LINE 身分即 owner；免費方案（modules=gs、max_groups=1）。
+// 自助建立組織：LINE 身分即 owner；免費方案（modules=gs+expense、max_groups=1）。
+// 報帳一起開：個人也能自己建一個「一人組織」私訊群記記帳，不必等平台擁有者手動開（2026-10-11）。
 // 不走 gsAccess——這是「還沒有 org」的人唯一能打的寫入端點；守門測試以白名單註明。
 export async function POST(req: NextRequest) {
   const uid = await liffUser();
@@ -32,7 +33,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message ?? '建立失敗' }, { status: 500 });
   }
   const now = new Date().toISOString();
-  await db.from('org_settings').upsert({ org_id: org.id, modules: ['gs'], plan: 'free', max_groups: PLAN_LIMITS.free.groups, monthly_ai_calls: PLAN_LIMITS.free.aiCalls, updated_at: now }, { onConflict: 'org_id' });
+  await db.from('org_settings').upsert({ org_id: org.id, modules: ['gs', 'expense'], plan: 'free', max_groups: PLAN_LIMITS.free.groups, monthly_ai_calls: PLAN_LIMITS.free.aiCalls, updated_at: now }, { onConflict: 'org_id' });
   await db.from('org_members').upsert({ org_id: org.id, line_user_id: uid, role: 'owner' }, { onConflict: 'org_id,line_user_id' });
   // 推薦只記不發：獎勵等這家第一次付費才發（src/org/referral.ts）。記失敗也不擋註冊
   if (ref) await recordReferral(ref, org.id, uid);
