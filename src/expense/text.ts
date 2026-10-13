@@ -1,5 +1,6 @@
 import { EXPENSE_CATEGORIES, parseAmount } from './receipt';
 import { classifyNote } from './classify';
+import { addDays } from '@/core/date';
 
 // 文字／語音記帳（X2-6）：1:1 裡傳「午餐 120」「停車費150元」→ 記一筆。
 // 寧可漏記也不要誤記：只認「短短一句、品項在前、金額在最後」，其他一律當一般筆記。
@@ -61,6 +62,64 @@ export function pickProject(text: string, projects: readonly string[]): string {
 }
 
 const TIME_WORD = /^(今天|昨天|前天|早上|上午|中午|下午|傍晚|晚上|半夜|凌晨)$/;
+
+// 句子裡的時間字：「昨天中午 便當 110元」「10/3 停車 50」「下午3點半 咖啡 55」
+const DAY_WORD: Record<string, number> = { 今天: 0, 今日: 0, 昨天: -1, 昨日: -1, 前天: -2, 大前天: -3 };
+const PERIOD_HOUR: Record<string, number> = { 凌晨: 4, 早上: 8, 早晨: 8, 上午: 10, 中午: 12, 下午: 15, 傍晚: 18, 晚上: 19, 晚間: 19, 半夜: 23 };
+const DAY_RE = /大前天|前天|昨天|昨日|今天|今日/;
+const MD_RE = /(?<![\d/])(\d{1,2})[/月](\d{1,2})(?:日|號)?(?![\d/])/;
+const PERIOD_RE = /凌晨|早上|早晨|上午|中午|下午|傍晚|晚上|晚間|半夜/;
+const HOUR_RE = /(?<!\d)(\d{1,2})(?:點(?:(半)|(\d{1,2})分)?|:(\d{2}))(?!\d)/;
+const taipeiYmd = (d: Date) => d.toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
+
+export type When = { date: string | null; time: string | null; rest: string };
+
+/**
+ * 句子裡提到的日期／時間（台北時區）。date＝YYYY-MM-DD、time＝HH:MM，沒提到的為 null；rest＝拿掉時間字後的句子（給品項規則用）。
+ * ponytail: 月／日不帶年就用訊息那年；「上週三」「禮拜五」這種交給 AI 路徑（record.ts）
+ */
+export function pickWhen(text: string, at: Date): When {
+  let rest = text;
+  let date: string | null = null;
+  let time: string | null = null;
+  const day = rest.match(DAY_RE);
+  if (day) {
+    date = addDays(taipeiYmd(at), DAY_WORD[day[0]]);
+    rest = rest.replace(day[0], ' ');
+  }
+  const md = rest.match(MD_RE);
+  if (md) {
+    const y = taipeiYmd(at).slice(0, 4);
+    const mo = Number(md[1]);
+    const d = Number(md[2]);
+    if (mo >= 1 && mo <= 12 && d >= 1 && d <= 31) {
+      date = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      rest = rest.replace(md[0], ' ');
+    }
+  }
+  const period = rest.match(PERIOD_RE);
+  if (period) rest = rest.replace(period[0], ' ');
+  const hm = rest.match(HOUR_RE);
+  if (hm) {
+    let h = Number(hm[1]);
+    const m = hm[2] ? 30 : Number(hm[3] ?? hm[4] ?? 0);
+    if (period && PERIOD_HOUR[period[0]] >= 12 && h < 12) h += 12; // 下午3點 → 15
+    if (h <= 23 && m <= 59) {
+      time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      rest = rest.replace(hm[0], ' ');
+    }
+  } else if (period) {
+    time = `${String(PERIOD_HOUR[period[0]]).padStart(2, '0')}:00`;
+  }
+  return { date, time, rest: rest.replace(/\s+/g, ' ').trim() };
+}
+
+/** 寫進 expenses 的 spent_on／spent_at：句子有講就照句子，沒講就用訊息時間 */
+export function spentFields(at: Date, date: string | null, time: string | null): { spent_on: string; spent_at: string | null } {
+  if (!date && !time) return { spent_on: taipeiYmd(at), spent_at: at.toISOString() };
+  const spent_on = date ?? taipeiYmd(at);
+  return { spent_on, spent_at: time ? new Date(`${spent_on}T${time}:00+08:00`).toISOString() : null };
+}
 
 /**
  * 沒對到專案時的地點：品項第一個詞不是花費、也不是時間 → 當地點（「林口體育館 便當 110×20」「全家 咖啡」）。

@@ -4,7 +4,8 @@ import { aiScope, orgOfGroup } from '@/core/quota';
 import { getLLM } from '@/core/config';
 import { parseReceipt, type Receipt } from './receipt';
 import { orgCategories, orgProjects } from './categories';
-import { parseTextExpense, pickPlace, pickProject, type Hit } from './text';
+import { parseTextExpense, pickPlace, pickProject, pickWhen, spentFields, type Hit } from './text';
+import { parseDate } from './receipt';
 import { classifyNote } from './classify';
 import { withV2Fallback } from './store';
 
@@ -68,21 +69,28 @@ export async function recordReceipt(a: {
   return data?.length ? r : null; // 空＝重試時已記過，不再回覆
 }
 
-/** 一句話 → { 品項, 總金額 }；不像花費、AI 掛了 → null。沒有任何數字（含國字數字）的句子不可能有金額，直接略過省一次 AI */
-async function expenseByAi(groupId: string, text: string, cats: readonly string[]): Promise<Hit | null> {
+type AiHit = Hit & { date: string | null; time: string | null; place: string };
+
+/** 一句話 → { 品項, 總金額, 日期, 時間, 地點 }；不像花費、AI 掛了 → null。沒有任何數字（含國字數字）的句子不可能有金額，直接略過省一次 AI */
+async function expenseByAi(groupId: string, text: string, at: Date, cats: readonly string[]): Promise<AiHit | null> {
   if (text.length > 200 || !/[\d〇零一二兩三四五六七八九十百千萬]/.test(text)) return null;
+  const today = at.toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
+  const weekday = at.toLocaleDateString('zh-TW', { weekday: 'short', timeZone: 'Asia/Taipei' });
   try {
     const j = (await aiScope(groupId, () =>
-      getLLM().generateJson(`這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費或收入，回 JSON：{"item":"簡短品項","amount":總金額數字,"kind":"expense 或 income"}（amount 是全部金額；有單價和數量就算好乘起來；薪水、獎金、進帳、收款、退款是 income，其他是 expense）。若不是記帳（提醒、閒聊、問問題），或句子殘缺、看不出買了什麼（例如只有一串數字），回 {"item":null}，不要猜。`, {
+      getLLM().generateJson(`今天是 ${today}（${weekday}，台北時間）。這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費或收入，回 JSON：{"item":"簡短品項","amount":總金額數字,"kind":"expense 或 income","date":"花費日期 YYYY-MM-DD","time":"花費時間 HH:MM","place":"地點或店家"}（amount 是全部金額；有單價和數量就算好乘起來；薪水、獎金、進帳、收款、退款是 income，其他是 expense；date／time 依句子裡的「昨天、上週三、中午、下午三點」等推算，句子沒提就回 null，不要用今天補；place 是句子提到的地點、店家、案場，沒提就回空字串；item 不要含時間和地點）。若不是記帳（提醒、閒聊、問問題），或句子殘缺、看不出買了什麼（例如只有一串數字），回 {"item":null}，不要猜。`, {
         purpose: 'expense_text',
-        schema: { type: 'object', properties: { item: { type: 'string', nullable: true }, amount: { type: 'number', nullable: true }, kind: { type: 'string', enum: ['expense', 'income'] } }, required: ['item'] },
+        schema: { type: 'object', properties: { item: { type: 'string', nullable: true }, amount: { type: 'number', nullable: true }, kind: { type: 'string', enum: ['expense', 'income'] }, date: { type: 'string', nullable: true }, time: { type: 'string', nullable: true }, place: { type: 'string', nullable: true } }, required: ['item'] },
       }),
-    )) as { item?: unknown; amount?: unknown; kind?: unknown };
+    )) as { item?: unknown; amount?: unknown; kind?: unknown; date?: unknown; time?: unknown; place?: unknown };
     const amount = Number(j?.amount);
     if (typeof j?.item !== 'string' || !j.item.trim() || !Number.isFinite(amount) || amount <= 0) return null;
     const item = j.item.trim().slice(0, 30);
-    if (j.kind === 'income') return { item, amount: Math.round(amount), category: '收入', kind: 'income' };
-    return { item, amount: Math.round(amount), category: classifyNote(item, cats) ?? '雜支' };
+    const date = parseDate(j.date); // 格式不對就當沒講（退回訊息日期）
+    const time = typeof j.time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(j.time) ? j.time : null;
+    const place = typeof j.place === 'string' ? j.place.trim().slice(0, 60) : '';
+    if (j.kind === 'income') return { item, amount: Math.round(amount), category: '收入', kind: 'income', date, time, place };
+    return { item, amount: Math.round(amount), category: classifyNote(item, cats) ?? '雜支', date, time, place };
   } catch {
     return null;
   }
@@ -118,12 +126,16 @@ export async function recordTextExpense(a: {
   const orgId = await orgOfGroup(a.groupId);
   if (!orgId || !(await orgHasExpense(orgId))) return null;
   const cats = await orgCategories(orgId);
+  // 「昨天中午 便當 110元」：先把時間字抽走，規則只看剩下的「便當 110元」；日期／時間照句子，沒講才用訊息時間
+  const when = pickWhen(a.text, a.at);
   // 規則看不懂時改請 AI 抽並判斷是不是記帳（語音逐字稿常有口語、錯字：「加油98起油1156元」；打字也會有：「10/23號要與XX烤肉」→ AI 回不是）
-  let hit: (Hit & { alt?: Hit }) | null = parseTextExpense(a.text, cats) ?? (await expenseByAi(a.groupId, a.text, cats));
+  let hit: (Hit & { alt?: Hit; date?: string | null; time?: string | null; place?: string }) | null =
+    parseTextExpense(when.rest, cats) ?? (await expenseByAi(a.groupId, a.text, a.at, cats));
   if (!hit) return null;
   if (hit.alt && (await eachPriceByAi(a.groupId, a.text))) hit = hit.alt;
-  const r: Receipt = { amount: hit.amount, spent_on: taipeiDate(a.at), vendor: '', category: hit.category, invoice_no: '', kind: hit.kind ?? 'expense' };
-  // 「林口體育館 便當 110元 20個」→ 已有這個專案：專案＝地點；沒有：只猜地點（專案影響報表分組，不猜）
+  const spent = spentFields(a.at, hit.date ?? when.date, hit.time ?? when.time);
+  const r: Receipt = { amount: hit.amount, spent_on: spent.spent_on, vendor: '', category: hit.category, invoice_no: '', kind: hit.kind ?? 'expense' };
+  // 「林口體育館 便當 110元 20個」→ 已有這個專案：專案＝地點；沒有：AI 抽到的地點，再不然猜品項第一個詞（專案影響報表分組，不猜）
   const project = pickProject(a.text, await orgProjects(orgId));
   const row = {
     org_id: orgId,
@@ -131,9 +143,10 @@ export async function recordTextExpense(a: {
     person_name: a.senderName ?? null,
     media_asset_id: a.assetId ?? null,
     ...r,
+    spent_at: spent.spent_at,
     note: hit.item,
     project,
-    place_name: project || pickPlace(hit.item, cats),
+    place_name: project || hit.place || pickPlace(hit.item, cats),
     source: 'text',
   };
   const { data, error } = await withV2Fallback(row, (x) =>

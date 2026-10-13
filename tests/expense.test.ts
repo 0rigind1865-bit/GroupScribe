@@ -330,3 +330,27 @@ test('toCsv：有收入時加「收入合計」「結餘」，合計只算支出
   assert.ok(lines.includes('收入合計,,,,,1000'));
   assert.ok(lines.includes('結餘,,,,,900'));
 });
+
+// ── 記帳句子裡的時間／地點：語音講「昨天中午在全家買咖啡」，日期要是昨天、不是記帳當下（2026-10-13）──
+import { pickWhen, spentFields } from '../src/expense/text';
+
+test('pickWhen：昨天／前天、月日、時段、幾點半；時間字從句子拿掉', () => {
+  const at = new Date('2026-10-13T09:00:00+08:00');
+  assert.deepEqual(pickWhen('昨天中午 便當 110元', at), { date: '2026-10-12', time: '12:00', rest: '便當 110元' });
+  assert.deepEqual(pickWhen('前天 停車 50', at), { date: '2026-10-11', time: null, rest: '停車 50' });
+  assert.deepEqual(pickWhen('10/3 加油 1000元', at), { date: '2026-10-03', time: null, rest: '加油 1000元' });
+  assert.deepEqual(pickWhen('下午3點半 咖啡 55', at), { date: null, time: '15:30', rest: '咖啡 55' });
+  assert.deepEqual(pickWhen('晚上 晚餐 200', at), { date: null, time: '19:00', rest: '晚餐 200' });
+  assert.deepEqual(pickWhen('18:20 計程車 350', at), { date: null, time: '18:20', rest: '計程車 350' });
+  assert.deepEqual(pickWhen('午餐 120', at), { date: null, time: null, rest: '午餐 120' });
+  assert.deepEqual(pickWhen('便當 110×20', at), { date: null, time: null, rest: '便當 110×20' }); // 乘號不是日期
+  assert.equal(pickWhen('13/40 測試', at).date, null); // 不像日期就不動
+});
+
+test('spentFields：沒講時間用訊息時間；講了日期沒講時間 → 只有日期；講了時間 → 台北時間轉 ISO', () => {
+  const at = new Date('2026-10-13T09:00:00+08:00');
+  assert.deepEqual(spentFields(at, null, null), { spent_on: '2026-10-13', spent_at: at.toISOString() });
+  assert.deepEqual(spentFields(at, '2026-10-12', null), { spent_on: '2026-10-12', spent_at: null });
+  assert.deepEqual(spentFields(at, '2026-10-12', '12:00'), { spent_on: '2026-10-12', spent_at: '2026-10-12T04:00:00.000Z' });
+  assert.deepEqual(spentFields(at, null, '15:30'), { spent_on: '2026-10-13', spent_at: '2026-10-13T07:30:00.000Z' });
+});
