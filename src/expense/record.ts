@@ -71,9 +71,12 @@ export async function recordReceipt(a: {
 
 type AiHit = Hit & { date: string | null; time: string | null; place: string };
 
-/** 一句話 → { 品項, 總金額, 日期, 時間, 地點 }；不像花費、AI 掛了 → null。沒有任何數字（含國字數字）的句子不可能有金額，直接略過省一次 AI */
-async function expenseByAi(groupId: string, text: string, at: Date, cats: readonly string[]): Promise<AiHit | null> {
-  if (text.length > 200 || !/[\d〇零一二兩三四五六七八九十百千萬]/.test(text)) return null;
+/**
+ * 一句話 → { 品項, 總金額, 日期, 時間, 地點 }；不像花費、AI 掛了 → null。沒有任何數字（含國字數字）的句子不可能有金額，直接略過省一次 AI。
+ * maxLen：超過就不問 AI（長篇筆記不會是一筆花費）；語音逐字稿有口語贅字、比打字長，呼叫端放寬
+ */
+async function expenseByAi(groupId: string, text: string, at: Date, cats: readonly string[], maxLen = 200): Promise<AiHit | null> {
+  if (text.length > maxLen || !/[\d〇零一二兩三四五六七八九十百千萬]/.test(text)) return null;
   const today = at.toLocaleDateString('sv', { timeZone: 'Asia/Taipei' });
   const weekday = at.toLocaleDateString('zh-TW', { weekday: 'short', timeZone: 'Asia/Taipei' });
   try {
@@ -129,8 +132,9 @@ export async function recordTextExpense(a: {
   // 「昨天中午 便當 110元」：先把時間字抽走，規則只看剩下的「便當 110元」；日期／時間照句子，沒講才用訊息時間
   const when = pickWhen(a.text, a.at);
   // 規則看不懂時改請 AI 抽並判斷是不是記帳（語音逐字稿常有口語、錯字：「加油98起油1156元」；打字也會有：「10/23號要與XX烤肉」→ AI 回不是）
+  // 語音（有 assetId）放寬到 400 字：轉寫那次 AI 已經花了，逐字稿又比打字囉嗦，200 字的上限會把講得長一點的花費整句略過
   let hit: (Hit & { alt?: Hit; date?: string | null; time?: string | null; place?: string }) | null =
-    parseTextExpense(when.rest, cats) ?? (await expenseByAi(a.groupId, a.text, a.at, cats));
+    parseTextExpense(when.rest, cats) ?? (await expenseByAi(a.groupId, a.text, a.at, cats, a.assetId ? 400 : 200));
   if (!hit) return null;
   if (hit.alt && (await eachPriceByAi(a.groupId, a.text))) hit = hit.alt;
   const spent = spentFields(a.at, hit.date ?? when.date, hit.time ?? when.time);

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb, MEDIA_BUCKET } from '@/db';
 import { redirectTo } from '@/http';
 import { getConnector } from '@/core/config';
-import { analyzeAsset, mimeOfKind } from '@/core/ingest';
+import { analyzeAsset, liffUrl, mimeOfKind, pushDm } from '@/core/ingest';
+import { receiptReply } from '@/expense/record';
 import { gsAccess } from '@/org/orgs';
 
 export const maxDuration = 300;
@@ -27,7 +28,7 @@ export async function POST(req: NextRequest) {
       const { data: blob } = await db.storage.from(MEDIA_BUCKET).download(a.storage_path);
       if (!blob) continue;
       const msg = a.messages as unknown as { group_id: string; sender_name: string | null; created_at: string };
-      await analyzeAsset(
+      const out = await analyzeAsset(
         a.id,
         msg.group_id,
         Buffer.from(await blob.arrayBuffer()),
@@ -36,6 +37,8 @@ export async function POST(req: NextRequest) {
         msg.sender_name,
       );
       done++;
+      // 手動重跑補記成功的 1:1 報帳：replyToken 早就沒了，push 告知本人
+      if (out.receipt) await pushDm(msg.group_id, receiptReply(out.receipt, liffUrl({ path: '/a/expense' })));
     } catch (e) {
       console.error('重跑媒體解析失敗', a.id, e);
     }

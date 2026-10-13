@@ -50,3 +50,52 @@ test('createLineConnector：驗簽用傳進來的 channelSecret；沒有 secret 
   assert.equal(createLineConnector(() => ({ accessToken: '', channelSecret: 'secret-B' })).verifyWebhook(body, sig), false);
   assert.equal(createLineConnector(() => ({ accessToken: '', channelSecret: '' })).verifyWebhook(body, sig), false);
 });
+
+// ── 語音原檔：LINE 轉檔中回 202、body 空；舊版把它當成功存了空檔，那則語音就永遠解析失敗 ──
+const connector = createLineConnector(() => ({ accessToken: 't', channelSecret: 's' }));
+
+/** 依序回傳準備好的回應；記下打過哪些網址 */
+async function withFetch<T>(responses: (() => Response)[], run: () => Promise<T>): Promise<{ result: T; urls: string[] }> {
+  const urls: string[] = [];
+  const real = globalThis.fetch;
+  globalThis.fetch = (async (url: string | URL | Request) => {
+    urls.push(String(url));
+    const next = responses.shift();
+    if (!next) throw new Error(`多打了一次：${String(url)}`);
+    return next();
+  }) as typeof fetch;
+  try {
+    return { result: await run(), urls };
+  } finally {
+    globalThis.fetch = real;
+  }
+}
+const bin = (bytes: number[], status = 200) =>
+  new Response(Buffer.from(bytes), { status, headers: { 'content-type': 'audio/x-m4a' } });
+
+test('fetchMedia：202 轉檔中 → 查準備狀態 succeeded → 再抓一次拿到原檔', async () => {
+  const { result, urls } = await withFetch(
+    [() => bin([], 202), () => Response.json({ status: 'succeeded' }), () => bin([1, 2, 3])],
+    () => connector.fetchMedia('m1'),
+  );
+  assert.deepEqual([...result.data], [1, 2, 3]);
+  assert.equal(result.mime, 'audio/x-m4a');
+  assert.ok(urls[1].endsWith('/message/m1/content/transcoding'));
+  assert.equal(urls.length, 3);
+});
+
+test('fetchMedia：轉檔失敗、內容是空的、非 200 都丟錯，不回空 Buffer', async () => {
+  await assert.rejects(
+    withFetch([() => bin([], 202), () => Response.json({ status: 'failed' })], () => connector.fetchMedia('m2')),
+    /轉檔失敗/,
+  );
+  await assert.rejects(withFetch([() => bin([])], () => connector.fetchMedia('m3')), /空的/);
+  await assert.rejects(withFetch([() => bin([], 404)], () => connector.fetchMedia('m4')), /404/);
+});
+
+test('reply：成功回 ok、失敗（token 過期的 400）回 error，呼叫端才知道要改 push', async () => {
+  const ok = await withFetch([() => Response.json({}, { status: 200 })], () => connector.reply('r1', 'hi'));
+  assert.equal(ok.result, 'ok');
+  const bad = await withFetch([() => Response.json({ message: 'Invalid reply token' }, { status: 400 })], () => connector.reply('r2', 'hi'));
+  assert.equal(bad.result, 'error');
+});

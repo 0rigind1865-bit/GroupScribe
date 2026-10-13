@@ -121,10 +121,10 @@ LINE 平台 POST /api/webhook/line
 1. 1:1 私訊：只有問句（句尾問號或「查／找」開頭）才當成被 @。
 2. 群還沒被認領：完全不落地。
 3. 取發言者名稱、補群名。
-4. `isLowInfo()` 標記「好」「收到」、貼圖 → insert `messages`（23505＝LINE 重送，略過）。
+4. `isLowInfo()` 標記「好」「收到」、貼圖 → insert `messages`（23505＝LINE 重送或媒體重試：該抓的媒體還沒有 asset 才繼續，只補媒體）。
 5. 被 @ → `src/core/query.ts answer()` → reply，尾端附 LIFF 連結。
-6. 圖片／PDF／語音 → `processMedia()`：抓檔 → Storage `media/<groupId>/<messageId>` → insert `media_assets` → `analyzeAsset()` → Gemini Vision → 建索引 → `status=done`。1:1 收據走 `recordReceipt()`；語音逐字稿交給 `recordTextExpense()`。
-7. 1:1 文字且不是問句 → `recordTextExpense()`，記到就回一句。
+6. 圖片／PDF／語音 → `processMedia()`：抓檔（LINE 回 202 轉檔中就查準備狀態、最多等 12 秒）→ Storage `media/<groupId>/<messageId>` → insert `media_assets` → `analyzeAsset()` → Gemini Vision → 建索引 → `status=done`。抓檔到建 asset 之前失敗丟 `MediaFetchError`，整個 webhook 事件留在隊列等租約到期重抓（沒有 pending asset 可給重試接手）；解析失敗才留 pending 給 `retryPendingMedia()`。1:1 收據走 `recordReceipt()`；語音逐字稿交給 `recordTextExpense()`，沒記成一筆就把逐字稿 reply 給本人（`heardReply()`）。
+7. 1:1 文字且不是問句 → `recordTextExpense()`，記到就回一句。1:1 的回覆走 `notify()`：reply 失敗（token 過期）改 push；重試路徑補記成功也 push（`pushDm()`）。
 8. 有資訊量的文字 → `indexText('message')` → embed → insert `embeddings`。
 
 ### 5.4 抽取（合批後才跑）

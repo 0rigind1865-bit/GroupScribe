@@ -131,7 +131,8 @@ export const geminiVision: VisionProvider = {
       ],
       generationConfig: { response_mime_type: 'application/json' },
     }, audio ? 'audio' : 'vision');
-    const text = json.candidates?.[0]?.content?.parts?.[0]?.text ?? '{}';
+    // 把所有 parts 接起來（generate/generateJson 也這麼做）：只取 parts[0] 時，回應被拆成多段就會拿到半截 JSON 而解析失敗
+    const text = json.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? '').join('') || '{}';
     const parsed = JSON.parse(text);
     return {
       ocrText: parsed.ocr_text ?? '',

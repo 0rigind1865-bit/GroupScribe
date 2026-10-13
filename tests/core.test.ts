@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseLineExport, inExtractWindow } from '../src/core/importer';
 import { AI_EDITOR, fmtDate, isRevised, needsReview } from '../src/core/date';
-import { isLowInfo, mimeOfKind, DM_ASK_RE } from '../src/core/ingest';
+import { isLowInfo, mimeOfKind, heardReply, DM_ASK_RE } from '../src/core/ingest';
 import { lineConnector } from '../src/connectors/line';
 import { rankHits } from '../src/core/query';
 import { parseOps, dropDupes, CONFIRM_RE, type RefMaps, type ParsedOp } from '../src/core/extract';
@@ -291,6 +291,14 @@ test('個人筆記（G8）：1:1 事件轉成 dm:<userId> 群，問句才回答'
   assert.equal((evs[2] as any).groupId, 'dm:U1');
   for (const q of ['上次報價多少？', '車號是?', '查 車號', '找一下合約']) assert.ok(DM_ASK_RE.test(q), q);
   for (const t of ['明天 9 點看場地', '報價 48000', '我要查一下再說']) assert.ok(!DM_ASK_RE.test(t), t);
+});
+
+test('heardReply：語音沒記成一筆時回逐字稿；空的或整句 ??? 說沒聽清楚', () => {
+  assert.match(heardReply('今天去林口看場地'), /聽到了：「今天去林口看場地」/);
+  assert.match(heardReply('今天去林口看場地'), /沒記帳/);
+  assert.match(heardReply(''), /沒聽清楚/);
+  assert.match(heardReply(' ??? ??? '), /沒聽清楚/);
+  assert.ok(heardReply('很長'.repeat(300)).length < 300); // 逐字稿截到 200 字，回覆不會變成一面牆
 });
 
 // ── G7 進群告知：三段、明寫由認領公司管理且可匯出、整段不過長 ──

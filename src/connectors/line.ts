@@ -14,6 +14,10 @@ export const envCreds = (): LineCreds => ({
   channelSecret: process.env.LINE_CHANNEL_SECRET ?? '',
 });
 
+// 語音／影片轉檔等待：每 1.5 秒查一次準備狀態，最多等 12 秒（webhook 事件是排隊逐一處理的，等太久會拖到後面的訊息）
+const TRANSCODE_WAIT_MS = 12_000;
+const TRANSCODE_POLL_MS = 1_500;
+
 // 群組成員顯示名稱快取。ponytail: in-memory、重啟即清，之後量大再落 DB
 const nameCache = new Map<string, string>();
 // 群組 summary（名稱/頭貼）快取，同上
@@ -106,15 +110,30 @@ export function createLineConnector(creds: () => LineCreds): MessagingConnector 
       return out;
     },
 
+    // 語音／影片剛送出時 LINE 可能還在轉檔：content 端點回 202、body 是空的（舊版把 202 當成功，
+    // 空檔存進 Storage 後解析永遠失敗、重試三次就放棄＝那則語音無聲消失）。
+    // 遇 202 就查「準備狀態」，好了再抓；等不到或轉檔失敗就丟錯，讓呼叫端把這個 webhook 事件留著稍後重試。
     async fetchMedia(ref) {
-      const res = await fetch(`${DATA_API}/message/${ref}/content`, {
-        headers: { authorization: `Bearer ${token()}` },
-      });
-      if (!res.ok) throw new Error(`LINE 抓取媒體失敗 ${res.status}`);
-      return {
-        data: Buffer.from(await res.arrayBuffer()),
-        mime: res.headers.get('content-type') ?? 'application/octet-stream',
-      };
+      const headers = { authorization: `Bearer ${token()}` };
+      const get = () => fetch(`${DATA_API}/message/${ref}/content`, { headers });
+      let res = await get();
+      const deadline = Date.now() + TRANSCODE_WAIT_MS;
+      let polled = false;
+      while (res.status === 202) {
+        if (Date.now() >= deadline) throw new Error('LINE 媒體還在準備中（轉檔未完成），稍後重試');
+        const st = await fetch(`${DATA_API}/message/${ref}/content/transcoding`, { headers })
+          .then((r) => (r.ok ? (r.json() as Promise<{ status?: string }>) : null))
+          .catch(() => null);
+        if (st?.status === 'failed') throw new Error('LINE 媒體轉檔失敗');
+        // 第一次查就 succeeded → 立刻再抓；其餘情況（還在 processing、或說好了卻又回 202）都先等一下，別打成緊迴圈
+        if (st?.status !== 'succeeded' || polled) await new Promise((r) => setTimeout(r, TRANSCODE_POLL_MS));
+        polled = true;
+        res = await get();
+      }
+      if (res.status !== 200) throw new Error(`LINE 抓取媒體失敗 ${res.status}`);
+      const data = Buffer.from(await res.arrayBuffer());
+      if (!data.length) throw new Error('LINE 抓取媒體失敗：內容是空的');
+      return { data, mime: res.headers.get('content-type') ?? 'application/octet-stream' };
     },
 
     async reply(replyToken, text) {
@@ -123,7 +142,9 @@ export function createLineConnector(creds: () => LineCreds): MessagingConnector 
         headers: { 'content-type': 'application/json', authorization: `Bearer ${token()}` },
         body: JSON.stringify({ replyToken, messages: [{ type: 'text', text: text.slice(0, 4900) }] }), // LINE 上限 5000 字
       });
-      if (!res.ok) console.error('LINE 回覆失敗', res.status, await res.text());
+      if (res.ok) return 'ok';
+      console.error('LINE 回覆失敗', res.status, await res.text()); // 400 Invalid reply token＝過期或用過
+      return 'error';
     },
 
     // 1:1 推送。LINE 硬約束：對方必須已加 bot 好友，只是群成員不行（計劃 B.8）。

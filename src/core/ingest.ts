@@ -376,6 +376,45 @@ async function unlinkFromItems(groupId: string, messageId: string) {
 export const mimeOfKind = (kind: string) =>
   kind === 'pdf' ? 'application/pdf' : kind === 'audio' ? 'audio/mp4' : 'image/jpeg';
 
+// 媒體原檔還沒拿到手：LINE 抓檔失敗／還在轉檔、Storage 上傳失敗、media_assets 列沒建成。
+// 這種失敗沒有 pending 的 asset 可給 retryPendingMedia 接手，吞掉就等於這則語音／照片無聲消失。
+// handleMessage 會把它往上丟，讓 webhook 事件留在隊列（租約到期後重抓）；訊息列已存，重試時只補媒體。
+export class MediaFetchError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MediaFetchError';
+  }
+}
+
+/** 一份媒體解析完的結果 */
+export type MediaOutcome = {
+  receipt: Receipt | null; // 1:1 收據照／語音記成了一筆報帳（給回覆用）
+  heard?: string; // 1:1 語音（公司有開報帳）聽到的逐字稿、但沒記成一筆：回給本人看，讓他分得出「不是記帳」和「訊息掉了」
+};
+
+// 1:1 語音沒記成一筆時的回覆（reply 免費；沒有 token 就算了，不 push）。內容已進索引與抽取，所以說「存成筆記」
+export const heardReply = (transcript: string): string => {
+  const t = transcript.trim();
+  if (!t || /^\?+$/.test(t.replace(/\s/g, ''))) return '🎤 這段語音沒聽清楚，所以沒有記。要記帳的話請再說一次或打字（例如「便當 120」）。';
+  return `🎤 聽到了：「${t.slice(0, 200)}」\n沒看出品項和金額，所以沒記帳（內容已存成筆記）。要記帳請講品項和金額，例如「便當 120」。`;
+};
+
+/** 1:1 主動推送（重試路徑沒有 replyToken、或 token 已過期時用）；群組或平台不支援就略過 */
+export async function pushDm(groupId: string, text: string): Promise<void> {
+  const connector = getConnector();
+  if (!isDm(groupId) || !connector.push) return;
+  const r = await connector.push(groupId.slice(3), text).catch(() => 'error' as const);
+  if (r !== 'ok') console.error('1:1 推送失敗', groupId, r);
+}
+
+// 回覆一則訊息：reply 免費但 token 有時效——語音要先轉寫、前面幾則還在排隊時常常過期，
+// 回覆失敗只留一行 log，使用者只看到「已讀」沒回，以為那則被略過了。
+// 1:1 過期就改 push（佔 1 則推送額度）；群組不 push（群組永遠零聲量）。
+async function notify(m: { groupId: string; replyToken?: string }, text: string): Promise<void> {
+  if (m.replyToken && (await getConnector().reply(m.replyToken, text).catch(() => 'error' as const)) === 'ok') return;
+  await pushDm(m.groupId, text);
+}
+
 // 待解析媒體的自動重試（審查 P0：解析失敗只留一行 log，等人記得敲 curl＝知識默默流失）。
 // 每次 webhook 順手清幾筆，遇 429（配額用完）立刻停手不燒錢。/api/process 降為手動保險閥。
 const RETRY_PER_TICK = 3;
@@ -412,7 +451,7 @@ export async function retryPendingMedia(groupId: string): Promise<number> {
         continue;
       }
       const msg = a.messages as unknown as { group_id: string; sender_name: string | null; created_at: string };
-      await analyzeAsset(
+      const out = await analyzeAsset(
         a.id,
         msg.group_id,
         Buffer.from(await blob.arrayBuffer()),
@@ -422,6 +461,9 @@ export async function retryPendingMedia(groupId: string): Promise<number> {
       );
       mediaAttempts.delete(a.id);
       done++;
+      // 第一次解析失敗（Gemini 503、JSON 壞掉）、這裡補記成功的 1:1 報帳：replyToken 早就沒了，改 push 告知，
+      // 不然本人只看到那則語音沒回應。recordTextExpense／recordReceipt 只在「新寫入」時才回 receipt，不會重複通知
+      if (out.receipt) await pushDm(msg.group_id, receiptReply(out.receipt, liffUrl({ path: '/a/expense' })));
     } catch (e) {
       const emsg = String((e as Error)?.message ?? e);
       const quota = /429|RESOURCE_EXHAUSTED|spending cap/i.test(emsg) || isQuotaError(e); // 全站配額或該 org 月額度
@@ -456,6 +498,7 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
   await ensureGroupProfile(m.groupId).catch((e) => console.error('群組名稱更新失敗', e));
   const senderName = m.senderId ? await connector.resolveSenderName?.(m.groupId, m.senderId) : undefined;
 
+  const wantsMedia = !!m.mediaRef && (m.type === 'image' || m.type === 'pdf' || m.type === 'audio');
   const lowInfo = m.type === 'text' ? isLowInfo(m.text) : m.type === 'other';
   const { data: row, error } = await db
     .from('messages')
@@ -473,13 +516,26 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
     })
     .select('id')
     .single();
+  let rowId: string = row?.id;
+  let fresh = true; // 第一次處理這則；false＝重送／重試，只補媒體，回答與索引不重做
   if (error) {
-    if ((error as { code?: string }).code === '23505') return; // webhook 重送：同一則訊息已處理過
-    throw error;
+    if ((error as { code?: string }).code !== '23505') throw error;
+    // 同一則訊息已存：webhook 重送，或上次原檔沒抓到（MediaFetchError）後的重試。
+    // 只有「該抓的媒體還沒有 asset」才繼續，否則略過
+    if (!wantsMedia || !m.messageId) return;
+    const { data: old } = await db
+      .from('messages')
+      .select('id, media_assets(id)')
+      .eq('channel_id', channelId)
+      .eq('message_id', m.messageId)
+      .maybeSingle();
+    if (!old || ((old as { media_assets?: unknown[] }).media_assets ?? []).length) return;
+    rowId = old.id;
+    fresh = false;
   }
 
   // 被 @ 就先回答（replyToken 有時效，優先處理）
-  if (m.mentionsBot && m.replyToken) {
+  if (fresh && m.mentionsBot && m.replyToken) {
     const q = (m.question ?? '').trim();
     const a = q
       ? await answer(m.groupId, q).catch((e) => {
@@ -493,47 +549,63 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
     await connector.reply(m.replyToken, url ? `${a}\n\n📋 完整行程／待辦 👉 ${url}` : a);
   }
 
-  // 圖片 / PDF：抓原檔 → Storage → Vision 解析 → 索引
-  if (m.mediaRef && (m.type === 'image' || m.type === 'pdf' || m.type === 'audio')) {
-    const receipt = await processMedia(row.id, m, senderName).catch((e) => {
-      console.error('媒體處理失敗（asset 留 pending，可用 POST /api/process 重跑）', e);
-      return null;
-    });
-    // 1:1 收據記好了就回一句（reply 免費；replyToken 有時效，所以在這裡當下回，不排隊）
-    if (receipt && m.replyToken) await connector.reply(m.replyToken, receiptReply(receipt, liffUrl({ path: '/a/expense' }))).catch(() => {});
+  // 圖片 / PDF / 語音：抓原檔 → Storage → Vision 解析 → 索引
+  if (wantsMedia) {
+    let out: MediaOutcome = { receipt: null };
+    try {
+      out = await processMedia(rowId, m, senderName);
+    } catch (e) {
+      // 原檔沒拿到（LINE 還在轉檔、抓檔失敗）：往上丟，這個 webhook 事件會留在隊列、租約到期後重抓。
+      // 解析失敗則不同：asset 已是 pending，retryPendingMedia 會接手，這裡只記 log
+      if (e instanceof MediaFetchError) throw e;
+      console.error('媒體解析失敗（asset 留 pending，之後自動重試，或 POST /api/process 重跑）', e);
+    }
+    // 1:1 收據／語音記好了就回一句；token 過期（轉寫花太久、前面幾則排隊）就改 push
+    if (out.receipt) await notify(m, receiptReply(out.receipt, liffUrl({ path: '/a/expense' })));
+    // 語音聽到了但沒記成一筆：把逐字稿回給本人（只用免費的 reply；過期就算了）
+    else if (out.heard !== undefined && m.replyToken) await connector.reply(m.replyToken, heardReply(out.heard)).catch(() => {});
   }
 
   // 1:1 文字「午餐 120」→ 記一筆報帳並回覆（X2-6）；不是問句才看，問句交給上面的問答
-  if (isDm(m.groupId) && m.type === 'text' && m.text && !m.mentionsBot) {
+  if (fresh && isDm(m.groupId) && m.type === 'text' && m.text && !m.mentionsBot) {
     const exp = await recordTextExpense({ groupId: m.groupId, text: m.text, at: m.timestamp, senderName }).catch(() => null);
-    if (exp && m.replyToken) await connector.reply(m.replyToken, receiptReply(exp, liffUrl({ path: '/a/expense' }))).catch(() => {});
+    if (exp) await notify(m, receiptReply(exp, liffUrl({ path: '/a/expense' })));
   }
 
   // 有資訊量的文字才進索引；額度用完只略過索引（訊息已存，/api/reindex 可事後補）
-  if (m.type === 'text' && !lowInfo && m.text) {
-    await indexText(m.groupId, 'message', row.id, label(m.timestamp, senderName) + m.text, m.timestamp).catch((e) => {
+  if (fresh && m.type === 'text' && !lowInfo && m.text) {
+    await indexText(m.groupId, 'message', rowId, label(m.timestamp, senderName) + m.text, m.timestamp).catch((e) => {
       if (!isQuotaError(e)) throw e;
     });
   }
 }
 
-async function processMedia(messageRowId: string, m: NormalizedMessage, senderName?: string): Promise<Receipt | null> {
+async function processMedia(messageRowId: string, m: NormalizedMessage, senderName?: string): Promise<MediaOutcome> {
   const db = getDb();
-  const { data, mime } = await getConnector().fetchMedia(m.mediaRef!);
-  const path = `${m.groupId}/${m.messageId ?? messageRowId}`;
-  const up = await db.storage.from(MEDIA_BUCKET).upload(path, data, { contentType: mime, upsert: true });
-  if (up.error) throw up.error;
-  const { data: asset, error } = await db
-    .from('media_assets')
-    .insert({ message_id: messageRowId, kind: m.type, storage_path: path })
-    .select('id')
-    .single();
-  if (error) throw error;
+  let data: Buffer;
+  let mime: string;
+  let assetId: string;
+  // 拿原檔到建好 asset 列為止的失敗都包成 MediaFetchError：這段失敗沒有 pending asset 可重試，要靠 webhook 隊列重來
+  try {
+    ({ data, mime } = await getConnector().fetchMedia(m.mediaRef!));
+    const path = `${m.groupId}/${m.messageId ?? messageRowId}`;
+    const up = await db.storage.from(MEDIA_BUCKET).upload(path, data, { contentType: mime, upsert: true });
+    if (up.error) throw up.error;
+    const { data: asset, error } = await db
+      .from('media_assets')
+      .insert({ message_id: messageRowId, kind: m.type, storage_path: path })
+      .select('id')
+      .single();
+    if (error) throw error;
+    assetId = asset.id;
+  } catch (e) {
+    throw new MediaFetchError(`媒體原檔取得失敗：${String((e as Error)?.message ?? e)}`);
+  }
   // 送 AI 用正規化的 mime：LINE 語音回 audio/x-m4a，Gemini 不認（Storage 仍存原始 Content-Type）
-  return analyzeAsset(asset.id, m.groupId, data, m.type === 'audio' ? mimeOfKind('audio') : mime, m.timestamp, senderName);
+  return analyzeAsset(assetId, m.groupId, data, m.type === 'audio' ? mimeOfKind('audio') : mime, m.timestamp, senderName);
 }
 
-// Vision 解析＋索引；/api/process 重跑 pending 時也走這裡
+// Vision 解析＋索引；retryPendingMedia 與 /api/process 重跑 pending 時也走這裡
 export async function analyzeAsset(
   assetId: string,
   groupId: string,
@@ -541,8 +613,9 @@ export async function analyzeAsset(
   mime: string,
   at: Date,
   senderName?: string | null,
-): Promise<Receipt | null> {
-  // 個人筆記的圖：帶該公司的報帳分類給 AI 挑（X2-4）；群組的圖不記帳，用不到
+): Promise<MediaOutcome> {
+  // 個人筆記的圖：帶該公司的報帳分類給 AI 挑（X2-4）；群組的圖不記帳，用不到。
+  // 有值＝這個 1:1 所屬公司有開報帳（語音沒記成時要回逐字稿就靠這個判斷）
   const receiptCategories = isDm(groupId) ? await receiptCategoriesOf(groupId) : undefined;
   return aiScope(groupId, async () => {
   const r = await getVision().analyze(data, mime, { receiptCategories });
@@ -560,10 +633,14 @@ export async function analyzeAsset(
       processed_at: new Date().toISOString(),
     })
     .eq('id', assetId);
-  // 1:1 私訊的收據 → 記一筆報帳（X1）；重試路徑也會記，但只有第一次（processMedia）會回覆
-  if (r.receipt) return recordReceipt({ assetId, groupId, raw: r.receipt, at, senderName });
-  // 1:1 語音「午餐 120」→ 逐字稿走文字記帳（X2-6）
-  if (mime.startsWith('audio/') && r.ocrText) return recordTextExpense({ groupId, text: r.ocrText, at, senderName, assetId });
-  return null;
+  // 1:1 私訊的收據 → 記一筆報帳（X1）；重試路徑也會記（呼叫端改用 push 告知）
+  if (r.receipt) return { receipt: await recordReceipt({ assetId, groupId, raw: r.receipt, at, senderName }) };
+  // 1:1 語音「午餐 120」→ 逐字稿走文字記帳（X2-6）；沒記成且公司有開報帳 → 把逐字稿帶回去給本人看
+  if (mime.startsWith('audio/')) {
+    const receipt = r.ocrText ? await recordTextExpense({ groupId, text: r.ocrText, at, senderName, assetId }) : null;
+    if (receipt) return { receipt };
+    return receiptCategories ? { receipt: null, heard: r.ocrText } : { receipt: null };
+  }
+  return { receipt: null };
   });
 }
