@@ -60,8 +60,10 @@ export interface MessagingConnector {
   readonly supportsBackfill: boolean; // Discord/Slack 可原生回補歷史；LINE/Telegram 靠匯入（規劃書 6.5）
   verifyWebhook(rawBody: string, signature: string): boolean;
   parseEvents(body: unknown): NormalizedEvent[];
+  // 抓不到（含還在轉檔、內容是空的）一律丟錯，不回空 Buffer：呼叫端據此決定重試，絕不把空檔當原檔存起來
   fetchMedia(ref: string): Promise<{ data: Buffer; mime: string }>;
-  reply(replyToken: string, text: string): Promise<void>;
+  // 回 'error' 多半是 replyToken 過期（處理太久、或前面幾則排隊）；1:1 的呼叫端可改用 push 補送
+  reply(replyToken: string, text: string): Promise<'ok' | 'error'>;
   // 主動送達（計劃 B.8）：只對「自己訂閱的個人」1:1 推送，群組永遠零聲量。
   // 回傳 'blocked' 表示對方封鎖或未加好友（呼叫端應停用該訂閱），'error' 為暫時性失敗
   push?(userId: string, text: string): Promise<'ok' | 'blocked' | 'error'>;

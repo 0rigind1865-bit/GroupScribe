@@ -347,9 +347,11 @@ test('pickWhen：昨天／前天、月日、時段、幾點半；時間字從句
   assert.equal(pickWhen('13/40 測試', at).date, null); // 不像日期就不動
 });
 
-test('spentFields：沒講時間用訊息時間；講了日期沒講時間 → 只有日期；講了時間 → 台北時間轉 ISO', () => {
+test('spentFields：沒講時間用訊息時間；講了別天沒講時間 → 只有日期；講了時間 → 台北時間轉 ISO', () => {
   const at = new Date('2026-10-13T09:00:00+08:00');
   assert.deepEqual(spentFields(at, null, null), { spent_on: '2026-10-13', spent_at: at.toISOString() });
+  // 日期是訊息當天（「今天」、AI 補了今天、收據日期＝今天）→ 當沒講，仍用訊息時間；舊版回 null，畫面全變 12:00
+  assert.deepEqual(spentFields(at, '2026-10-13', null), { spent_on: '2026-10-13', spent_at: at.toISOString() });
   assert.deepEqual(spentFields(at, '2026-10-12', null), { spent_on: '2026-10-12', spent_at: null });
   assert.deepEqual(spentFields(at, '2026-10-12', '12:00'), { spent_on: '2026-10-12', spent_at: '2026-10-12T04:00:00.000Z' });
   assert.deepEqual(spentFields(at, null, '15:30'), { spent_on: '2026-10-13', spent_at: '2026-10-13T07:30:00.000Z' });
