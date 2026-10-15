@@ -114,10 +114,15 @@ export function pickWhen(text: string, at: Date): When {
   return { date, time, rest: rest.replace(/\s+/g, ' ').trim() };
 }
 
-/** 寫進 expenses 的 spent_on／spent_at：句子有講就照句子，沒講就用訊息時間 */
+/**
+ * 寫進 expenses 的 spent_on／spent_at：句子有講就照句子，沒講就用訊息時間。
+ * 只講日期沒講幾點：日期是訊息當天（「今天 便當 120」、AI 把 prompt 裡的今天填進 date、收據日期＝今天）就當沒講，
+ * 仍用訊息時間；別天才留 null（畫面退回顯示中午）。沒這條的話 spent_at 一律 null，每筆都變 12:00。
+ */
 export function spentFields(at: Date, date: string | null, time: string | null): { spent_on: string; spent_at: string | null } {
-  if (!date && !time) return { spent_on: taipeiYmd(at), spent_at: at.toISOString() };
-  const spent_on = date ?? taipeiYmd(at);
+  const today = taipeiYmd(at);
+  if (!time && (!date || date === today)) return { spent_on: today, spent_at: at.toISOString() };
+  const spent_on = date ?? today;
   return { spent_on, spent_at: time ? new Date(`${spent_on}T${time}:00+08:00`).toISOString() : null };
 }
 

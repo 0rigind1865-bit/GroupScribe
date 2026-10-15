@@ -49,19 +49,19 @@ export async function recordReceipt(a: {
     : same.eq('line_user_id', a.groupId.slice(3)).eq('spent_on', r.spent_on).eq('amount', r.amount).eq('vendor', r.vendor)
   ).limit(1);
   if (dup?.length) return { ...r, duplicate: true };
-  const { data, error } = await getDb()
-    .from('expenses')
-    .upsert(
-      {
-        org_id: orgId,
-        line_user_id: a.groupId.slice(3), // dm:<userId>
-        person_name: a.senderName ?? null,
-        media_asset_id: a.assetId,
-        ...r,
-      },
-      { onConflict: 'media_asset_id', ignoreDuplicates: true },
-    )
-    .select('id');
+  // 收據只讀日期沒讀時間：收據是今天的就用訊息時間（通常付完就拍），別天留 null。
+  // ponytail: 收據上其實印有時間，要更準就在 vision prompt 多要一個 time 欄位
+  const row = {
+    org_id: orgId,
+    line_user_id: a.groupId.slice(3), // dm:<userId>
+    person_name: a.senderName ?? null,
+    media_asset_id: a.assetId,
+    ...r,
+    spent_at: spentFields(a.at, r.spent_on, null).spent_at,
+  };
+  const { data, error } = await withV2Fallback(row, (x) =>
+    getDb().from('expenses').upsert(x, { onConflict: 'media_asset_id', ignoreDuplicates: true }).select('id'),
+  );
   if (error) {
     console.warn('報帳寫入失敗（migration 022 跑了嗎？）', error.message);
     return null;
@@ -81,7 +81,7 @@ async function expenseByAi(groupId: string, text: string, at: Date, cats: readon
   const weekday = at.toLocaleDateString('zh-TW', { weekday: 'short', timeZone: 'Asia/Taipei' });
   try {
     const j = (await aiScope(groupId, () =>
-      getLLM().generateJson(`今天是 ${today}（${weekday}，台北時間）。這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費或收入，回 JSON：{"item":"簡短品項","amount":總金額數字,"kind":"expense 或 income","date":"花費日期 YYYY-MM-DD","time":"花費時間 HH:MM","place":"地點或店家"}（amount 是全部金額；有單價和數量就算好乘起來；薪水、獎金、進帳、收款、退款是 income，其他是 expense；date／time 依句子裡的「昨天、上週三、中午、下午三點」等推算，句子沒提就回 null，不要用今天補；place 是句子提到的地點、店家、案場，沒提就回空字串；item 不要含時間和地點）。若不是記帳（提醒、閒聊、問問題），或句子殘缺、看不出買了什麼（例如只有一串數字），回 {"item":null}，不要猜。`, {
+      getLLM().generateJson(`今天是 ${today}（${weekday}，台北時間）。這是使用者私訊的一句話（可能是語音轉文字，有錯字或口語）：「${text}」。若這是在記一筆花費或收入，回 JSON：{"item":"簡短品項","amount":總金額數字,"kind":"expense 或 income","date":"花費日期 YYYY-MM-DD","time":"花費時間 HH:MM","place":"地點或店家"}（amount 是全部金額；有單價和數量就算好乘起來；薪水、獎金、進帳、收款、退款是 income，其他是 expense；date／time 依句子裡的「昨天、上週三、中午、下午三點」等推算；句子沒講日期 date 就回 null（不要填今天），沒講幾點 time 就回 null（不要因為是午餐就猜 12:00）；place 是句子提到的地點、店家、案場，沒提就回空字串；item 不要含時間和地點）。若不是記帳（提醒、閒聊、問問題），或句子殘缺、看不出買了什麼（例如只有一串數字），回 {"item":null}，不要猜。`, {
         purpose: 'expense_text',
         schema: { type: 'object', properties: { item: { type: 'string', nullable: true }, amount: { type: 'number', nullable: true }, kind: { type: 'string', enum: ['expense', 'income'] }, date: { type: 'string', nullable: true }, time: { type: 'string', nullable: true }, place: { type: 'string', nullable: true } }, required: ['item'] },
       }),
