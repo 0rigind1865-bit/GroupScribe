@@ -51,20 +51,18 @@ export async function recordReceipt(a: {
   if (dup?.length) return { ...r, duplicate: true, id: dup[0].id };
   // 收據不會講專案：當天在某個專案地點打卡就算那個專案（時間只到日，取當天最後打卡的）
   const project = await punchProjectOfDay(orgId, a.groupId.slice(3), r.spent_on, await orgProjects(orgId), null);
-  const { data, error } = await getDb()
-    .from('expenses')
-    .upsert(
-      {
-        org_id: orgId,
-        line_user_id: a.groupId.slice(3), // dm:<userId>
-        person_name: a.senderName ?? null,
-        media_asset_id: a.assetId,
-        ...r,
-        project,
-      },
-      { onConflict: 'media_asset_id', ignoreDuplicates: true },
-    )
-    .select('id');
+  const row = {
+    org_id: orgId,
+    line_user_id: a.groupId.slice(3), // dm:<userId>
+    person_name: a.senderName ?? null,
+    media_asset_id: a.assetId,
+    ...r,
+    spent_at: spentFields(a.at, r.spent_on, null).spent_at, // ponytail: 收據上的時刻沒抽，同一天就用訊息時間
+    project,
+  };
+  const { data, error } = await withV2Fallback(row, (x) =>
+    getDb().from('expenses').upsert(x, { onConflict: 'media_asset_id', ignoreDuplicates: true }).select('id'),
+  );
   if (error) {
     console.warn('報帳寫入失敗（migration 022 跑了嗎？）', error.message);
     return null;

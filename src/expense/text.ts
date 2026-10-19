@@ -116,9 +116,10 @@ export function pickWhen(text: string, at: Date): When {
 
 /** 寫進 expenses 的 spent_on／spent_at：句子有講就照句子，沒講就用訊息時間 */
 export function spentFields(at: Date, date: string | null, time: string | null): { spent_on: string; spent_at: string | null } {
-  if (!date && !time) return { spent_on: taipeiYmd(at), spent_at: at.toISOString() };
   const spent_on = date ?? taipeiYmd(at);
-  return { spent_on, spent_at: time ? new Date(`${spent_on}T${time}:00+08:00`).toISOString() : null };
+  if (time) return { spent_on, spent_at: new Date(`${spent_on}T${time}:00+08:00`).toISOString() };
+  // 沒講幾點：是訊息那天（含「今天」）就用訊息時間；講了別天又沒講幾點 → 不亂填
+  return { spent_on, spent_at: spent_on === taipeiYmd(at) ? at.toISOString() : null };
 }
 
 /**

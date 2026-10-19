@@ -353,6 +353,7 @@ test('spentFields：沒講時間用訊息時間；講了日期沒講時間 → �
   assert.deepEqual(spentFields(at, '2026-10-12', null), { spent_on: '2026-10-12', spent_at: null });
   assert.deepEqual(spentFields(at, '2026-10-12', '12:00'), { spent_on: '2026-10-12', spent_at: '2026-10-12T04:00:00.000Z' });
   assert.deepEqual(spentFields(at, null, '15:30'), { spent_on: '2026-10-13', spent_at: '2026-10-13T07:30:00.000Z' });
+  assert.deepEqual(spentFields(at, '2026-10-13', null), { spent_on: '2026-10-13', spent_at: at.toISOString() }); // 「今天 便當 100」
 });
 
 test('receiptReply：有專案就多一行「📁 專案」，沒有就不加', () => {
