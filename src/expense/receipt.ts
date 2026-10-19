@@ -15,7 +15,7 @@ export type Receipt = {
   kind?: 'expense' | 'income'; // 沒給＝支出
   duplicate?: boolean; // 這張之前記過了、這次沒再記（只給 1:1 回覆用）
   id?: string; // 那筆 expenses 的 id（只給 1:1 回覆的連結用，點了直接開那筆）
-  project?: string; // 文字／語音記帳歸到的專案（只給 1:1 回覆用，讓本人一眼看出沿用錯了）
+  project?: string; // 歸到的專案（字面、AI、或當天打卡地點）（只給 1:1 回覆用，讓本人一眼看出沿用錯了）
 };
 
 const INVOICE_RE = /^[A-Z]{2}\d{8}$/;

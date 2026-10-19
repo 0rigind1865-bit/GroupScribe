@@ -366,3 +366,19 @@ test('mergeProjects：報帳與群組檔案的案名合成一份，去重、去�
   assert.deepEqual(mergeProjects(['林口案', ' 新莊 '], [null, '', '未分類', '新莊', '台中展']), ['林口案', '新莊', '台中展']);
   assert.deepEqual(mergeProjects([], []), []);
 });
+
+test('projectFromPunches：打卡地點跟專案一字不差才算；有花費時間取那之前最後一次打卡', async () => {
+  const { projectFromPunches } = await import('../src/expense/record');
+  const p = ['林口體育館', '新莊倉庫案'];
+  const punches = [
+    { location_name: '公司', punched_at: '2026-10-19T10:00:00Z' }, // 18:00 回公司：不是專案
+    { location_name: '新莊倉庫案', punched_at: '2026-10-19T05:00:00Z' }, // 13:00
+    { location_name: '林口體育館 ', punched_at: '2026-10-19T00:00:00Z' }, // 08:00
+  ];
+  assert.equal(projectFromPunches(punches, p, null), '新莊倉庫案'); // 沒時間：當天最後一個專案地點
+  assert.equal(projectFromPunches(punches, p, '2026-10-19T04:00:00Z'), '林口體育館'); // 12:00 的便當：早上在林口
+  assert.equal(projectFromPunches(punches, p, '2026-10-18T23:00:00Z'), '新莊倉庫案'); // 打卡前就花：退回當天最後一個
+  assert.equal(projectFromPunches([{ location_name: '公司', punched_at: '2026-10-19T00:00:00Z' }], p, null), '');
+  assert.equal(projectFromPunches([{ location_name: '林口', punched_at: '2026-10-19T00:00:00Z' }], p, null), ''); // 差一個字不算
+  assert.equal(projectFromPunches([], p, null), '');
+});

@@ -49,6 +49,8 @@ export async function recordReceipt(a: {
     : same.eq('line_user_id', a.groupId.slice(3)).eq('spent_on', r.spent_on).eq('amount', r.amount).eq('vendor', r.vendor)
   ).limit(1);
   if (dup?.length) return { ...r, duplicate: true, id: dup[0].id };
+  // 收據不會講專案：當天在某個專案地點打卡就算那個專案（時間只到日，取當天最後打卡的）
+  const project = await punchProjectOfDay(orgId, a.groupId.slice(3), r.spent_on, await orgProjects(orgId), null);
   const { data, error } = await getDb()
     .from('expenses')
     .upsert(
@@ -58,6 +60,7 @@ export async function recordReceipt(a: {
         person_name: a.senderName ?? null,
         media_asset_id: a.assetId,
         ...r,
+        project,
       },
       { onConflict: 'media_asset_id', ignoreDuplicates: true },
     )
@@ -66,7 +69,7 @@ export async function recordReceipt(a: {
     console.warn('報帳寫入失敗（migration 022 跑了嗎？）', error.message);
     return null;
   }
-  return data?.length ? { ...r, id: data[0].id } : null; // 空＝重試時已記過，不再回覆
+  return data?.length ? { ...r, project, id: data[0].id } : null; // 空＝重試時已記過，不再回覆
 }
 
 type AiHit = Hit & { date: string | null; time: string | null; place: string };
@@ -128,6 +131,35 @@ async function projectByAi(groupId: string, text: string, projects: readonly str
   }
 }
 
+/**
+ * 打卡地點 → 專案：地點名稱跟公司專案「一字不差」才算（公司、倉庫這種地點不是專案，自然對不到）。
+ * punches 依打卡時間新到舊；有花費時間就取那之前最後一次打卡的，否則取當天最後一次。
+ * ponytail: 一天跑兩個專案、花費又沒時間（收據）時會歸到後面那個——回覆看得到、改得回來
+ */
+export function projectFromPunches(
+  punches: { location_name: string | null; punched_at: string }[],
+  projects: readonly string[],
+  at: string | null,
+): string {
+  const set = new Set(projects);
+  const hits = punches.filter((p) => set.has(p.location_name?.trim() ?? ''));
+  const hit = (at && hits.find((p) => new Date(p.punched_at) <= new Date(at))) || hits[0];
+  return hit?.location_name?.trim() ?? '';
+}
+
+/** 本人那天的打卡地點裡有專案就用它；沒開考勤、不是員工、沒打卡、表還沒建 → '' */
+async function punchProjectOfDay(orgId: string, lineUserId: string, workDate: string, projects: readonly string[], at: string | null): Promise<string> {
+  if (!projects.length) return '';
+  const { data } = await getDb()
+    .from('punch_records')
+    .select('location_name, punched_at, employees!inner(line_user_id)')
+    .eq('org_id', orgId)
+    .eq('employees.line_user_id', lineUserId)
+    .eq('work_date', workDate)
+    .order('punched_at', { ascending: false });
+  return projectFromPunches((data ?? []) as { location_name: string | null; punched_at: string }[], projects, at);
+}
+
 /** 語音完全沒提到專案 → 沿用同一個人同一天上一筆的專案（一整天通常待在同一個案場）；那天還沒記過有專案的 → 空字串 */
 async function lastProjectOfDay(orgId: string, lineUserId: string, spentOn: string): Promise<string> {
   const { data } = await getDb()
@@ -169,7 +201,13 @@ export async function recordTextExpense(a: {
   // 「林口體育館 便當 110元 20個」→ 已有這個專案：專案＝地點；沒有：AI 抽到的地點，再不然猜品項第一個詞（專案影響報表分組，不猜）
   // 語音（有 assetId）字面沒中再問 AI，AI 也說沒提到就沿用他當天上一筆的專案；ponytail: 打字一字不差的機率高，先不多花一次 AI，要的話拿掉 a.assetId 條件
   const projects = await orgProjects(orgId);
-  const project = pickProject(a.text, projects) || (a.assetId ? (await projectByAi(a.groupId, a.text, projects)) || (await lastProjectOfDay(orgId, a.groupId.slice(3), spent.spent_on)) : '');
+  // 順序：字面講了 → （語音）AI 聽出講了 → 當天打卡的專案地點 → （語音）他當天上一筆的專案
+  const uid = a.groupId.slice(3);
+  const project =
+    pickProject(a.text, projects) ||
+    (a.assetId ? await projectByAi(a.groupId, a.text, projects) : '') ||
+    (await punchProjectOfDay(orgId, uid, spent.spent_on, projects, spent.spent_at)) ||
+    (a.assetId ? await lastProjectOfDay(orgId, uid, spent.spent_on) : '');
   const row = {
     org_id: orgId,
     line_user_id: a.groupId.slice(3),
