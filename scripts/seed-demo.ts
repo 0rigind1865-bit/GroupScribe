@@ -196,7 +196,7 @@ async function main() {
     },
   ]);
 
-  await db.from('notes').insert([
+  const { error: notesErr } = await db.from('notes').insert([
     {
       group_id: GROUP_ID,
       kind: 'decision',
@@ -214,6 +214,7 @@ async function main() {
       kind: 'decision',
       title: '第三項數量改為 320',
       body: '原資料標示有誤，已與客戶確認。',
+      pinned: false, // 批次 insert 缺欄位會被補成 null，pinned 是 NOT NULL
       status: 'active',
       needs_confirmation: false,
       source_message_ids: src('C1'),
@@ -221,6 +222,7 @@ async function main() {
       updated_at: D(-2, '14:25').toISOString(),
     },
   ]);
+  if (notesErr) throw new Error(`公告寫入失敗：${notesErr.message}`);
 
   console.log(`✅ ${GROUP_NAME}（${GROUP_ID}）：${SCRIPT.length} 則對話 → 2 事件 / 4 待辦 / 2 公告`);
   console.log(`   看畫面：/?group=${GROUP_ID}`);

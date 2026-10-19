@@ -4,7 +4,7 @@ import { AskMock, Phone, Shot } from '@/app/ui/intro-mocks';
 export const metadata = { title: '新手教學', description: '5 分鐘開始用群記：建立組織、邀進群、認領、把關。' };
 
 // 新手教學（圖文）：官網、/start、上手卡都連過來。圖一律用 intro-mocks 的假介面與 public/shots 的示範截圖，
-// 不放真實群組畫面。public/shots 是 9/25 拍的舊版介面（「收件匣」＝現在的「把關」），重拍見 docs/screenshots/README.md。文案要跟真的流程對得上：/start、claimNotice（core/ingest.ts）、認領頁、把關頁。
+// 不放真實群組畫面。介面改版後重拍 public/shots，見 docs/screenshots/README.md。文案要跟真的流程對得上：/start、claimNotice（core/ingest.ts）、認領頁、把關頁。
 
 const Bubble = ({ who, me, children }: { who?: string; me?: boolean; children: React.ReactNode }) =>
   me ? (
@@ -137,7 +137,7 @@ const STEPS: { id: string; t: string; d: React.ReactNode; tip?: React.ReactNode;
   {
     id: 'review',
     t: '到「把關」點頭確認',
-    d: '群記整理的東西會先排在「今天」最上面和「把關」頁（圖上的「收件匣」）。每張卡片上面是原話、下面是整理結果：對就按確認，錯就修改，不是就忽略。',
+    d: '群記整理的東西會先排在「今天」最上面和「把關」頁。每張卡片上面是原話、下面是整理結果：對就按確認，錯就修改，不是就忽略。',
     tip: '你確認過的才算數。忽略過的，它會記住，不會再犯。',
     img: <Shot src="/shots/site-inbox.webp" alt="把關頁：每張卡附上原話與確認按鈕" />,
   },
