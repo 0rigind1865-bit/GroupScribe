@@ -5,6 +5,7 @@ import { scopedGroup } from '../group-scope';
 import { dbConfigured, getDb, MEDIA_BUCKET } from '@/db';
 import { SetupNotice } from '../setup-notice';
 import { BatchBar, BatchBox, SelectMode } from '../batch-bar';
+import { mergeProjects, orgProjects } from '@/expense/categories';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +96,8 @@ export default async function FilesPage({
   const exts = [...new Set(assets.map(extOf))].sort();
   const projects = [...new Set(assets.map((a) => a.project ?? '未分類'))].sort() as string[];
   const unclassified = assets.filter((a) => !a.project).length;
+  // 「指定專案」的候選：本群用過的＋公司共用清單（報帳、其他群組），同案不同名從這裡擋
+  const pickable = projectReady ? mergeProjects(projects, await orgProjects(org.id)) : [];
 
   // 篩選（類型/內容/專案可疊加）
   let shown = assets;
@@ -292,7 +295,7 @@ export default async function FilesPage({
                 kind="file"
                 back={qs({})}
                 actions={[]}
-                projects={projectReady ? projects.filter((p) => p !== '未分類') : undefined}
+                projects={projectReady ? pickable : undefined}
               />
             </>
           )}

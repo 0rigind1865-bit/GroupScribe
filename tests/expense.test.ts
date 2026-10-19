@@ -360,3 +360,9 @@ test('receiptReply：有專案就多一行「📁 專案」，沒有就不加', 
   assert.equal(receiptReply({ ...r, project: '林口體育館' }, 'https://x'), '🧾 記好了：10/19 餐飲 $110（便當）\n📁 專案：林口體育館\n查看或修改 👉 https://x');
   assert.doesNotMatch(receiptReply({ ...r, project: '' }), /專案/);
 });
+
+test('mergeProjects：報帳與群組檔案的案名合成一份，去重、去空白、丟「未分類」、保留順序', async () => {
+  const { mergeProjects } = await import('../src/expense/categories');
+  assert.deepEqual(mergeProjects(['林口案', ' 新莊 '], [null, '', '未分類', '新莊', '台中展']), ['林口案', '新莊', '台中展']);
+  assert.deepEqual(mergeProjects([], []), []);
+});

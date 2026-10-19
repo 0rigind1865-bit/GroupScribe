@@ -1,7 +1,8 @@
 import { getDb } from '@/db';
-import { aiScope } from './quota';
+import { aiScope, orgOfGroup } from './quota';
 import { getLLM } from './config';
 import { getProfile } from './profile';
+import { mergeProjects, orgProjects } from '@/expense/categories';
 
 // 檔案的專案歸屬分類：AI 依「前後對話上下文＋內容摘要」判斷每個檔案屬於哪個工作專案。
 // 觸發：檔案頁「AI 依專案分類」按鈕（費用控制，不自動跑）。判斷不出來存「未分類」，
@@ -38,18 +39,22 @@ async function classifyFilesInner(groupId: string): Promise<{ classified: number
   if (!pending?.length) return res;
   res.total = pending.length;
 
-  const profile = await getProfile(groupId);
+  const [profile, orgId] = await Promise.all([getProfile(groupId), orgOfGroup(groupId)]);
 
   for (let i = 0; i < pending.length; i += BATCH) {
     const batch = pending.slice(i, i + BATCH) as unknown as AssetRow[];
 
-    // 既有專案清單每批重查：同一輪前面批次定下的案名，後面批次直接沿用
+    // 既有專案＝公司共用的那份（報帳、其他群組的檔案也在裡面）。每批重查：同一輪前面批次定下的案名，後面批次直接沿用
+    // ponytail: 只給最新 100 個，公司案子多到 prompt 太長再改成依群組相關度挑
     const { data: projRows } = await db
       .from('media_assets')
       .select('project, messages!inner(group_id)')
       .eq('messages.group_id', groupId)
       .not('project', 'is', null);
-    const known = [...new Set((projRows ?? []).map((r: any) => r.project).filter((p) => p && p !== '未分類'))];
+    const known = mergeProjects(
+      (projRows ?? []).map((r: any) => r.project),
+      orgId ? await orgProjects(orgId) : [],
+    ).slice(0, 100);
 
     // 每個檔案抓前後對話脈絡
     const lines: string[] = [];
@@ -81,7 +86,7 @@ async function classifyFilesInner(groupId: string): Promise<{ classified: number
     const prompt = `你是工作群組的檔案整理助理。根據每個檔案的線索（傳送者、時間、內容摘要、前後對話），判斷它屬於哪個工作專案/案子。
 
 規則：
-1. 專案名稱用群組慣用的簡短案名；【既有專案】已有同一案就沿用該名稱，避免同案不同名。
+1. 專案名稱用群組慣用的簡短案名；【既有專案】（全公司共用，報帳也用這份）已有同一案就沿用該名稱，避免同案不同名。
    【群組背景】的「進行中的案子」若指的是同一個案子，就用它的講法——兩份清單要對得起來
    （例：背景寫「中山北路九月底工程」，就不要另外叫「中山北路案」）。
 2. 線索不足就填「未分類」，禁止編造。

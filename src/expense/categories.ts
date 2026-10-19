@@ -23,14 +23,45 @@ export function normalizeCategories(input: string): string[] {
   return list;
 }
 
-/** 公司的專案清單：建立過的（expense_projects，migration 027 前查不到當空的）＋紀錄裡用過的，新的在前 */
+/** 幾份專案名單合成一份：去頭尾空白、去重、丟掉空的與「未分類」（檔案分類判斷不出來時存的），保留先後順序 */
+export function mergeProjects(...lists: (string | null | undefined)[][]): string[] {
+  const out = new Set<string>();
+  for (const list of lists) for (const p of list) if (p?.trim() && p.trim() !== '未分類') out.add(p.trim());
+  return [...out];
+}
+
+// 群→公司以 groups.org_id 為準（media_assets.org_id 程式不讀，見 migration 025）
+async function orgGroupIds(orgId: string): Promise<string[]> {
+  const { data } = await getDb().from('groups').select('group_id').eq('org_id', orgId);
+  return (data ?? []).map((g) => g.group_id as string);
+}
+
+/**
+ * 公司的專案清單（報帳和群組檔案共用同一份）：建立過的（expense_projects，migration 027 前查不到當空的）
+ * ＋報帳紀錄用過的＋公司各群組檔案歸過的（media_assets.project，migration 007 前查不到當空的），新的在前
+ */
 export async function orgProjects(orgId: string): Promise<string[]> {
   const db = getDb();
-  const [{ data: named }, { data: used }] = await Promise.all([
+  const groupIds = await orgGroupIds(orgId);
+  const [{ data: named }, { data: used }, { data: files }] = await Promise.all([
     db.from('expense_projects').select('name').eq('org_id', orgId).order('created_at', { ascending: false }),
     db.from('expenses').select('project').eq('org_id', orgId).neq('project', '').order('created_at', { ascending: false }).limit(2000),
+    groupIds.length
+      ? db.from('media_assets').select('project, messages!inner(group_id)').in('messages.group_id', groupIds).not('project', 'is', null)
+          .order('created_at', { referencedTable: 'messages', ascending: false }).limit(2000)
+      : Promise.resolve({ data: [] as { project: string }[] }),
   ]);
-  return [...new Set([...(named ?? []).map((p) => p.name as string), ...(used ?? []).map((p) => p.project as string)])];
+  return mergeProjects((named ?? []).map((p) => p.name), (used ?? []).map((p) => p.project), (files ?? []).map((f: any) => f.project));
+}
+
+/** 專案改名時，公司各群組裡歸在舊名下的檔案一起改（報帳紀錄由呼叫端改）；欄位還沒建（007）就略過 */
+export async function renameFileProject(orgId: string, from: string, to: string): Promise<void> {
+  const db = getDb();
+  const groupIds = await orgGroupIds(orgId);
+  if (!groupIds.length) return;
+  const { data } = await db.from('media_assets').select('id, messages!inner(group_id)').eq('project', from).in('messages.group_id', groupIds);
+  const ids = (data ?? []).map((r) => r.id as string);
+  if (ids.length) await db.from('media_assets').update({ project: to }).in('id', ids);
 }
 
 export async function orgCategories(orgId: string): Promise<string[]> {
