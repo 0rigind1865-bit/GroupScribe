@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
 // 畫面與互動在 expense-app.tsx。五語系只做最小版（分頁、頁標題、記一筆六個標籤，labels.ts），其餘仍是繁中。
 const TABS: Tab[] = ['add', 'list', 'report', 'analytics'];
 
-export default async function MyExpense({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function MyExpense({ searchParams }: { searchParams: Promise<{ tab?: string; id?: string }> }) {
   const loc = await locale();
   const tt = (key: MsgKey, params?: Record<string, string | number>) => t(loc, key, params);
   const uid = await liffUser();
@@ -55,6 +55,7 @@ export default async function MyExpense({ searchParams }: { searchParams: Promis
     <ExpenseApp
       key={me.org_id}
       tab={tab}
+      openId={sp.id}
       header={
         // 語言地球：個人側有身分列時在最右（T10 第 1 輪 high：這頁原本零顆，外籍員工被帶進來後無路可切）
         <IdentityBar

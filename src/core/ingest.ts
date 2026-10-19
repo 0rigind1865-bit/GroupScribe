@@ -81,6 +81,9 @@ export const liffUrl = (q?: { g?: string; src?: string; path?: string; params?: 
   return `https://liff.line.me/${process.env.LIFF_ID}${q?.path ?? ''}${qs ? `?${qs}` : ''}`;
 };
 
+// 記帳回覆的連結：直接打開那一筆的編輯視窗（收據記過了＝原本那筆）
+const expenseLink = (r: Receipt) => liffUrl({ path: '/a/expense', params: r.id ? { tab: 'list', id: r.id } : undefined });
+
 // 進群告知的內建預設；各 org 可在 /settings 改寫（org_settings.join_notice_text）
 export const DEFAULT_NOTICE = `大家好，我是群記 🦉（群組工作助理）
 我會安靜記錄本群的文字、圖片、PDF，整理成行程、待辦和公告。平常不說話，要查資料就 @我（例如「上次報價多少」）。
@@ -500,13 +503,13 @@ async function handleMessage(m: NormalizedMessage, channelId: string) {
       return null;
     });
     // 1:1 收據記好了就回一句（reply 免費；replyToken 有時效，所以在這裡當下回，不排隊）
-    if (receipt && m.replyToken) await connector.reply(m.replyToken, receiptReply(receipt, liffUrl({ path: '/a/expense' }))).catch(() => {});
+    if (receipt && m.replyToken) await connector.reply(m.replyToken, receiptReply(receipt, expenseLink(receipt))).catch(() => {});
   }
 
   // 1:1 文字「午餐 120」→ 記一筆報帳並回覆（X2-6）；不是問句才看，問句交給上面的問答
   if (isDm(m.groupId) && m.type === 'text' && m.text && !m.mentionsBot) {
     const exp = await recordTextExpense({ groupId: m.groupId, text: m.text, at: m.timestamp, senderName }).catch(() => null);
-    if (exp && m.replyToken) await connector.reply(m.replyToken, receiptReply(exp, liffUrl({ path: '/a/expense' }))).catch(() => {});
+    if (exp && m.replyToken) await connector.reply(m.replyToken, receiptReply(exp, expenseLink(exp))).catch(() => {});
   }
 
   // 有資訊量的文字才進索引；額度用完只略過索引（訊息已存，/api/reindex 可事後補）

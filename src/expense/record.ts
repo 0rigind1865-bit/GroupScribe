@@ -48,7 +48,7 @@ export async function recordReceipt(a: {
     ? same.eq('invoice_no', r.invoice_no)
     : same.eq('line_user_id', a.groupId.slice(3)).eq('spent_on', r.spent_on).eq('amount', r.amount).eq('vendor', r.vendor)
   ).limit(1);
-  if (dup?.length) return { ...r, duplicate: true };
+  if (dup?.length) return { ...r, duplicate: true, id: dup[0].id };
   const { data, error } = await getDb()
     .from('expenses')
     .upsert(
@@ -66,7 +66,7 @@ export async function recordReceipt(a: {
     console.warn('報帳寫入失敗（migration 022 跑了嗎？）', error.message);
     return null;
   }
-  return data?.length ? r : null; // 空＝重試時已記過，不再回覆
+  return data?.length ? { ...r, id: data[0].id } : null; // 空＝重試時已記過，不再回覆
 }
 
 type AiHit = Hit & { date: string | null; time: string | null; place: string };
@@ -189,7 +189,7 @@ export async function recordTextExpense(a: {
     console.warn('文字記帳寫入失敗（migration 022 跑了嗎？）', error.message);
     return null;
   }
-  return data?.length ? { ...r, vendor: hit.item, project } : null; // vendor／project 只給回覆顯示用（「（午餐）」「📁 專案」）
+  return data?.length ? { ...r, vendor: hit.item, project, id: data[0].id } : null; // vendor／project 只給回覆顯示用（「（午餐）」「📁 專案」）
 }
 
 /** 1:1 回覆文字：「🧾 記好了：9/25 餐飲 $320（全家）」 */

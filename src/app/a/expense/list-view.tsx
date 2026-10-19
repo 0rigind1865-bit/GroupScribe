@@ -16,6 +16,7 @@ export const NONE = '\u0000none'; // 「沒選專案」籤的值：不會跟真�
 const PAY_TONE: Record<string, string> = { 代墊: 'bg-amber-100 text-amber-900', 公司卡: 'bg-sky-100 text-sky-900', 現金: 'bg-emerald-100 text-emerald-900' };
 
 export function ListView({
+  openId,
   items,
   categories,
   projects,
@@ -24,6 +25,7 @@ export function ListView({
   onToast,
   onChanged,
 }: {
+  openId?: string;
   items: ExpenseItem[];
   categories: CategoryItem[];
   projects: string[];
@@ -33,7 +35,7 @@ export function ListView({
   onToast: (m: string) => void;
   onChanged: () => void;
 }) {
-  const [editing, setEditing] = useState<ExpenseItem | null>(null);
+  const [editing, setEditing] = useState<ExpenseItem | null>(() => items.find((e) => e.id === openId) ?? null);
   const [photo, setPhoto] = useState<string | null>(null);
   const [picked, setPicked] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);

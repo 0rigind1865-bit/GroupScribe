@@ -56,8 +56,11 @@ export function ExpenseApp({
   hasNearby,
   L = ZH_LABELS,
   manageHref,
+  openId,
 }: {
   manageHref?: string;
+  /** ?id=：LINE 記帳回覆的連結帶來的，進清單就直接開這筆的編輯 */
+  openId?: string;
   tab: Tab;
   header: React.ReactNode;
   L?: ExpenseLabels;
@@ -191,7 +194,7 @@ export function ExpenseApp({
           />
         </div>
         <div hidden={tab !== 'list'}>
-          <ListView items={items} categories={categories} projects={projects} proj={proj} onProj={setProj} onToast={showToast} onChanged={() => router.refresh()} />
+          <ListView openId={openId} items={items} categories={categories} projects={projects} proj={proj} onProj={setProj} onToast={showToast} onChanged={() => router.refresh()} />
         </div>
         <div hidden={tab !== 'report'}>
           <ReportView items={items} categories={categories} onToast={showToast} />
