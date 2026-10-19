@@ -128,6 +128,20 @@ async function projectByAi(groupId: string, text: string, projects: readonly str
   }
 }
 
+/** 語音完全沒提到專案 → 沿用同一個人同一天上一筆的專案（一整天通常待在同一個案場）；那天還沒記過有專案的 → 空字串 */
+async function lastProjectOfDay(orgId: string, lineUserId: string, spentOn: string): Promise<string> {
+  const { data } = await getDb()
+    .from('expenses')
+    .select('project')
+    .eq('org_id', orgId)
+    .eq('line_user_id', lineUserId)
+    .eq('spent_on', spentOn)
+    .neq('project', '')
+    .order('created_at', { ascending: false })
+    .limit(1);
+  return (data?.[0]?.project as string | undefined) ?? '';
+}
+
 /**
  * 文字／語音記帳（X2-6）：1:1 傳「午餐 120」或講一段語音 → 記一筆。
  * 語音帶 assetId（media_asset_id 唯一，重試不重複記）；文字靠 webhook 層的訊息去重。
@@ -153,9 +167,9 @@ export async function recordTextExpense(a: {
   const spent = spentFields(a.at, hit.date ?? when.date, hit.time ?? when.time);
   const r: Receipt = { amount: hit.amount, spent_on: spent.spent_on, vendor: '', category: hit.category, invoice_no: '', kind: hit.kind ?? 'expense' };
   // 「林口體育館 便當 110元 20個」→ 已有這個專案：專案＝地點；沒有：AI 抽到的地點，再不然猜品項第一個詞（專案影響報表分組，不猜）
-  // 語音（有 assetId）字面沒中再問 AI；ponytail: 打字一字不差的機率高，先不多花一次 AI，要的話拿掉 a.assetId 條件
+  // 語音（有 assetId）字面沒中再問 AI，AI 也說沒提到就沿用他當天上一筆的專案；ponytail: 打字一字不差的機率高，先不多花一次 AI，要的話拿掉 a.assetId 條件
   const projects = await orgProjects(orgId);
-  const project = pickProject(a.text, projects) || (a.assetId ? await projectByAi(a.groupId, a.text, projects) : '');
+  const project = pickProject(a.text, projects) || (a.assetId ? (await projectByAi(a.groupId, a.text, projects)) || (await lastProjectOfDay(orgId, a.groupId.slice(3), spent.spent_on)) : '');
   const row = {
     org_id: orgId,
     line_user_id: a.groupId.slice(3),
