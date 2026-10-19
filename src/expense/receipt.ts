@@ -14,6 +14,7 @@ export type Receipt = {
   invoice_no: string;
   kind?: 'expense' | 'income'; // 沒給＝支出
   duplicate?: boolean; // 這張之前記過了、這次沒再記（只給 1:1 回覆用）
+  project?: string; // 文字／語音記帳歸到的專案（只給 1:1 回覆用，讓本人一眼看出沿用錯了）
 };
 
 const INVOICE_RE = /^[A-Z]{2}\d{8}$/;

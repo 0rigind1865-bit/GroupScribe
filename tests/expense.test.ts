@@ -354,3 +354,9 @@ test('spentFields：沒講時間用訊息時間；講了日期沒講時間 → �
   assert.deepEqual(spentFields(at, '2026-10-12', '12:00'), { spent_on: '2026-10-12', spent_at: '2026-10-12T04:00:00.000Z' });
   assert.deepEqual(spentFields(at, null, '15:30'), { spent_on: '2026-10-13', spent_at: '2026-10-13T07:30:00.000Z' });
 });
+
+test('receiptReply：有專案就多一行「📁 專案」，沒有就不加', () => {
+  const r = { amount: 110, spent_on: '2026-10-19', vendor: '便當', category: '餐飲', invoice_no: '' };
+  assert.equal(receiptReply({ ...r, project: '林口體育館' }, 'https://x'), '🧾 記好了：10/19 餐飲 $110（便當）\n📁 專案：林口體育館\n查看或修改 👉 https://x');
+  assert.doesNotMatch(receiptReply({ ...r, project: '' }), /專案/);
+});

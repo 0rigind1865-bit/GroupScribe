@@ -189,7 +189,7 @@ export async function recordTextExpense(a: {
     console.warn('文字記帳寫入失敗（migration 022 跑了嗎？）', error.message);
     return null;
   }
-  return data?.length ? { ...r, vendor: hit.item } : null; // vendor 只給回覆顯示用（「（午餐）」）
+  return data?.length ? { ...r, vendor: hit.item, project } : null; // vendor／project 只給回覆顯示用（「（午餐）」「📁 專案」）
 }
 
 /** 1:1 回覆文字：「🧾 記好了：9/25 餐飲 $320（全家）」 */
@@ -200,8 +200,9 @@ export function receiptReply(r: Receipt, url?: string | null): string {
     const head = `🧾 這張收據記過了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}，這次不再重複記`;
     return url ? `${head}\n真的是另一筆的話，請在這裡自己新增 👉 ${url}` : `${head}\n真的是另一筆的話，請跟管理者說`;
   }
-  const head = r.kind === 'income'
+  const head = (r.kind === 'income'
     ? `💰 記好了：${md} 收入 $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}`
-    : `🧾 記好了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}`;
+    : `🧾 記好了：${md} ${r.category} $${r.amount.toLocaleString('en-US')}${r.vendor ? `（${r.vendor}）` : ''}`)
+    + (r.project ? `\n📁 專案：${r.project}` : '');
   return url ? `${head}\n查看或修改 👉 ${url}` : `${head}\n金額不對請跟管理者說`;
 }
