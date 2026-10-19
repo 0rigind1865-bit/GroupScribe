@@ -34,6 +34,9 @@ export default function AboutPage() {
           <a className="btn h-11 w-full" href="#demo">
             看看怎麼運作
           </a>
+          <a className="mt-1 text-sm text-emerald-700 underline" href="/guide">
+            新手教學：5 分鐘上手
+          </a>
         </div>
       </section>
 

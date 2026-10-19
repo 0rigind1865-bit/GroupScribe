@@ -51,7 +51,10 @@ export function OnboardingCard({
   const inboxHint = '整理出的行程、待辦、公告會先放在「今天」最上面等你把關，確認過的才算數。';
   return (
     <div className={hasGroups ? 'card mb-4 text-sm' : 'card'}>
-      <p className="mb-3 font-semibold">{hasGroups ? '開始使用' : '三步開始'}</p>
+      <p className="mb-3 flex items-baseline font-semibold">
+        {hasGroups ? '開始使用' : '三步開始'}
+        <a className="ml-auto text-xs font-normal text-emerald-700 underline" href="/guide">圖文教學</a>
+      </p>
       <ol className="space-y-3 text-sm">
         <Step n={1} done={hasGroups}>
           {hasGroups ? (

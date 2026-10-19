@@ -56,6 +56,7 @@ export function StepsSection() {
   return (
     <section className="reveal">
       <h2 className="mb-3 text-lg font-semibold tracking-tight">三步開始</h2>
+      <p className="-mt-2 mb-3 text-sm"><a className="text-emerald-700 underline" href="/guide">看圖文教學</a></p>
       <ol className="space-y-3">
         {STEPS.map((s, i) => (
           <li key={s.t} className="flex gap-3">

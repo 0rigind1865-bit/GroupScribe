@@ -46,7 +46,9 @@ export default async function StartPage({ searchParams }: { searchParams: Promis
           <a className="btn-primary w-full" href={`/api/auth/line?next=${encodeURIComponent(back)}`}>
             用 LINE 登入開始
           </a>
-          <p className="text-xs text-gray-500">免費方案：1 個群、成員人數不限、不用綁卡。</p>
+          <p className="text-xs text-gray-500">
+            免費方案：1 個群、成員人數不限、不用綁卡。<a className="text-emerald-700 underline" href="/guide">看圖文教學</a>
+          </p>
           <p className="text-xs text-amber-800">
             注意：LINE 規定一個群只能有一個官方帳號。群裡已經有其他機器人（打卡、客服等）的話，要先移出它，群記才進得去。
           </p>
