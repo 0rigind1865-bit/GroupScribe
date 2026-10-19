@@ -111,6 +111,23 @@ async function eachPriceByAi(groupId: string, text: string): Promise<boolean> {
   }
 }
 
+/** 語音沒一字不差講出專案名（「林口體育館」聽成「林口體育」「林口那場」）→ 請 AI 從公司已有的專案裡挑；只回清單裡的名稱，沒提到就回空字串，不猜 */
+async function projectByAi(groupId: string, text: string, projects: readonly string[]): Promise<string> {
+  if (!projects.length) return '';
+  const list = projects.slice(0, 50); // 新的在前，太舊的專案不太會再記帳
+  try {
+    const j = (await aiScope(groupId, () =>
+      getLLM().generateJson(`這是一句記帳（語音轉文字，可能有錯字、簡稱、同音字）：「${text}」。公司的專案清單：${JSON.stringify(list)}。句子有提到其中哪一個專案（或它的地點、簡稱、錯字）就回 JSON：{"project":"清單裡的完整名稱"}；句子沒提到任何專案就回 {"project":""}，不要猜。`, {
+        purpose: 'expense_project',
+        schema: { type: 'object', properties: { project: { type: 'string' } }, required: ['project'] },
+      }),
+    )) as { project?: unknown };
+    return typeof j?.project === 'string' && list.includes(j.project) ? j.project : '';
+  } catch {
+    return '';
+  }
+}
+
 /**
  * 文字／語音記帳（X2-6）：1:1 傳「午餐 120」或講一段語音 → 記一筆。
  * 語音帶 assetId（media_asset_id 唯一，重試不重複記）；文字靠 webhook 層的訊息去重。
@@ -136,7 +153,9 @@ export async function recordTextExpense(a: {
   const spent = spentFields(a.at, hit.date ?? when.date, hit.time ?? when.time);
   const r: Receipt = { amount: hit.amount, spent_on: spent.spent_on, vendor: '', category: hit.category, invoice_no: '', kind: hit.kind ?? 'expense' };
   // 「林口體育館 便當 110元 20個」→ 已有這個專案：專案＝地點；沒有：AI 抽到的地點，再不然猜品項第一個詞（專案影響報表分組，不猜）
-  const project = pickProject(a.text, await orgProjects(orgId));
+  // 語音（有 assetId）字面沒中再問 AI；ponytail: 打字一字不差的機率高，先不多花一次 AI，要的話拿掉 a.assetId 條件
+  const projects = await orgProjects(orgId);
+  const project = pickProject(a.text, projects) || (a.assetId ? await projectByAi(a.groupId, a.text, projects) : '');
   const row = {
     org_id: orgId,
     line_user_id: a.groupId.slice(3),
