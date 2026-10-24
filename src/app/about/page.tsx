@@ -19,7 +19,14 @@ export const metadata = { title: '群裡講過的，都記得' };
 export default function AboutPage() {
   return (
     <div className="mx-auto max-w-md pb-24">
-      <BrandBar right={<a className="btn btn-sm" href="/login">登入</a>} />
+      <BrandBar
+        right={
+          <div className="flex items-center gap-1">
+            <a className="px-3 py-2 text-sm font-medium text-gray-700" href="/guide">教學</a>
+            <a className="btn btn-sm" href="/login">登入</a>
+          </div>
+        }
+      />
 
       <section className="px-5 pt-6 pb-8 text-center">
         <IntroVideo />
